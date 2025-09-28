@@ -1,64 +1,79 @@
 local addonName, ns = ...
-local panel = CreateFrame("Frame", "ToxicifyOptionsPanel", InterfaceOptionsFramePanelContainer)
-panel.name = "Toxicify"
+ToxicifyDB = ToxicifyDB or {}
 
-local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+---------------------------------------------------
+-- General Settings Panel
+---------------------------------------------------
+local generalPanel = CreateFrame("Frame", "ToxicifyGeneralOptionsPanel")
+generalPanel.name = "General"
+
+local title = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
-title:SetText("|cff39FF14Toxicify|r")
+title:SetText("|cff39FF14Toxicify|r - General Settings")
 
-local desc = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+local desc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-desc:SetWidth(400)
-desc:SetText("Beheer je lijst met toxic spelers. Deze worden rood gemarkeerd in je party en de Group Finder.\n\nJe kunt namen toevoegen met de knop of via /toxic add Naam.")
+desc:SetWidth(500)
+desc:SetText("Manage your toxic/pumper player list. They will be marked in party/raid frames and in the Group Finder.\n\nYou can add names manually below or with /toxic add Name-Realm.")
 
--- Editbox om naam toe te voegen
-local input = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+-- Input + add buttons
+local input = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
 input:SetSize(200, 30)
 input:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
 input:SetAutoFocus(false)
 input:SetMaxLetters(50)
 
--- Checkbox: verberg toxic spelers in Group Finder
-local hideCheck = CreateFrame("CheckButton", nil, panel, "InterfaceOptionsCheckButtonTemplate")
-hideCheck:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 0, -240)
-hideCheck.Text:SetText("Verberg toxic spelers in Premade Groups")
-hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
+local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addToxicBtn:SetSize(100, 22)
+addToxicBtn:SetPoint("LEFT", input, "RIGHT", 5, 0)
+addToxicBtn:SetText("Add Toxic")
 
+local addPumperBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addPumperBtn:SetSize(100, 22)
+addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 5, 0)
+addPumperBtn:SetText("Add Pumper")
+
+-- Hide in finder
+local hideCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
+hideCheck:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 0, -20)
+hideCheck.Text:SetText("Hide toxic groups in Premade Groups")
+hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
 hideCheck:SetScript("OnClick", function(self)
     ToxicifyDB.HideInFinder = self:GetChecked()
 end)
 
--- Toevoegen knop
-local addBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-addBtn:SetSize(80, 22)
-addBtn:SetPoint("LEFT", input, "RIGHT", 5, 0)
-addBtn:SetText("Toevoegen")
-
--- ScrollFrame voor toxic lijst
-local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-scrollFrame:SetPoint("TOPLEFT", input, "BOTTOMLEFT", 0, -20)
-scrollFrame:SetSize(300, 200)
+-- ScrollFrame for list
+local scrollFrame = CreateFrame("ScrollFrame", nil, generalPanel, "UIPanelScrollFrameTemplate")
+scrollFrame:SetPoint("TOPLEFT", hideCheck, "BOTTOMLEFT", 0, -20)
+scrollFrame:SetSize(400, 200)
 
 local content = CreateFrame("Frame", nil, scrollFrame)
-content:SetSize(300, 200)
+content:SetSize(400, 200)
 scrollFrame:SetScrollChild(content)
 
 local function RefreshList()
-    for i, child in ipairs(content.children or {}) do
-        child:Hide()
-    end
+    for _, child in ipairs(content.children or {}) do child:Hide() end
     content.children = {}
 
     local y = -5
-    for name in pairs(ToxicifyDB) do
-        if name ~= "minimap" and name ~= "HideInFinder" then
+    for name, status in pairs(ToxicifyDB) do
+        if type(status) == "string" and (status == "toxic" or status == "pumper") then
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(280, 20)
+            row:SetSize(380, 20)
             row:SetPoint("TOPLEFT", 0, y)
 
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(16, 16)
+            icon:SetPoint("LEFT", 0, 0)
+            if status == "toxic" then
+                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
+            elseif status == "pumper" then
+                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
+            end
+
             local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            text:SetPoint("LEFT", 0, 0)
-            text:SetText(name)
+            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            text:SetText(name .. " (" .. status .. ")")
 
             local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
             delBtn:SetSize(50, 18)
@@ -69,26 +84,97 @@ local function RefreshList()
                 RefreshList()
             end)
 
-            content.children[#content.children+1] = row
+            table.insert(content.children, row)
             y = y - 22
         end
     end
 end
 
-addBtn:SetScript("OnClick", function()
+-- Add toxic
+addToxicBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ToxicifyDB[name] = true
+        ToxicifyDB[name] = "toxic"
         input:SetText("")
         RefreshList()
-        print("|cff39FF14Toxicify:|r Toegevoegd: " .. name)
+        print("|cffff0000Toxicify:|r Added toxic: " .. name)
     end
 end)
 
+-- Add pumper
+addPumperBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ToxicifyDB[name] = "pumper"
+        input:SetText("")
+        RefreshList()
+        print("|cff00ff00Toxicify:|r Added pumper: " .. name)
+    end
+end)
+
+generalPanel:SetScript("OnShow", RefreshList)
+
+---------------------------------------------------
+-- Whisper Settings Panel
+---------------------------------------------------
+local whisperPanel = CreateFrame("Frame", "ToxicifyWhisperOptionsPanel")
+whisperPanel.name = "Whisper"
+
+local title2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+title2:SetPoint("TOPLEFT", 16, -16)
+title2:SetText("|cff39FF14Toxicify|r - Whisper Settings")
+
+local desc2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+desc2:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
+desc2:SetWidth(500)
+desc2:SetText("Configure whisper behavior. If enabled, Toxicify will automatically whisper players when they are marked as toxic.")
+
+local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
+whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
+whisperCheck.Text:SetText("Whisper players when marked toxic")
+whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark or false)
+
+local whisperBox = CreateFrame("EditBox", "ToxicifyWhisperBox", whisperPanel, "InputBoxTemplate")
+whisperBox:SetSize(400, 30)
+whisperBox:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
+whisperBox:SetAutoFocus(false)
+whisperBox:SetMaxLetters(200)
+
+if not ToxicifyDB.WhisperMessage then
+    ToxicifyDB.WhisperMessage = "U have been marked as Toxic player by - Toxicify Addon"
+end
+whisperBox:SetText(ToxicifyDB.WhisperMessage)
+
+if not whisperCheck:GetChecked() then
+    whisperBox:Disable()
+end
+
+whisperCheck:SetScript("OnClick", function(self)
+    ToxicifyDB.WhisperOnMark = self:GetChecked()
+    if self:GetChecked() then
+        whisperBox:Enable()
+    else
+        whisperBox:Disable()
+    end
+end)
+
+whisperBox:SetScript("OnTextChanged", function(self)
+    if whisperCheck:GetChecked() then
+        ToxicifyDB.WhisperMessage = self:GetText()
+    end
+end)
+
+---------------------------------------------------
+-- Register Panels
+---------------------------------------------------
 if Settings and Settings.RegisterAddOnCategory then
-    local category, layout = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
-    Settings.RegisterAddOnCategory(category)
+    -- Retail
+    local root = Settings.RegisterVerticalLayoutCategory("|cff39FF14Toxicify|r")
+    Settings.RegisterCanvasLayoutSubcategory(root, generalPanel, generalPanel.name)
+    Settings.RegisterCanvasLayoutSubcategory(root, whisperPanel, whisperPanel.name)
+    Settings.RegisterAddOnCategory(root)
 else
-    -- fallback voor Classic / Wrath
-    InterfaceOptions_AddCategory(panel)
+    -- Classic
+    InterfaceOptions_AddCategory(generalPanel)
+    InterfaceOptions_AddCategory(whisperPanel)
 end

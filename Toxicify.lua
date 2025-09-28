@@ -1,7 +1,6 @@
 local addonName, ns = ...
 ToxicifyDB = ToxicifyDB or {}
 
--- Debug load
 print("|cff39FF14Toxicify:|r Addon is loading...")
 
 ---------------------------------------------------
@@ -33,191 +32,6 @@ if icon then
 end
 
 ---------------------------------------------------
--- Helpers
----------------------------------------------------
-local function NormalizePlayerName(playerName)
-    return string.lower(playerName)
-end
-
-local function IsToxic(playerName)
-    if not playerName then return false end
-    local normalizedName = NormalizePlayerName(playerName)
-    if ToxicifyDB[normalizedName] then return true end
-    for storedName, _ in pairs(ToxicifyDB) do
-        if type(storedName) == "string" and storedName ~= "minimap" and storedName ~= "HideInFinder" then
-            local normalizedStored = NormalizePlayerName(storedName)
-            if normalizedStored == normalizedName then return true end
-            local storedOnly = string.match(normalizedStored, "^([^-]+)")
-            local currentOnly = string.match(normalizedName, "^([^-]+)")
-            if storedOnly == currentOnly then return true end
-        end
-    end
-    return false
-end
-
-local function MarkToxic(playerName)
-    if not playerName or playerName == "" then return end
-    ToxicifyDB[NormalizePlayerName(playerName)] = true
-    print("|cffff0000Toxicify:|r " .. playerName .. " marked as toxic.")
-end
-
-local function UnmarkToxic(playerName)
-    if not playerName or playerName == "" then return end
-    local norm = NormalizePlayerName(playerName)
-    if ToxicifyDB[norm] then
-        ToxicifyDB[norm] = nil
-        print("|cff00ff00Toxicify:|r " .. playerName .. " removed from toxic list.")
-    end
-end
-
----------------------------------------------------
--- Toxicify UI
----------------------------------------------------
----------------------------------------------------
--- Toxicify UI
----------------------------------------------------
-local function CreateToxicifyUI()
-    if _G.ToxicifyListFrame then return end -- already created
-
-    local toxicFrame = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    toxicFrame:SetSize(460, 420)
-    toxicFrame:SetPoint("CENTER")
-    toxicFrame:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-        tile = true, tileSize = 32, edgeSize = 16,
-        insets = { left = 8, right = 8, top = 8, bottom = 8 }
-    })
-    toxicFrame:Hide()
-
-    -- Title
-    local title = toxicFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("TOP", 0, -15)
-    title:SetText("|cff39FF14Toxicify List|r")
-
-    -- Close button
-    local closeBtn = CreateFrame("Button", nil, toxicFrame, "UIPanelCloseButton")
-    closeBtn:SetPoint("TOPRIGHT", toxicFrame, "TOPRIGHT", -5, -5)
-    closeBtn:SetScript("OnClick", function() toxicFrame:Hide() end)
-
-    -- Add/Edit section
-    local addBox = CreateFrame("EditBox", nil, toxicFrame, "InputBoxTemplate")
-    addBox:SetSize(200, 22)
-    addBox:SetPoint("TOPLEFT", 20, -45)
-    addBox:SetAutoFocus(false)
-
-    local addBtn = CreateFrame("Button", nil, toxicFrame, "UIPanelButtonTemplate")
-    addBtn:SetSize(60, 22)
-    addBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
-    addBtn:SetText("Add")
-
-    local clearBtn = CreateFrame("Button", nil, toxicFrame, "UIPanelButtonTemplate")
-    clearBtn:SetSize(100, 22)
-    clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
-    clearBtn:SetText("Remove All")
-
-    local hideCheck = CreateFrame("CheckButton", nil, toxicFrame, "ChatConfigCheckButtonTemplate")
-    hideCheck:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -15)
-    hideCheck.Text:SetText("Hide toxic groups in Finder")
-    hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
-    hideCheck:SetScript("OnClick", function(self)
-        ToxicifyDB.HideInFinder = self:GetChecked()
-    end)
-
-    -- ScrollFrame for list
-    local scroll = CreateFrame("ScrollFrame", nil, toxicFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -120)
-    scroll:SetPoint("BOTTOMRIGHT", -40, 40)
-
-    local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(360, 200)
-    scroll:SetScrollChild(content)
-
-    local function RefreshToxicFrame()
-        for _, child in ipairs(content.children or {}) do child:Hide() end
-        content.children = {}
-
-        local y = -5
-        for name in pairs(ToxicifyDB) do
-            if name ~= "minimap" and name ~= "HideInFinder" then
-                local row = CreateFrame("Frame", nil, content)
-                row:SetSize(320, 22)
-                row:SetPoint("TOPLEFT", 0, y)
-
-                local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                text:SetPoint("LEFT", 5, 0)
-                text:SetText(name)
-
-                local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                delBtn:SetSize(60, 20)
-                delBtn:SetPoint("RIGHT", 0, 0)
-                delBtn:SetText("Delete")
-                delBtn:SetScript("OnClick", function()
-                    ToxicifyDB[name] = nil
-                    RefreshToxicFrame()
-                end)
-
-                table.insert(content.children, row)
-                y = y - 26
-            end
-        end
-    end
-
-    addBtn:SetScript("OnClick", function()
-        local name = addBox:GetText()
-        if name and name ~= "" then
-            MarkToxic(name)
-            addBox:SetText("")
-            RefreshToxicFrame()
-        end
-    end)
-
-    clearBtn:SetScript("OnClick", function()
-        ToxicifyDB = { minimap = ToxicifyDB.minimap, HideInFinder = ToxicifyDB.HideInFinder }
-        RefreshToxicFrame()
-        print("|cff39FF14Toxicify:|r Cleared toxic list")
-    end)
-
-    -- Footer signature
-    local footer = toxicFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    footer:SetPoint("BOTTOM", 0, 12)
-    footer:SetText("|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r")
-
-    toxicFrame.Refresh = RefreshToxicFrame
-end
-
-
----------------------------------------------------
--- Slash commands
----------------------------------------------------
-SLASH_TOXICIFY1 = "/toxic"
-SlashCmdList["TOXICIFY"] = function(msg)
-    local cmd, player = strsplit(" ", msg, 2)
-    if cmd == "add" and player then
-        MarkToxic(player)
-    elseif cmd == "del" and player then
-        UnmarkToxic(player)
-    elseif cmd == "ui" then
-        if not _G.ToxicifyListFrame then
-            CreateToxicifyUI()
-        end
-        if _G.ToxicifyListFrame:IsShown() then
-            _G.ToxicifyListFrame:Hide()
-        else
-            _G.ToxicifyListFrame:Refresh()
-            _G.ToxicifyListFrame:Show()
-        end
-    elseif cmd == "list" then
-        print("|cff39FF14Toxicify:|r Toxic list:")
-        for name in pairs(ToxicifyDB) do
-            if name ~= "minimap" and name ~= "HideInFinder" then
-                print(" - " .. name)
-            end
-        end
-    end
-end
-
----------------------------------------------------
 -- Group roster updates (covers party/raid/M+)
 ---------------------------------------------------
 local function UpdateGroupMembers()
@@ -226,10 +40,16 @@ local function UpdateGroupMembers()
         local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
         if UnitExists(unit) then
             local name = GetUnitName(unit, true)
-            if name and IsToxic(name) then
+            if name and ns.IsToxic(name) then
                 local frame = CompactUnitFrame_GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
-                    frame.name:SetText("|cffff0000 " .. name .. "|r")
+                    frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
+                end
+            end
+            if name and ns.IsPumper(name) then
+                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                if frame and frame.name and frame.name.SetText then
+                    frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                 end
             end
         end
@@ -242,36 +62,247 @@ rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
 
 ---------------------------------------------------
+-- Helpers
+---------------------------------------------------
+function ns.NormalizePlayerName(playerName)
+    if not playerName then return nil end
+    return string.lower(playerName)
+end
+
+function ns.IsPumper(playerName)
+    if not playerName then return false end
+    return ToxicifyDB[ns.NormalizePlayerName(playerName)] == "pumper"
+end
+
+function ns.IsToxic(playerName)
+    if not playerName then return false end
+    return ToxicifyDB[ns.NormalizePlayerName(playerName)] == "toxic"
+end
+
+function ns.MarkPumper(playerName)
+    local norm = ns.NormalizePlayerName(playerName)
+    if norm then
+        ToxicifyDB[norm] = "pumper"
+        print("|cff00ff00Toxicify:|r " .. playerName .. " marked as Pumper.")
+    end
+end
+
+function ns.MarkToxic(playerName)
+    local norm = ns.NormalizePlayerName(playerName)
+    if norm then
+        ToxicifyDB[norm] = "toxic"
+        print("|cffff0000Toxicify:|r " .. playerName .. " marked as Toxic.")
+        if ToxicifyDB.WhisperOnMark then
+            local msg = ToxicifyDB.WhisperMessage or "U have been marked as Toxic player by - Toxicify Addon"
+            SendChatMessage(msg, "WHISPER", nil, playerName)
+        end
+    end
+end
+
+function ns.UnmarkToxic(playerName)
+    local norm = ns.NormalizePlayerName(playerName)
+    if norm and ToxicifyDB[norm] then
+        ToxicifyDB[norm] = nil
+        print("|cffaaaaaaToxicify:|r " .. playerName .. " removed from list.")
+    end
+end
+
+---------------------------------------------------
+-- Toxicify UI
+---------------------------------------------------
+function ns.CreateToxicifyUI()
+    if _G.ToxicifyListFrame then return end
+
+    local f = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    f:SetSize(460, 420)
+    f:SetPoint("CENTER")
+    f:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 16,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+    f:Hide()
+
+    -- movable
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetClampedToScreen(true)
+    f:SetFrameStrata("DIALOG")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+
+    -- title
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -15)
+    title:SetText("|cff39FF14Toxicify List|r")
+
+    -- close
+    local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -5)
+    closeBtn:SetScript("OnClick", function() f:Hide() end)
+
+    -- add box
+    local addBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    addBox:SetSize(200, 22)
+    addBox:SetPoint("TOPLEFT", 20, -45)
+    addBox:SetAutoFocus(false)
+
+    local addBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    addBtn:SetSize(60, 22)
+    addBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
+    addBtn:SetText("Add")
+
+    -- clear
+    local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    clearBtn:SetSize(100, 22)
+    clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
+    clearBtn:SetText("Remove All")
+
+    -- list
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 20, -120)
+    scroll:SetPoint("BOTTOMRIGHT", -40, 40)
+
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(360, 200)
+    scroll:SetScrollChild(content)
+
+    local function Refresh()
+        for _, child in ipairs(content.children or {}) do child:Hide() end
+        content.children = {}
+
+        local y = -5
+        for name, status in pairs(ToxicifyDB) do
+            if status == "toxic" or status == "pumper" then
+                local row = CreateFrame("Frame", nil, content)
+                row:SetSize(320, 22)
+                row:SetPoint("TOPLEFT", 0, y)
+
+                local icon = row:CreateTexture(nil, "ARTWORK")
+                icon:SetSize(16, 16)
+                icon:SetPoint("LEFT", 0, 0)
+                if status == "toxic" then
+                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
+                else
+                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
+                end
+
+                local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+                text:SetText(name)
+
+                local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                del:SetSize(60, 20)
+                del:SetPoint("RIGHT", 0, 0)
+                del:SetText("Delete")
+                del:SetScript("OnClick", function()
+                    ToxicifyDB[name] = nil
+                    Refresh()
+                end)
+
+                table.insert(content.children, row)
+                y = y - 26
+            end
+        end
+    end
+
+    f.Refresh = Refresh
+
+    addBtn:SetScript("OnClick", function()
+        local name = addBox:GetText()
+        if name and name ~= "" then
+            ns.MarkToxic(name)
+            addBox:SetText("")
+            Refresh()
+        end
+    end)
+
+    clearBtn:SetScript("OnClick", function()
+        for k in pairs(ToxicifyDB) do
+            if type(k) == "string" then ToxicifyDB[k] = nil end
+        end
+        Refresh()
+    end)
+
+    local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    footer:SetPoint("BOTTOM", 0, 12)
+    footer:SetText("|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r")
+end
+
+---------------------------------------------------
+-- /toxic command
+---------------------------------------------------
+SLASH_TOXICIFY1 = "/toxic"
+SlashCmdList["TOXICIFY"] = function(msg)
+    local cmd, player = strsplit(" ", msg, 2)
+    if cmd == "add" and player then
+        ns.MarkToxic(player)
+    elseif cmd == "del" and player then
+        ns.UnmarkToxic(player)
+    elseif cmd == "ui" then
+        if not _G.ToxicifyListFrame then ns.CreateToxicifyUI() end
+        if _G.ToxicifyListFrame:IsShown() then
+            _G.ToxicifyListFrame:Hide()
+        else
+            _G.ToxicifyListFrame:Refresh()
+            _G.ToxicifyListFrame:Show()
+        end
+    elseif cmd == "list" then
+        print("|cff39FF14Toxicify:|r Current list:")
+        for name, status in pairs(ToxicifyDB) do
+            if status then print(" - " .. name .. " (" .. status .. ")") end
+        end
+    end
+end
+
+---------------------------------------------------
+-- Premade Groups hook
+---------------------------------------------------
+hooksecurefunc("LFGListSearchEntry_Update", function(entry)
+    if not entry or not entry.resultID then return end
+    local info = C_LFGList.GetSearchResultInfo(entry.resultID)
+    if not info or not info.leaderName then return end
+
+    local leader = info.leaderName
+    if ns.IsToxic(leader) then
+        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t " .. info.name)
+        entry.Name:SetTextColor(1, 0, 0)
+    elseif ns.IsPumper(leader) then
+        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t " .. info.name)
+        entry.Name:SetTextColor(0, 1, 0)
+    end
+end)
+
+---------------------------------------------------
 -- Tooltip
 ---------------------------------------------------
 TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
     local unit = select(2, tooltip:GetUnit())
     if unit then
         local name = GetUnitName(unit, true)
-        if name and IsToxic(name) then
-            tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+        if ns.IsToxic(name) then
+            tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r ")
+        elseif ns.IsPumper(name) then
+            tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r ")
         end
     end
 end)
 
+
 ---------------------------------------------------
--- Modern context menu integration (Dragonflight+)
+-- Modern context menu
 ---------------------------------------------------
 local function AddToxicifyContextMenu(_, rootDescription, contextData)
     if not contextData or not contextData.unit then return end
-    local unit = contextData.unit
-    if not UnitIsPlayer(unit) or UnitIsUnit(unit, "player") then return end
-
-    local playerName = GetUnitName(unit, true)
+    local playerName = GetUnitName(contextData.unit, true)
     if not playerName then return end
 
     local toxicSubmenu = rootDescription:CreateButton("Toxicify")
-    toxicSubmenu:CreateButton(IsToxic(playerName) and "|cffaaaaaaMark player as Toxic|r" or "Mark player as Toxic", function()
-        MarkToxic(playerName)
-    end)
-    toxicSubmenu:CreateButton(IsToxic(playerName) and "Remove from Toxic List" or "|cffaaaaaaRemove from Toxic List|r", function()
-        UnmarkToxic(playerName)
-    end)
+    toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.MarkToxic(playerName) end)
+    toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.MarkPumper(playerName) end)
+    toxicSubmenu:CreateButton("Remove from List", function() ns.UnmarkToxic(playerName) end)
 end
 
 Menu.ModifyMenu("MENU_UNIT_PLAYER", AddToxicifyContextMenu)
@@ -279,4 +310,3 @@ Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
 Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
 Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
 
-print("|cff39FF14Toxicify:|r Modern context menu integrated (Dragonflight+ API)")
