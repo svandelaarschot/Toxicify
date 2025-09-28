@@ -128,7 +128,6 @@ desc2:SetText("Configure whisper behavior. If enabled, Toxicify will automatical
 local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
 whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
 whisperCheck.Text:SetText("Whisper players when marked toxic")
-
 ---------------------------------------------------
 -- Whisper Settings Panel
 ---------------------------------------------------
@@ -137,39 +136,49 @@ whisperPanel.name = "Whisper"
 
 local title2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title2:SetPoint("TOPLEFT", 16, -16)
-title2:SetText("|cff39FF14Toxicify|r - Whisper Settings")
+title2:SetText("|cff39FF14Toxicify|r - Whisper & Ignore Settings")
 
 local desc2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 desc2:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
 desc2:SetWidth(500)
-desc2:SetText("Configure whisper behavior. If enabled, Toxicify will automatically whisper players when they are marked as toxic.")
+desc2:SetText("Configure whisper behavior and automatic ignore. If enabled, Toxicify will whisper and/or ignore players when they are marked as toxic.")
 
--- Checkbox
+-- Checkbox: Whisper
 local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
 whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
 whisperCheck.Text:SetText("Whisper players when marked toxic")
 
+-- Checkbox: Ignore
+local ignoreCheck = CreateFrame("CheckButton", "ToxicifyIgnoreCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
+ignoreCheck:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
+ignoreCheck.Text:SetText("Also add toxic players to Ignore list")
+
 -- Editbox
 local whisperBox = CreateFrame("EditBox", "ToxicifyWhisperBox", whisperPanel, "InputBoxTemplate")
 whisperBox:SetSize(400, 30)
-whisperBox:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
+whisperBox:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -10)
 whisperBox:SetAutoFocus(false)
 whisperBox:SetMaxLetters(200)
 
--- Helper to ensure DB always has a default
-local function EnsureWhisperDefaults()
+-- Ensure defaults
+local function EnsureDefaults()
     if not ToxicifyDB.WhisperMessage or ToxicifyDB.WhisperMessage == "" then
         ToxicifyDB.WhisperMessage = "U have been marked as Toxic player by - Toxicify Addon"
     end
     if ToxicifyDB.WhisperOnMark == nil then
         ToxicifyDB.WhisperOnMark = false
     end
+    if ToxicifyDB.IgnoreOnMark == nil then
+        ToxicifyDB.IgnoreOnMark = false
+    end
 end
 
--- Init right away
-EnsureWhisperDefaults()
-whisperBox:SetText(ToxicifyDB.WhisperMessage)
+EnsureDefaults()
+
+-- Init values
 whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
+ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
+whisperBox:SetText(ToxicifyDB.WhisperMessage)
 
 if whisperCheck:GetChecked() then
     whisperBox:Enable()
@@ -177,11 +186,12 @@ else
     whisperBox:Disable()
 end
 
--- Also refresh every time panel is shown
+-- Refresh on show
 whisperPanel:SetScript("OnShow", function()
-    EnsureWhisperDefaults()
-    whisperBox:SetText(ToxicifyDB.WhisperMessage)
+    EnsureDefaults()
     whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
+    ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
+    whisperBox:SetText(ToxicifyDB.WhisperMessage)
 
     if whisperCheck:GetChecked() then
         whisperBox:Enable()
@@ -198,6 +208,10 @@ whisperCheck:SetScript("OnClick", function(self)
     else
         whisperBox:Disable()
     end
+end)
+
+ignoreCheck:SetScript("OnClick", function(self)
+    ToxicifyDB.IgnoreOnMark = self:GetChecked()
 end)
 
 whisperBox:SetScript("OnTextChanged", function(self)

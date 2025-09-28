@@ -181,6 +181,11 @@ function ns.MarkToxic(playerName)
             local msg = ToxicifyDB.WhisperMessage or "U have been marked as Toxic player by - Toxicify Addon"
             SendChatMessage(msg, "WHISPER", nil, playerName)
         end
+        -- Ignore
+        if ToxicifyDB.IgnoreOnMark then
+            AddIgnore(playerName)
+            print("|cffaaaaaaToxicify:|r " .. playerName .. " has also been added to your Ignore list.")
+        end
     end
 end
 
