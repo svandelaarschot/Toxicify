@@ -319,6 +319,23 @@ SlashCmdList["TOXICIFY"] = function(msg)
     end
 end
 
+SLASH_TOXICIFY2 = "/toxicexport"
+SlashCmdList["TOXICIFY2"] = function()
+    local export = ns.ExportList()
+    print("|cff39FF14Toxicify:|r Export string:")
+    print(export)
+end
+
+SLASH_TOXICIFY3 = "/toxicimport"
+SlashCmdList["TOXICIFY3"] = function(msg)
+    local ok, result = ns.ImportList(msg)
+    if ok then
+        print("|cff39FF14Toxicify:|r Import success: " .. result)
+    else
+        print("|cffff0000Toxicify:|r Import failed: " .. result)
+    end
+end
+
 ---------------------------------------------------
 -- Premade Groups hook (toxic vs pumper)
 ---------------------------------------------------
