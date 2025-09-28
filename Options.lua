@@ -7,6 +7,57 @@ ToxicifyDB = ToxicifyDB or {}
 local generalPanel = CreateFrame("Frame", "ToxicifyGeneralOptionsPanel")
 generalPanel.name = "General"
 
+
+---------------------------------------------------
+-- Import / Export
+---------------------------------------------------
+local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+ioLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -20)
+ioLabel:SetText("Import / Export List:")
+
+-- Editbox
+local ioBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
+ioBox:SetSize(300, 40)
+ioBox:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
+ioBox:SetAutoFocus(false)
+ioBox:SetMultiLine(true)
+ioBox:SetMaxLetters(4000)
+ioBox:SetTextInsets(5, 5, 5, 5)
+
+-- Scroll voor editbox
+local ioScroll = CreateFrame("ScrollFrame", nil, generalPanel, "UIPanelScrollFrameTemplate")
+ioScroll:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
+ioScroll:SetSize(300, 80)
+ioScroll:SetScrollChild(ioBox)
+
+-- Export button
+local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+exportBtn:SetSize(80, 22)
+exportBtn:SetPoint("TOPLEFT", ioScroll, "BOTTOMRIGHT", 10, 0)
+exportBtn:SetText("Export")
+exportBtn:SetScript("OnClick", function()
+    local export = ns.ExportList()
+    ioBox:SetText(export)
+    ioBox:HighlightText()
+    print("|cff39FF14Toxicify:|r List exported to box.")
+end)
+
+-- Import button
+local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+importBtn:SetSize(80, 22)
+importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
+importBtn:SetText("Import")
+importBtn:SetScript("OnClick", function()
+    local text = ioBox:GetText()
+    local ok, result = ns.ImportList(text)
+    if ok then
+        print("|cff39FF14Toxicify:|r Import success: " .. result)
+        RefreshList()
+    else
+        print("|cffff0000Toxicify:|r Import failed: " .. result)
+    end
+end)
+
 local title = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
 title:SetText("|cff39FF14Toxicify|r - General Settings")
