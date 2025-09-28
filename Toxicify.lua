@@ -1,6 +1,11 @@
 local addonName, ns = ...
 ToxicifyDB = ToxicifyDB or {}
 
+-- Default whisper message
+if not ToxicifyDB.WhisperMessage then
+    ToxicifyDB.WhisperMessage = "U have been marked as Toxic player by - Toxicify Addon"
+end
+
 print("|cff39FF14Toxicify:|r Addon is loading...")
 
 ---------------------------------------------------
@@ -284,6 +289,8 @@ SlashCmdList["TOXICIFY"] = function(msg)
     local cmd, player = strsplit(" ", msg, 2)
     if cmd == "add" and player then
         ns.MarkToxic(player)
+    elseif cmd == "add pumper" and player then
+        ns.MarkPumper(player)
     elseif cmd == "del" and player then
         ns.UnmarkToxic(player)
     elseif cmd == "ui" then
@@ -413,7 +420,6 @@ addPumperBtn:SetScript("OnClick", function()
     end
 end)
 
-
 ---------------------------------------------------
 -- Tooltip
 ---------------------------------------------------
@@ -428,7 +434,6 @@ TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tool
         end
     end
 end)
-
 
 ---------------------------------------------------
 -- Modern context menu
