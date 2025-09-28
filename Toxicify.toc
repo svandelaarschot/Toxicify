@@ -1,0 +1,12 @@
+## Interface: 100207
+## Title: |cff39FF14Toxicify|r
+## Notes: Mark players as toxic and be able to see this in Premade Group Finder and Party.
+## Author: Alvarín-Silvermoon
+## Version: 0.1
+## SavedVariables: ToxicifyDB
+## IconTexture: Interface\Icons\ability_creature_poison_05
+# ## IconTexture: Interface\Icons\inv_potion_118
+# ## IconAtlas: poi-soulspiritghost
+
+Toxicify.lua
+Options.lua
