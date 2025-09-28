@@ -1,6 +1,9 @@
 local addonName, ns = ...
 ToxicifyDB = ToxicifyDB or {}
 
+-- Debug load
+print("|cff39FF14Toxicify:|r Addon is loading...")
+
 ---------------------------------------------------
 -- Minimap / LibDataBroker knop
 ---------------------------------------------------
@@ -32,18 +35,39 @@ end
 ---------------------------------------------------
 -- Helpers
 ---------------------------------------------------
+local function NormalizePlayerName(playerName)
+    return string.lower(playerName)
+end
+
 local function IsToxic(playerName)
-    return ToxicifyDB[playerName] == true
+    if not playerName then return false end
+    local normalizedName = NormalizePlayerName(playerName)
+    if ToxicifyDB[normalizedName] then return true end
+    for storedName, _ in pairs(ToxicifyDB) do
+        if type(storedName) == "string" and storedName ~= "minimap" and storedName ~= "HideInFinder" then
+            local normalizedStored = NormalizePlayerName(storedName)
+            if normalizedStored == normalizedName then return true end
+            local storedOnly = string.match(normalizedStored, "^([^-]+)")
+            local currentOnly = string.match(normalizedName, "^([^-]+)")
+            if storedOnly == currentOnly then return true end
+        end
+    end
+    return false
 end
 
 local function MarkToxic(playerName)
-    ToxicifyDB[playerName] = true
+    if not playerName or playerName == "" then return end
+    ToxicifyDB[NormalizePlayerName(playerName)] = true
     print("|cffff0000Toxicify:|r " .. playerName .. " marked as toxic.")
 end
 
 local function UnmarkToxic(playerName)
-    ToxicifyDB[playerName] = nil
-    print("|cff00ff00Toxicify:|r " .. playerName .. " removed from toxic list.")
+    if not playerName or playerName == "" then return end
+    local norm = NormalizePlayerName(playerName)
+    if ToxicifyDB[norm] then
+        ToxicifyDB[norm] = nil
+        print("|cff00ff00Toxicify:|r " .. playerName .. " removed from toxic list.")
+    end
 end
 
 ---------------------------------------------------
@@ -56,44 +80,54 @@ SlashCmdList["TOXICIFY"] = function(msg)
         MarkToxic(player)
     elseif cmd == "del" and player then
         UnmarkToxic(player)
-    elseif cmd == "list" then
-        print("Toxic list:")
-        for name in pairs(ToxicifyDB) do
-            print(" - " .. name)
+    elseif cmd == "ui" then
+        if _G.ToxicifyListFrame then
+            if _G.ToxicifyListFrame:IsShown() then
+                _G.ToxicifyListFrame:Hide()
+                print("|cff39FF14Toxicify:|r UI hidden")
+            else
+                _G.ToxicifyListFrame:Show()
+                print("|cff39FF14Toxicify:|r UI shown")
+            end
+        else
+            print("|cffff0000Toxicify:|r UI not yet available (only after Group Finder loaded)")
         end
-    else
-        print("|cffffd700Toxicify commands:|r")
-        print("/toxic add <playername-realm> - mark player as toxic")
-        print("/toxic del <playername-realm> - remove player")
-        print("/toxic list - show list")
+    elseif cmd == "list" then
+        print("|cff39FF14Toxicify:|r Toxic list:")
+        for name in pairs(ToxicifyDB) do
+            if name ~= "minimap" and name ~= "HideInFinder" then
+                print(" - " .. name)
+            end
+        end
     end
 end
 
 ---------------------------------------------------
--- Party/Group UI hook
+-- Party frames
 ---------------------------------------------------
 hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
     if frame and frame.unit then
         local name = GetUnitName(frame.unit, true)
         if name and IsToxic(name) then
-            frame.name:SetText("|cffff0000☠ " .. name .. "|r")
+            if frame.name and frame.name.SetText then
+                frame.name:SetText("|cffff0000☠ " .. name .. "|r")
+            end
         end
     end
 end)
 
 ---------------------------------------------------
--- Premade Group Finder hook
+-- Premade Group Finder
 ---------------------------------------------------
 hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     if not entry.resultID then return end
-    local searchResultInfo = C_LFGList.GetSearchResultInfo(entry.resultID)
-    if searchResultInfo and searchResultInfo.leaderName then
-        local leader = Ambiguate(searchResultInfo.leaderName, "short")
-        if ToxicifyDB[leader] then
+    local info = C_LFGList.GetSearchResultInfo(entry.resultID)
+    if info and info.leaderName then
+        local leader = Ambiguate(info.leaderName, "short")
+        if IsToxic(leader) then
             local text = entry.Name:GetText() or leader
-            if text and not text:find("ToxicIcon") then
-                local skull = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:0|t"
-                entry.Name:SetText(skull .. " " .. text)
+            if text and not text:find("☠") then
+                entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:0|t " .. text)
             end
             if ToxicifyDB.HideInFinder then
                 entry:SetHeight(1)
@@ -104,25 +138,22 @@ hooksecurefunc("LFGListSearchEntry_Update", function(entry)
 end)
 
 ---------------------------------------------------
--- Group Finder knop + Toxicify lijst
+-- Toxicify UI
 ---------------------------------------------------
 local function CreateToxicifyUI()
-    if _G.ToxicifyToggleButton then return end -- al gemaakt
+    if _G.ToxicifyToggleButton then return end
 
-    -- Knop naast filter
     local toggleBtn = CreateFrame("Button", "ToxicifyToggleButton", LFGListFrame.SearchPanel, "UIPanelButtonTemplate")
     toggleBtn:SetSize(80, 22)
     toggleBtn:SetText("Toxicify")
-
     if _G.LFGListFrameSearchPanelFilterButton then
         toggleBtn:SetPoint("RIGHT", LFGListFrameSearchPanelFilterButton, "LEFT", -5, 0)
     else
         toggleBtn:SetPoint("LEFT", LFGListFrame.SearchPanel.RefreshButton, "RIGHT", -110, 0)
     end
 
-    -- Toxic lijstframe (rechts van panel)
     local toxicFrame = CreateFrame("Frame", "ToxicifyListFrame", LFGListFrame.SearchPanel, BackdropTemplateMixin and "BackdropTemplate")
-    toxicFrame:SetSize(420, 300)
+    toxicFrame:SetSize(420, 380)
     toxicFrame:SetPoint("TOPLEFT", LFGListFrame.SearchPanel, "TOPRIGHT", 260, 0)
     toxicFrame:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -136,9 +167,6 @@ local function CreateToxicifyUI()
     title:SetPoint("TOP", 0, -10)
     title:SetText("|cff39FF14Toxicify List|r")
 
-    ---------------------------------------------------
-    -- Add + Remove All knoppen
-    ---------------------------------------------------
     local addBox = CreateFrame("EditBox", nil, toxicFrame, "InputBoxTemplate")
     addBox:SetSize(140, 20)
     addBox:SetPoint("TOPLEFT", 10, -35)
@@ -154,82 +182,76 @@ local function CreateToxicifyUI()
     clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 5, 0)
     clearBtn:SetText("Remove All")
 
-    ---------------------------------------------------
-    -- Scrollframe
-    ---------------------------------------------------
-    local scroll = CreateFrame("ScrollFrame", nil, toxicFrame, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 10, -70)
-    scroll:SetPoint("BOTTOMRIGHT", -30, 10)
+    local hideCheck = CreateFrame("CheckButton", nil, toxicFrame, "ChatConfigCheckButtonTemplate")
+    hideCheck:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -10)
+    hideCheck.Text:SetText("Hide toxic groups in Finder")
+    hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
+    hideCheck:SetScript("OnClick", function(self)
+        ToxicifyDB.HideInFinder = self:GetChecked()
+        print("|cff39FF14Toxicify:|r HideInFinder set to " .. tostring(ToxicifyDB.HideInFinder))
+    end)
 
+    local scroll = CreateFrame("ScrollFrame", nil, toxicFrame, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 10, -150)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 10)
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(220, 200)
     scroll:SetScrollChild(content)
 
-    ---------------------------------------------------
-    -- Functies
-    ---------------------------------------------------
     local function RefreshToxicFrame()
-        for _, child in ipairs(content.children or {}) do
-            child:Hide()
-        end
+        for _, child in ipairs(content.children or {}) do child:Hide() end
         content.children = {}
-
         local y = -5
         for name in pairs(ToxicifyDB) do
-            local row = CreateFrame("Frame", nil, content)
-            row:SetSize(200, 20)
-            row:SetPoint("TOPLEFT", 0, y)
-
-            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            text:SetPoint("LEFT", 0, 0)
-            text:SetText(name)
-
-            local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            delBtn:SetSize(50, 18)
-            delBtn:SetPoint("RIGHT", 0, 0)
-            delBtn:SetText("Del")
-            delBtn:SetScript("OnClick", function()
-                ToxicifyDB[name] = nil
-                RefreshToxicFrame()
-            end)
-
-            table.insert(content.children, row)
-            y = y - 22
+            if name ~= "minimap" and name ~= "HideInFinder" then
+                local row = CreateFrame("Frame", nil, content)
+                row:SetSize(200, 20)
+                row:SetPoint("TOPLEFT", 0, y)
+                local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                text:SetPoint("LEFT", 0, 0)
+                text:SetText(name)
+                local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+                delBtn:SetSize(50, 18)
+                delBtn:SetPoint("RIGHT", 0, 0)
+                delBtn:SetText("Del")
+                delBtn:SetScript("OnClick", function()
+                    ToxicifyDB[name] = nil
+                    RefreshToxicFrame()
+                end)
+                table.insert(content.children, row)
+                y = y - 22
+            end
         end
     end
 
     addBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
-            ToxicifyDB[name] = true
+            MarkToxic(name)
             addBox:SetText("")
             RefreshToxicFrame()
-            print("|cff39FF14Toxicify:|r Added " .. name)
         end
     end)
 
     clearBtn:SetScript("OnClick", function()
-        ToxicifyDB = {}
+        ToxicifyDB = { minimap = ToxicifyDB.minimap, HideInFinder = ToxicifyDB.HideInFinder }
         RefreshToxicFrame()
         print("|cff39FF14Toxicify:|r Cleared toxic list")
     end)
 
-    ---------------------------------------------------
-    -- Toggle gedrag
-    ---------------------------------------------------
     toggleBtn:SetScript("OnClick", function()
         if toxicFrame:IsShown() then
             toxicFrame:Hide()
         else
             RefreshToxicFrame()
+            hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
             toxicFrame:Show()
         end
     end)
 
-    print("Toxicify: Toxicify UI loaded")
+    print("|cff39FF14Toxicify:|r UI loaded")
 end
 
--- Zorg dat UI er komt zodra speler in de wereld is
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:SetScript("OnEvent", function()
@@ -239,30 +261,80 @@ f:SetScript("OnEvent", function()
 end)
 
 ---------------------------------------------------
--- Extra hooks (apart gehouden van de UI code)
+-- Group roster updates (covers M+ too)
 ---------------------------------------------------
+local function UpdateGroupMembers()
+    if not IsInGroup() then return end
 
--- Zorgt dat party/raid frames toxic icon krijgen
-hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
-    if not frame or not frame.unit then return end
-    local name = GetUnitName(frame.unit, true)
-    if name and IsToxic(name) then
-        if frame.Name and frame.Name.SetText then
-            frame.Name:SetText("|cffff0000☠ " .. name .. "|r")
-        elseif frame.name and frame.name.SetText then
-            frame.name:SetText("|cffff0000☠ " .. name .. "|r")
+    for i = 1, GetNumGroupMembers() do
+        local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
+        if UnitExists(unit) then
+            local name = GetUnitName(unit, true)
+            if name and IsToxic(name) then
+                -- add skull icon to nameplate/party/raid frame
+                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                if frame and frame.name and frame.name.SetText then
+                    frame.name:SetText("|cffff0000☠ " .. name .. "|r")
+                end
+            end
         end
     end
-end)
+end
 
--- Voeg "☠ Toxic Player" toe aan tooltips
-GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
-    local _, unit = tooltip:GetUnit()
+local rosterFrame = CreateFrame("Frame")
+rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
+
+---------------------------------------------------
+-- Tooltip
+---------------------------------------------------
+---------------------------------------------------
+-- Voeg "Toxic Player" toe aan tooltips (Dragonflight API)
+---------------------------------------------------
+TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
+    local unit = select(2, tooltip:GetUnit())
     if unit then
         local name = GetUnitName(unit, true)
         if name and IsToxic(name) then
-            tooltip:AddLine("|cffff0000☠ Toxic Player|r")
-            tooltip:Show()
+            -- Raid Target Skull icon (size 16x16) + text
+            tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
         end
     end
 end)
+
+---------------------------------------------------
+-- Modern context menu integratie (Dragonflight+)
+---------------------------------------------------
+local function AddToxicifyContextMenu(_, rootDescription, contextData)
+    if not contextData or not contextData.unit then return end
+
+    local unit = contextData.unit
+    if not UnitIsPlayer(unit) or UnitIsUnit(unit, "player") then return end
+
+    local playerName = GetUnitName(unit, true)
+    if not playerName then return end
+
+    -- Submenu aanmaken
+    local toxicSubmenu = rootDescription:CreateButton("Toxicify")
+
+    -- Voeg optie toe: markeren
+    toxicSubmenu:CreateButton(IsToxic(playerName) and "|cffaaaaaaMark player as Toxic|r"
+        or "Mark player as Toxic", function()
+        MarkToxic(playerName)
+    end)
+
+    -- Voeg optie toe: unmark
+    toxicSubmenu:CreateButton(IsToxic(playerName) and "Remove from Toxic List"
+        or "|cffaaaaaaRemove from Toxic List|r", function()
+        UnmarkToxic(playerName)
+    end)
+end
+
+-- Register de extensie in alle unit menus
+Menu.ModifyMenu("MENU_UNIT_PLAYER", AddToxicifyContextMenu)
+Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
+Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
+Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
+
+print("|cff39FF14Toxicify:|r Modern context menu integrated (Dragonflight+ API)")

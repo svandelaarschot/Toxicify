@@ -47,4 +47,48 @@ local function RefreshList()
     for i, child in ipairs(content.children or {}) do
         child:Hide()
     end
-    content.ch
+    content.children = {}
+
+    local y = -5
+    for name in pairs(ToxicifyDB) do
+        if name ~= "minimap" and name ~= "HideInFinder" then
+            local row = CreateFrame("Frame", nil, content)
+            row:SetSize(280, 20)
+            row:SetPoint("TOPLEFT", 0, y)
+
+            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            text:SetPoint("LEFT", 0, 0)
+            text:SetText(name)
+
+            local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            delBtn:SetSize(50, 18)
+            delBtn:SetPoint("RIGHT", 0, 0)
+            delBtn:SetText("Del")
+            delBtn:SetScript("OnClick", function()
+                ToxicifyDB[name] = nil
+                RefreshList()
+            end)
+
+            content.children[#content.children+1] = row
+            y = y - 22
+        end
+    end
+end
+
+addBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ToxicifyDB[name] = true
+        input:SetText("")
+        RefreshList()
+        print("|cff39FF14Toxicify:|r Toegevoegd: " .. name)
+    end
+end)
+
+if Settings and Settings.RegisterAddOnCategory then
+    local category, layout = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
+    Settings.RegisterAddOnCategory(category)
+else
+    -- fallback voor Classic / Wrath
+    InterfaceOptions_AddCategory(panel)
+end
