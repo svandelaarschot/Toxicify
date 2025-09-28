@@ -62,6 +62,86 @@ rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
 
 ---------------------------------------------------
+-- Group Finder Toxicify Button (always create)
+---------------------------------------------------
+local function CreateGroupFinderButton()
+    if _G.ToxicifyToggleButton then return end
+    if not (LFGListFrame and LFGListFrame.SearchPanel) then return end
+
+    local toggleBtn = CreateFrame("Button", "ToxicifyToggleButton", LFGListFrame.SearchPanel, "UIPanelButtonTemplate")
+    toggleBtn:SetSize(80, 22)
+    toggleBtn:SetText("Toxicify")
+
+    -- Plaats hem netjes naast Filter
+    if _G.LFGListFrameSearchPanelFilterButton then
+        toggleBtn:SetPoint("LEFT", LFGListFrameSearchPanelFilterButton, "RIGHT", 5, 0)
+    else
+        toggleBtn:SetPoint("LEFT", LFGListFrame.SearchPanel.RefreshButton, "RIGHT", -110, 0)
+    end
+
+    toggleBtn:SetScript("OnClick", function()
+        if not _G.ToxicifyListFrame then
+            ns.CreateToxicifyUI()
+        end
+        if _G.ToxicifyListFrame:IsShown() then
+            _G.ToxicifyListFrame:Hide()
+        else
+            _G.ToxicifyListFrame:Refresh()
+            _G.ToxicifyListFrame:Show()
+        end
+    end)
+end
+
+---------------------------------------------------
+-- Loader to wait for Blizzard’s GroupFinder UI
+---------------------------------------------------
+local gfLoader = CreateFrame("Frame")
+gfLoader:RegisterEvent("ADDON_LOADED")
+gfLoader:RegisterEvent("PLAYER_ENTERING_WORLD")
+gfLoader:RegisterEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+gfLoader:SetScript("OnEvent", function(self, event, addon)
+    if event == "PLAYER_ENTERING_WORLD"
+       or event == "LFG_LIST_SEARCH_RESULTS_RECEIVED"
+       or (event == "ADDON_LOADED" and addon == "Blizzard_LookingForGroupUI") then
+        C_Timer.After(1, function()
+            if LFGListFrame and LFGListFrame.SearchPanel then
+                CreateGroupFinderButton()
+            end
+        end)
+    end
+end)
+
+---------------------------------------------------
+-- Group roster updates (covers party/raid/M+)
+---------------------------------------------------
+local function UpdateGroupMembers()
+    if not IsInGroup() then return end
+    for i = 1, GetNumGroupMembers() do
+        local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
+        if UnitExists(unit) then
+            local name = GetUnitName(unit, true)
+            if name and ns.IsToxic(name) then
+                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                if frame and frame.name and frame.name.SetText then
+                    frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
+                end
+            end
+            if name and ns.IsPumper(name) then
+                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                if frame and frame.name and frame.name.SetText then
+                    frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                end
+            end
+        end
+    end
+end
+
+local rosterFrame = CreateFrame("Frame")
+rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
+
+---------------------------------------------------
 -- Helpers
 ---------------------------------------------------
 function ns.NormalizePlayerName(playerName)
