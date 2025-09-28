@@ -195,6 +195,11 @@ function ns.UnmarkToxic(playerName)
         ToxicifyDB[norm] = nil
         print("|cffaaaaaaToxicify:|r " .. playerName .. " removed from list.")
     end
+    -- Remove from ignore if option is enabled
+    if ToxicifyDB.IgnoreOnMark then
+        DelIgnore(playerName)
+        print("|cffaaaaaaToxicify:|r " .. playerName .. " has also been removed from your Ignore list.")
+    end
 end
 
 ---------------------------------------------------
