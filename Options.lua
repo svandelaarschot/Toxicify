@@ -52,42 +52,7 @@ content:SetSize(400, 200)
 scrollFrame:SetScrollChild(content)
 
 local function RefreshList()
-    for _, child in ipairs(content.children or {}) do child:Hide() end
-    content.children = {}
-
-    local y = -5
-    for name, status in pairs(ToxicifyDB) do
-        if type(status) == "string" and (status == "toxic" or status == "pumper") then
-            local row = CreateFrame("Frame", nil, content)
-            row:SetSize(380, 20)
-            row:SetPoint("TOPLEFT", 0, y)
-
-            local icon = row:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(16, 16)
-            icon:SetPoint("LEFT", 0, 0)
-            if status == "toxic" then
-                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
-            elseif status == "pumper" then
-                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
-            end
-
-            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            text:SetText(name .. " (" .. status .. ")")
-
-            local delBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            delBtn:SetSize(50, 18)
-            delBtn:SetPoint("RIGHT", 0, 0)
-            delBtn:SetText("Del")
-            delBtn:SetScript("OnClick", function()
-                ToxicifyDB[name] = nil
-                RefreshList()
-            end)
-
-            table.insert(content.children, row)
-            y = y - 22
-        end
-    end
+    ns.RefreshSharedList(content)
 end
 
 -- Add toxic
@@ -163,6 +128,35 @@ whisperBox:SetScript("OnTextChanged", function(self)
         ToxicifyDB.WhisperMessage = self:GetText()
     end
 end)
+
+-- Add Toxic
+local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addToxicBtn:SetSize(100, 22)
+addToxicBtn:SetPoint("LEFT", input, "RIGHT", 5, 0)
+addToxicBtn:SetText("Add Toxic")
+addToxicBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ns.MarkToxic(name)
+        input:SetText("")
+        RefreshList()
+    end
+end)
+
+-- Add Pumper
+local addPumperBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addPumperBtn:SetSize(100, 22)
+addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 5, 0)
+addPumperBtn:SetText("Add Pumper")
+addPumperBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ns.MarkPumper(name)
+        input:SetText("")
+        RefreshList()
+    end
+end)
+
 
 ---------------------------------------------------
 -- Register Panels

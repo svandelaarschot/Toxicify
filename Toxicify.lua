@@ -250,42 +250,7 @@ function ns.CreateToxicifyUI()
     scroll:SetScrollChild(content)
 
     local function Refresh()
-        for _, child in ipairs(content.children or {}) do child:Hide() end
-        content.children = {}
-
-        local y = -5
-        for name, status in pairs(ToxicifyDB) do
-            if status == "toxic" or status == "pumper" then
-                local row = CreateFrame("Frame", nil, content)
-                row:SetSize(320, 22)
-                row:SetPoint("TOPLEFT", 0, y)
-
-                local icon = row:CreateTexture(nil, "ARTWORK")
-                icon:SetSize(16, 16)
-                icon:SetPoint("LEFT", 0, 0)
-                if status == "toxic" then
-                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
-                else
-                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
-                end
-
-                local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-                text:SetText(name)
-
-                local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-                del:SetSize(60, 20)
-                del:SetPoint("RIGHT", 0, 0)
-                del:SetText("Delete")
-                del:SetScript("OnClick", function()
-                    ToxicifyDB[name] = nil
-                    Refresh()
-                end)
-
-                table.insert(content.children, row)
-                y = y - 26
-            end
-        end
+        ns.RefreshSharedList(content)
     end
 
     f.Refresh = Refresh
@@ -338,7 +303,7 @@ SlashCmdList["TOXICIFY"] = function(msg)
 end
 
 ---------------------------------------------------
--- Premade Groups hook
+-- Premade Groups hook (toxic vs pumper)
 ---------------------------------------------------
 hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     if not entry or not entry.resultID then return end
@@ -346,14 +311,108 @@ hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     if not info or not info.leaderName then return end
 
     local leader = info.leaderName
+
     if ns.IsToxic(leader) then
+        -- Toxic speler => schedel + rood
         entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t " .. info.name)
-        entry.Name:SetTextColor(1, 0, 0)
+        entry.Name:SetTextColor(1, 0, 0) -- rood
+        entry.Name:SetFontObject("GameFontNormalLarge")
+        entry.Name:SetFormattedText("|cffff0000%s|r", entry.Name:GetText())
+        entry:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Leader: " .. leader)
+            GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+            GameTooltip:Show()
+        end)
+        entry:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     elseif ns.IsPumper(leader) then
+        -- Pumper speler => ster + groen
         entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t " .. info.name)
-        entry.Name:SetTextColor(0, 1, 0)
+        entry.Name:SetTextColor(0, 1, 0) -- groen
+        entry.Name:SetFontObject("GameFontNormalLarge")
+        entry.Name:SetFormattedText("|cff00ff00%s|r", entry.Name:GetText())
+        entry:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Leader: " .. leader)
+            GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+            GameTooltip:Show()
+        end)
+        entry:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
 end)
+
+function ns.RefreshSharedList(content)
+    for _, child in ipairs(content.children or {}) do child:Hide() end
+    content.children = {}
+
+    local y = -5
+    for name, status in pairs(ToxicifyDB) do
+        if status == "toxic" or status == "pumper" then
+            local row = CreateFrame("Frame", nil, content)
+            row:SetSize(320, 22)
+            row:SetPoint("TOPLEFT", 0, y)
+
+            local icon = row:CreateTexture(nil, "ARTWORK")
+            icon:SetSize(16, 16)
+            icon:SetPoint("LEFT", 0, 0)
+            if status == "toxic" then
+                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
+            else
+                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
+            end
+
+            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            if status == "toxic" then
+                text:SetText("|cffff0000" .. name .. " [Toxic]|r")
+            else
+                text:SetText("|cff00ff00" .. name .. " [Pumper]|r")
+            end
+
+            local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            del:SetSize(60, 20)
+            del:SetPoint("RIGHT", 0, 0)
+            del:SetText("Delete")
+            del:SetScript("OnClick", function()
+                ToxicifyDB[name] = nil
+                ns.RefreshSharedList(content)
+            end)
+
+            table.insert(content.children, row)
+            y = y - 26
+        end
+    end
+end
+
+-- Add Toxic
+local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addToxicBtn:SetSize(100, 22)
+addToxicBtn:SetPoint("LEFT", input, "RIGHT", 5, 0)
+addToxicBtn:SetText("Add Toxic")
+addToxicBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ns.MarkToxic(name)
+        input:SetText("")
+        RefreshList()
+    end
+end)
+
+-- Add Pumper
+local addPumperBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+addPumperBtn:SetSize(100, 22)
+addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 5, 0)
+addPumperBtn:SetText("Add Pumper")
+addPumperBtn:SetScript("OnClick", function()
+    local name = input:GetText()
+    if name and name ~= "" then
+        ns.MarkPumper(name)
+        input:SetText("")
+        RefreshList()
+    end
+end)
+
 
 ---------------------------------------------------
 -- Tooltip
