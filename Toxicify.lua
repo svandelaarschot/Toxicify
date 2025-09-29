@@ -208,14 +208,11 @@ function ns.UnmarkToxic(playerName)
     end
 end
 
----------------------------------------------------
--- Toxicify UI
----------------------------------------------------
 function ns.CreateToxicifyUI()
     if _G.ToxicifyListFrame then return end
 
     local f = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    f:SetSize(460, 420)
+    f:SetSize(520, 500)
     f:SetPoint("CENTER")
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -225,7 +222,6 @@ function ns.CreateToxicifyUI()
     })
     f:Hide()
 
-    -- movable
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
@@ -234,48 +230,72 @@ function ns.CreateToxicifyUI()
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
 
-    -- title
+    -- Title
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -15)
     title:SetText("|cff39FF14Toxicify List|r")
 
-    -- close
+    -- Close button
     local closeBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -5)
     closeBtn:SetScript("OnClick", function() f:Hide() end)
 
-    -- add box
+    -- Add box
     local addBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    addBox:SetSize(200, 22)
+    addBox:SetSize(220, 22)
     addBox:SetPoint("TOPLEFT", 20, -45)
     addBox:SetAutoFocus(false)
 
     local addBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    addBtn:SetSize(60, 22)
+    addBtn:SetSize(80, 22)
     addBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
     addBtn:SetText("Add")
 
-    -- clear
     local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     clearBtn:SetSize(100, 22)
     clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
     clearBtn:SetText("Remove All")
 
-    -- list
+    -- Filter toxic groups checkbox
+    local hideToxicCheck = CreateFrame("CheckButton", nil, f, "InterfaceOptionsCheckButtonTemplate")
+    hideToxicCheck:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -15)
+    hideToxicCheck.Text:SetText("Hide toxic groups in Premade Groups")
+    hideToxicCheck:SetChecked(ToxicifyDB.HideInFinder or false)
+    hideToxicCheck:SetScript("OnClick", function(self)
+        ToxicifyDB.HideInFinder = self:GetChecked()
+        if LFGListFrame and LFGListFrame.SearchPanel then
+            LFGListSearchPanel_UpdateResultList(LFGListFrame.SearchPanel)
+        end
+    end)
+
+    -- Search row
+    local searchLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    searchLabel:SetPoint("TOPLEFT", hideToxicCheck, "BOTTOMLEFT", 0, -15)
+    searchLabel:SetText("Search:")
+
+    local searchBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    searchBox:SetSize(220, 22)
+    searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 10, 0)
+    searchBox:SetAutoFocus(false)
+    searchBox:SetScript("OnTextChanged", function(self)
+        f:Refresh()
+    end)
+
+    -- List
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 20, -120)
-    scroll:SetPoint("BOTTOMRIGHT", -40, 40)
+    scroll:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -10)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 50)
 
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(360, 200)
+    content:SetSize(460, 300)
     scroll:SetScrollChild(content)
 
     local function Refresh()
-        ns.RefreshSharedList(content)
+        ns.RefreshSharedList(content, searchBox:GetText():lower())
     end
-
     f.Refresh = Refresh
 
+    -- Buttons logic
     addBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
@@ -292,8 +312,18 @@ function ns.CreateToxicifyUI()
         Refresh()
     end)
 
+    -- ReloadUI button rechtsonder
+    local reloadBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    reloadBtn:SetSize(80, 22)
+    reloadBtn:SetPoint("BOTTOMRIGHT", -20, 15)
+    reloadBtn:SetText("ReloadUI")
+    reloadBtn:SetScript("OnClick", function()
+        ReloadUI()
+    end)
+
+    -- Footer
     local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    footer:SetPoint("BOTTOM", 0, 12)
+    footer:SetPoint("BOTTOMLEFT", 20, 20)
     footer:SetText("|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r")
 end
 
@@ -472,51 +502,44 @@ hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     end
 end)
 
-function ns.RefreshSharedList(content)
+function ns.RefreshSharedList(content, filterText)
     for _, child in ipairs(content.children or {}) do child:Hide() end
     content.children = {}
 
+    filterText = filterText and filterText:lower() or ""
+
     local y = -5
     for name, status in pairs(ToxicifyDB) do
-        if status == "toxic" or status == "pumper" then
+        if (status == "toxic" or status == "pumper") 
+           and (filterText == "" or name:lower():find(filterText, 1, true)) then
+
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(400, 26)
+            row:SetSize(400, 22)
             row:SetPoint("TOPLEFT", 0, y)
 
             -- Icon
             local icon = row:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(18, 18)
+            icon:SetSize(16, 16)
             icon:SetPoint("LEFT", 0, 0)
 
-            -- Editbox (voor de naam, gelijk aan dropdown hoogte)
-            local edit = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-            edit:SetSize(150, 26)
-            edit:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            edit:SetAutoFocus(false)
-            edit:SetText(name) -- direct invullen
-            edit:SetCursorPosition(0)
+            -- Name label
+            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            text:SetWidth(150)
+            text:SetJustifyH("LEFT")
 
-            edit:SetScript("OnEnterPressed", function(self)
-                local newName = self:GetText()
-                if newName and newName ~= "" and newName ~= name then
-                    ToxicifyDB[newName] = ToxicifyDB[name]
-                    ToxicifyDB[name] = nil
-                    ns.RefreshSharedList(content)
-                end
-            end)
-
-            -- Dropdown (status kiezen)
+            -- Dropdown
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
-            drop:SetPoint("LEFT", edit, "RIGHT", -12, -3)
+            drop:SetPoint("LEFT", text, "RIGHT", -12, -3)
             UIDropDownMenu_SetWidth(drop, 100)
 
             local function UpdateVisual()
-                if ToxicifyDB[edit:GetText()] == "toxic" then
+                if ToxicifyDB[name] == "toxic" then
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
-                    edit:SetTextColor(1, 0, 0) -- rood
+                    text:SetText("|cffff0000" .. name .. "|r")
                 else
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
-                    edit:SetTextColor(0, 1, 0) -- groen
+                    text:SetText("|cff00ff00" .. name .. "|r")
                 end
             end
 
@@ -525,14 +548,14 @@ function ns.RefreshSharedList(content)
 
                 info.text = "Toxic"
                 info.func = function()
-                    ToxicifyDB[edit:GetText()] = "toxic"
+                    ToxicifyDB[name] = "toxic"
                     UpdateVisual()
                 end
                 UIDropDownMenu_AddButton(info)
 
                 info.text = "Pumper"
                 info.func = function()
-                    ToxicifyDB[edit:GetText()] = "pumper"
+                    ToxicifyDB[name] = "pumper"
                     UpdateVisual()
                 end
                 UIDropDownMenu_AddButton(info)
@@ -541,21 +564,22 @@ function ns.RefreshSharedList(content)
             UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
             UpdateVisual()
 
-            -- Delete button (zelfde hoogte als dropdown)
+            -- Delete button
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            del:SetSize(80, 26)
-            del:SetPoint("LEFT", drop, "RIGHT", 8, 0)
+            del:SetSize(100, 22) -- zelfde breedte als dropdown
+            del:SetPoint("LEFT", drop, "RIGHT", 10, 0)
             del:SetText("Delete")
             del:SetScript("OnClick", function()
-                ToxicifyDB[edit:GetText()] = nil
-                ns.RefreshSharedList(content)
+                ToxicifyDB[name] = nil
+                ns.RefreshSharedList(content, filterText)
             end)
 
             table.insert(content.children, row)
-            y = y - 32
+            y = y - 26
         end
     end
 end
+
 
 -- Add Toxic
 local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
