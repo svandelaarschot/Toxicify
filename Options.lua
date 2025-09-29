@@ -7,94 +7,16 @@ ToxicifyDB = ToxicifyDB or {}
 local generalPanel = CreateFrame("Frame", "ToxicifyGeneralOptionsPanel")
 generalPanel.name = "General"
 
--- Description / info
-local desc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-desc:SetWidth(550)
-desc:SetJustifyH("LEFT")
-desc:SetText([[
-Toxicify helps you mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r. 
-Once added to your list, they will be clearly highlighted in Party/Raid frames and in the Group Finder.
-
-Features:
-- Add players with /toxic add <name-realm>
-- Quickly mark players using the context menu (right-click on a player or target)
-- Color-coded names and icons in the Group Finder and tooltips
-- Options to automatically whisper and/or ignore toxic players
-- Import and export your list to share with friends
-
-Quick Commands:
-/toxic add <name-realm>         - Add as Toxic
-/toxic add pumper <name-realm>  - Add as Pumper
-/toxic del <name-realm>         - Remove player from list
-/toxic list                     - Show all stored players
-/toxic ui                       - Open the Toxicify list window
-/toxicexport                    - Print export string in chat
-/toxicimport <string>           - Import a shared list
-
-Enjoy keeping your runs clean and smooth!
-
-|cffaaaaaaKind Regards,|r
-|cff39FF14Alvarín-Silvermoon|r
-]])
-
----------------------------------------------------
--- Import / Export
----------------------------------------------------
-local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-ioLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -20)
-ioLabel:SetText("Import / Export List:")
-
--- Editbox
-local ioBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
-ioBox:SetSize(300, 40)
-ioBox:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
-ioBox:SetAutoFocus(false)
-ioBox:SetMultiLine(true)
-ioBox:SetMaxLetters(4000)
-ioBox:SetTextInsets(5, 5, 5, 5)
-
--- Scroll voor editbox
-local ioScroll = CreateFrame("ScrollFrame", nil, generalPanel, "UIPanelScrollFrameTemplate")
-ioScroll:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
-ioScroll:SetSize(300, 80)
-ioScroll:SetScrollChild(ioBox)
-
--- Export button
-local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(80, 22)
-exportBtn:SetPoint("TOPLEFT", ioScroll, "BOTTOMRIGHT", 10, 0)
-exportBtn:SetText("Export")
-exportBtn:SetScript("OnClick", function()
-    local export = ns.ExportList()
-    ioBox:SetText(export)
-    ioBox:HighlightText()
-    print("|cff39FF14Toxicify:|r List exported to box.")
-end)
-
--- Import button
-local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(80, 22)
-importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
-importBtn:SetText("Import")
-importBtn:SetScript("OnClick", function()
-    local text = ioBox:GetText()
-    local ok, result = ns.ImportList(text)
-    if ok then
-        print("|cff39FF14Toxicify:|r Import success: " .. result)
-        RefreshList()
-    else
-        print("|cffff0000Toxicify:|r Import failed: " .. result)
-    end
-end)
-
+-- Title
 local title = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
 title:SetText("|cff39FF14Toxicify|r - General Settings")
 
+-- Description
 local desc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
 desc:SetWidth(500)
+desc:SetJustifyH("LEFT")
 desc:SetText("Manage your toxic/pumper player list. They will be marked in party/raid frames and in the Group Finder.\n\nYou can add names manually below or with /toxic add Name-Realm.")
 
 -- Input + add buttons
@@ -140,10 +62,9 @@ end
 addToxicBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ToxicifyDB[name] = "toxic"
+        ns.MarkToxic(name)
         input:SetText("")
         RefreshList()
-        print("|cffff0000Toxicify:|r Added toxic: " .. name)
     end
 end)
 
@@ -151,66 +72,69 @@ end)
 addPumperBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ToxicifyDB[name] = "pumper"
+        ns.MarkPumper(name)
         input:SetText("")
         RefreshList()
-        print("|cff00ff00Toxicify:|r Added pumper: " .. name)
     end
 end)
 
 generalPanel:SetScript("OnShow", RefreshList)
 
----------------------------------------------------
--- Whisper Settings Panel
----------------------------------------------------
-local whisperPanel = CreateFrame("Frame", "ToxicifyWhisperOptionsPanel")
-whisperPanel:SetScript("OnShow", function()
-    whisperBox:SetText(ToxicifyDB.WhisperMessage or "U have been marked as Toxic player by - Toxicify Addon")
-    whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark or false)
+-- Zorg dat lijst meteen zichtbaar is bij openen
+C_Timer.After(0.1, RefreshList)
 
-    if whisperCheck:GetChecked() then
-        whisperBox:Enable()
+---------------------------------------------------
+-- Import / Export (strakke layout + textarea)
+---------------------------------------------------
+local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+ioLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -30)
+ioLabel:SetText("Import / Export List:")
+
+-- ScrollFrame + Multiline EditBox
+local ioScroll = CreateFrame("ScrollFrame", "ToxicifyIOScroll", generalPanel, "UIPanelScrollFrameTemplate")
+ioScroll:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -10)
+ioScroll:SetSize(400, 100)
+
+local ioBox = CreateFrame("EditBox", "ToxicifyIOBox", ioScroll)
+ioBox:SetMultiLine(true)
+ioBox:SetSize(400, 100)
+ioBox:SetAutoFocus(false)
+ioBox:SetFontObject(ChatFontNormal)
+ioBox:SetMaxLetters(4000)
+ioBox:SetTextInsets(5, 5, 5, 5)
+ioBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+ioScroll:SetScrollChild(ioBox)
+
+-- Export button
+local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+exportBtn:SetSize(100, 24)
+exportBtn:SetPoint("TOPLEFT", ioScroll, "BOTTOMLEFT", 0, -8)
+exportBtn:SetText("Export")
+exportBtn:SetScript("OnClick", function()
+    local export = ns.ExportList()
+    ioBox:SetText(export)
+    ioBox:HighlightText()
+    print("|cff39FF14Toxicify:|r List exported to box.")
+end)
+
+-- Import button
+local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+importBtn:SetSize(100, 24)
+importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
+importBtn:SetText("Import")
+importBtn:SetScript("OnClick", function()
+    local text = ioBox:GetText()
+    local ok, result = ns.ImportList(text)
+    if ok then
+        print("|cff39FF14Toxicify:|r Import success: " .. result)
+        RefreshList()
     else
-        whisperBox:Disable()
+        print("|cffff0000Toxicify:|r Import failed: " .. result)
     end
 end)
 
-whisperPanel.name = "Whisper"
-
-local title2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title2:SetPoint("TOPLEFT", 16, -16)
-title2:SetText("|cff39FF14Toxicify|r - Whisper Settings")
-
-local desc2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-desc2:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
-desc2:SetWidth(500)
-desc2:SetText("Configure whisper behavior. If enabled, Toxicify will automatically whisper players when they are marked as toxic.")
-
-local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
-whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
-whisperCheck.Text:SetText("Whisper players when marked toxic")
-whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark or false)
 ---------------------------------------------------
--- Whisper Settings Panel
----------------------------------------------------
-local whisperPanel = CreateFrame("Frame", "ToxicifyWhisperOptionsPanel")
-whisperPanel.name = "Whisper"
-
-local title2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-title2:SetPoint("TOPLEFT", 16, -16)
-title2:SetText("|cff39FF14Toxicify|r - Whisper Settings")
-
-local desc2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-desc2:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
-desc2:SetWidth(500)
-desc2:SetText("Configure whisper behavior. If enabled, Toxicify will automatically whisper players when they are marked as toxic.")
-
--- Checkbox
-local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
-whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
-whisperCheck.Text:SetText("Whisper players when marked toxic")
----------------------------------------------------
--- Whisper Settings Panel
+-- Whisper & Ignore Panel
 ---------------------------------------------------
 local whisperPanel = CreateFrame("Frame", "ToxicifyWhisperOptionsPanel")
 whisperPanel.name = "Whisper"
@@ -222,26 +146,24 @@ title2:SetText("|cff39FF14Toxicify|r - Whisper & Ignore Settings")
 local desc2 = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 desc2:SetPoint("TOPLEFT", title2, "BOTTOMLEFT", 0, -8)
 desc2:SetWidth(500)
+desc2:SetJustifyH("LEFT")
 desc2:SetText("Configure whisper behavior and automatic ignore. If enabled, Toxicify will whisper and/or ignore players when they are marked as toxic.")
 
--- Checkbox: Whisper
 local whisperCheck = CreateFrame("CheckButton", "ToxicifyWhisperCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
 whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
 whisperCheck.Text:SetText("Whisper players when marked toxic")
 
--- Checkbox: Ignore
 local ignoreCheck = CreateFrame("CheckButton", "ToxicifyIgnoreCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
 ignoreCheck:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
 ignoreCheck.Text:SetText("Also add toxic players to Ignore list")
 
--- Editbox
 local whisperBox = CreateFrame("EditBox", "ToxicifyWhisperBox", whisperPanel, "InputBoxTemplate")
 whisperBox:SetSize(400, 30)
 whisperBox:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -10)
 whisperBox:SetAutoFocus(false)
 whisperBox:SetMaxLetters(200)
 
--- Ensure defaults
+-- Defaults
 local function EnsureDefaults()
     if not ToxicifyDB.WhisperMessage or ToxicifyDB.WhisperMessage == "" then
         ToxicifyDB.WhisperMessage = "U have been marked as Toxic player by - Toxicify Addon"
@@ -255,40 +177,22 @@ local function EnsureDefaults()
 end
 
 EnsureDefaults()
-
--- Init values
 whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
 ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
 whisperBox:SetText(ToxicifyDB.WhisperMessage)
+if whisperCheck:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
 
-if whisperCheck:GetChecked() then
-    whisperBox:Enable()
-else
-    whisperBox:Disable()
-end
-
--- Refresh on show
 whisperPanel:SetScript("OnShow", function()
     EnsureDefaults()
     whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
     ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
     whisperBox:SetText(ToxicifyDB.WhisperMessage)
-
-    if whisperCheck:GetChecked() then
-        whisperBox:Enable()
-    else
-        whisperBox:Disable()
-    end
+    if whisperCheck:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
 end)
 
--- Scripts
 whisperCheck:SetScript("OnClick", function(self)
     ToxicifyDB.WhisperOnMark = self:GetChecked()
-    if self:GetChecked() then
-        whisperBox:Enable()
-    else
-        whisperBox:Disable()
-    end
+    if self:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
 end)
 
 ignoreCheck:SetScript("OnClick", function(self)
@@ -301,64 +205,76 @@ whisperBox:SetScript("OnTextChanged", function(self)
     end
 end)
 
--- Add Toxic
-local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-addToxicBtn:SetSize(100, 22)
-addToxicBtn:SetPoint("LEFT", input, "RIGHT", 5, 0)
-addToxicBtn:SetText("Add Toxic")
-addToxicBtn:SetScript("OnClick", function()
-    local name = input:GetText()
-    if name and name ~= "" then
-        ns.MarkToxic(name)
-        input:SetText("")
-        RefreshList()
-    end
-end)
+---------------------------------------------------
+-- Root Info Panel
+---------------------------------------------------
+local rootPanel = CreateFrame("Frame", "ToxicifyRootPanel")
+rootPanel.name = "|cff39FF14Toxicify|r"
 
--- Export button
-local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(80, 22)
-exportBtn:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
-exportBtn:SetText("Export")
-exportBtn:SetScript("OnClick", function()
-    ns.ShowIOPopup("export")
-end)
+local titleRoot = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+titleRoot:SetPoint("TOPLEFT", 16, -16)
+titleRoot:SetText("|cff39FF14Toxicify|r")
 
--- Import button
-local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(80, 22)
-importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
-importBtn:SetText("Import")
-importBtn:SetScript("OnClick", function()
-    ns.ShowIOPopup("import")
-end)
+local descRoot = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+descRoot:SetPoint("TOPLEFT", titleRoot, "BOTTOMLEFT", 0, -8)
+descRoot:SetWidth(600)
+descRoot:SetJustifyH("LEFT")
+descRoot:SetText([[  
+Toxicify helps you mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r.  
+Once added, they will be clearly highlighted in Party/Raid frames and in the Group Finder.  
 
--- Add Pumper
-local addPumperBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-addPumperBtn:SetSize(100, 22)
-addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 5, 0)
-addPumperBtn:SetText("Add Pumper")
-addPumperBtn:SetScript("OnClick", function()
-    local name = input:GetText()
-    if name and name ~= "" then
-        ns.MarkPumper(name)
-        input:SetText("")
-        RefreshList()
-    end
-end)
+Features:  
+- Add players with /toxic add <name-realm>  
+- Quickly mark via right-click context menus  
+- Color-coded names + raid icons in Group Finder and tooltips  
+- Options to auto-whisper and/or ignore toxic players  
+- Import and export your list to share with friends  
 
+Quick Commands
+  
+|cffFFFFFFAdd as Toxic|r
+/toxic add <name-realm>
+
+|cffFFFFFFAdd as Pumper|r
+/toxic add pumper <name-realm>  
+
+|cffFFFFFFRemove player from list|r
+/toxic del <name-realm>         
+
+|cffFFFFFFShow all stored players|r
+/toxic list                     
+
+|cffFFFFFFOpen the Toxicify list window|r
+/toxic ui                       
+
+|cffFFFFFFPrint export string in chat|r
+/toxicexport                    
+
+|cffFFFFFFImport a shared list|r
+/toxicimport <string>           
+
+
+Enjoy keeping your runs clean and smooth!  
+
+|cffaaaaaaKind Regards,|r  
+|cff39FF14Alvarín-Silvermoon|r  
+]])
 
 ---------------------------------------------------
--- Register Panels
+-- Register Panels (Retail vs Classic)
 ---------------------------------------------------
 if Settings and Settings.RegisterAddOnCategory then
-    -- Retail
-    local root = Settings.RegisterVerticalLayoutCategory("|cff39FF14Toxicify|r")
+    -- Retail (Dragonflight+)
+    local root = Settings.RegisterCanvasLayoutCategory(rootPanel, rootPanel.name)
+
+    -- Subpanels
     Settings.RegisterCanvasLayoutSubcategory(root, generalPanel, generalPanel.name)
     Settings.RegisterCanvasLayoutSubcategory(root, whisperPanel, whisperPanel.name)
+
     Settings.RegisterAddOnCategory(root)
 else
     -- Classic
+    InterfaceOptions_AddCategory(rootPanel)
     InterfaceOptions_AddCategory(generalPanel)
     InterfaceOptions_AddCategory(whisperPanel)
 end

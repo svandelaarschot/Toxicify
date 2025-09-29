@@ -150,8 +150,14 @@ rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
 -- Helpers
 ---------------------------------------------------
 function ns.NormalizePlayerName(playerName)
-    if not playerName then return nil end
-    return string.lower(playerName)
+    if not playerName or playerName == "" then return nil end
+
+    -- split Name-Realm
+    local name, realm = strsplit("-", playerName, 2)
+    name = name:gsub("^%l", string.upper) -- hoofdletter eerste letter
+    realm = realm or GetNormalizedRealmName()
+
+    return name .. "-" .. realm
 end
 
 function ns.IsPumper(playerName)
@@ -183,7 +189,7 @@ function ns.MarkToxic(playerName)
         end
         -- Ignore
         if ToxicifyDB.IgnoreOnMark then
-            AddIgnore(playerName)
+            C_FriendList.AddIgnore(playerName)
             print("|cffaaaaaaToxicify:|r " .. playerName .. " has also been added to your Ignore list.")
         end
     end
@@ -197,7 +203,7 @@ function ns.UnmarkToxic(playerName)
     end
     -- Remove from ignore if option is enabled
     if ToxicifyDB.IgnoreOnMark then
-        DelIgnore(playerName)
+        C_FriendList.DelIgnore(playerName)
         print("|cffaaaaaaToxicify:|r " .. playerName .. " has also been removed from your Ignore list.")
     end
 end
@@ -462,26 +468,55 @@ function ns.RefreshSharedList(content)
     for name, status in pairs(ToxicifyDB) do
         if status == "toxic" or status == "pumper" then
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(320, 22)
+            row:SetSize(360, 22)
             row:SetPoint("TOPLEFT", 0, y)
 
+            -- Icon
             local icon = row:CreateTexture(nil, "ARTWORK")
             icon:SetSize(16, 16)
             icon:SetPoint("LEFT", 0, 0)
-            if status == "toxic" then
-                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8") -- skull
-            else
-                icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1") -- star
-            end
 
+            -- Name label
             local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            if status == "toxic" then
-                text:SetText("|cffff0000" .. name .. " [Toxic]|r")
-            else
-                text:SetText("|cff00ff00" .. name .. " [Pumper]|r")
+
+            -- Dropdown
+            local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
+            drop:SetPoint("LEFT", text, "RIGHT", -10, -3)
+            UIDropDownMenu_SetWidth(drop, 80)
+
+            local function UpdateVisual()
+                if ToxicifyDB[name] == "toxic" then
+                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+                    text:SetText("|cffff0000" .. name .. "|r")
+                else
+                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
+                    text:SetText("|cff00ff00" .. name .. "|r")
+                end
             end
 
+            UIDropDownMenu_Initialize(drop, function(self, level)
+                local info = UIDropDownMenu_CreateInfo()
+
+                info.text = "Toxic"
+                info.func = function()
+                    ToxicifyDB[name] = "toxic"
+                    UpdateVisual()
+                end
+                UIDropDownMenu_AddButton(info)
+
+                info.text = "Pumper"
+                info.func = function()
+                    ToxicifyDB[name] = "pumper"
+                    UpdateVisual()
+                end
+                UIDropDownMenu_AddButton(info)
+            end)
+
+            UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
+            UpdateVisual()
+
+            -- Delete button
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
             del:SetSize(60, 20)
             del:SetPoint("RIGHT", 0, 0)
@@ -558,10 +593,7 @@ Menu.ModifyMenu("MENU_UNIT_PLAYER", AddToxicifyContextMenu)
 Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
 Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
 Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
-
----------------------------------------------------
 -- Export List
----------------------------------------------------
 function ns.ExportList()
     local data = {}
     for name, status in pairs(ToxicifyDB) do
@@ -571,7 +603,6 @@ function ns.ExportList()
     end
     local payload = table.concat(data, ";")
 
-    -- simple checksum (sum of byte values)
     local checksum = 0
     for i = 1, #payload do
         checksum = checksum + string.byte(payload, i)
@@ -580,16 +611,13 @@ function ns.ExportList()
     return "TOXICIFYv1|" .. payload .. "|" .. checksum
 end
 
----------------------------------------------------
 -- Import List
----------------------------------------------------
 function ns.ImportList(str)
     if not str or str == "" then return false, "No data" end
 
     local version, payload, checksum = str:match("^(TOXICIFYv1)|(.+)|(%d+)$")
     if not version then return false, "Invalid format" end
 
-    -- validate checksum
     local calc = 0
     for i = 1, #payload do
         calc = calc + string.byte(payload, i)
