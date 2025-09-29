@@ -212,7 +212,7 @@ function ns.CreateToxicifyUI()
     if _G.ToxicifyListFrame then return end
 
     local f = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    f:SetSize(520, 500)
+    f:SetSize(620, 500)
     f:SetPoint("CENTER")
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -240,21 +240,126 @@ function ns.CreateToxicifyUI()
     closeBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -5, -5)
     closeBtn:SetScript("OnClick", function() f:Hide() end)
 
+    -- Player label
+    local playerLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    playerLabel:SetPoint("TOPLEFT", 20, -50)
+    playerLabel:SetText("Player:")
+
     -- Add box
     local addBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    addBox:SetSize(220, 22)
-    addBox:SetPoint("TOPLEFT", 20, -45)
+    addBox:SetSize(200, 22)
+    addBox:SetPoint("LEFT", playerLabel, "RIGHT", 10, 0)
     addBox:SetAutoFocus(false)
 
+    -- Dropdown voor Toxic/Pumper
+    local roleDrop = CreateFrame("Frame", "ToxicifyRoleDrop", f, "UIDropDownMenuTemplate")
+    roleDrop:SetPoint("LEFT", addBox, "RIGHT", -15, -3)
+    UIDropDownMenu_SetWidth(roleDrop, 100)
+    UIDropDownMenu_SetText(roleDrop, "Toxic")
+
+    UIDropDownMenu_Initialize(roleDrop, function(self, level)
+        local info = UIDropDownMenu_CreateInfo()
+
+        info.text = "Toxic"
+        info.func = function() UIDropDownMenu_SetText(roleDrop, "Toxic") end
+        UIDropDownMenu_AddButton(info)
+
+        info.text = "Pumper"
+        info.func = function() UIDropDownMenu_SetText(roleDrop, "Pumper") end
+        UIDropDownMenu_AddButton(info)
+    end)
+
+    -- Add button
     local addBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    addBtn:SetSize(80, 22)
-    addBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
+    addBtn:SetSize(60, 22)
+    addBtn:SetPoint("LEFT", roleDrop, "RIGHT", 10, 0)
     addBtn:SetText("Add")
 
+    -- Remove all
     local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     clearBtn:SetSize(100, 22)
     clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
     clearBtn:SetText("Remove All")
+
+    -- Suggestion box (max 5)
+    local suggestionBox = CreateFrame("Frame", nil, f, BackdropTemplateMixin and "BackdropTemplate")
+    suggestionBox:SetSize(200, 110) -- max 5 * 20px + marge
+    suggestionBox:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -2)
+    suggestionBox:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    suggestionBox:Hide()
+
+    local function UpdateSuggestions()
+        for _, child in ipairs(suggestionBox.children or {}) do child:Hide() end
+        suggestionBox.children = {}
+
+        local text = addBox:GetText():lower()
+        if text == "" then suggestionBox:Hide() return end
+
+        local suggestions = {}
+
+        -- Groepsleden
+        for i = 1, GetNumGroupMembers() do
+            local unit = (IsInRaid() and "raid"..i) or "party"..i
+            if UnitExists(unit) then
+                local name = GetUnitName(unit, true)
+                if name and name:lower():find(text) then
+                    table.insert(suggestions, name)
+                end
+            end
+        end
+
+        -- Guildleden
+        if IsInGuild() then
+            for i = 1, GetNumGuildMembers() do
+                local name = GetGuildRosterInfo(i)
+                if name and name:lower():find(text) then
+                    table.insert(suggestions, name)
+                end
+            end
+        end
+
+        -- Friends
+        for i = 1, C_FriendList.GetNumFriends() do
+            local info = C_FriendList.GetFriendInfoByIndex(i)
+            if info and info.name and info.name:lower():find(text) then
+                table.insert(suggestions, info.name)
+            end
+        end
+
+        -- Bouw max 5
+        local y = -5
+        local count = 0
+        for _, name in ipairs(suggestions) do
+            count = count + 1
+            if count > 5 then break end
+
+            local btn = CreateFrame("Button", nil, suggestionBox, "UIPanelButtonTemplate")
+            btn:SetSize(180, 18)
+            btn:SetPoint("TOPLEFT", 10, y)
+            btn:SetText(name)
+            btn:SetScript("OnClick", function()
+                addBox:SetText(name)
+                suggestionBox:Hide()
+            end)
+            table.insert(suggestionBox.children, btn)
+            y = y - 20
+        end
+
+        if count > 0 then
+            suggestionBox:SetHeight(count * 20 + 10)
+            suggestionBox:Show()
+        else
+            suggestionBox:Hide()
+        end
+    end
+
+    addBox:SetScript("OnTextChanged", UpdateSuggestions)
+    addBox:SetScript("OnEditFocusLost", function() C_Timer.After(0.2, function() suggestionBox:Hide() end) end)
 
     -- Filter toxic groups checkbox
     local hideToxicCheck = CreateFrame("CheckButton", nil, f, "InterfaceOptionsCheckButtonTemplate")
@@ -277,9 +382,7 @@ function ns.CreateToxicifyUI()
     searchBox:SetSize(220, 22)
     searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 10, 0)
     searchBox:SetAutoFocus(false)
-    searchBox:SetScript("OnTextChanged", function(self)
-        f:Refresh()
-    end)
+    searchBox:SetScript("OnTextChanged", function(self) f:Refresh() end)
 
     -- List
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
@@ -299,8 +402,14 @@ function ns.CreateToxicifyUI()
     addBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
-            ns.MarkToxic(name)
+            local role = UIDropDownMenu_GetText(roleDrop)
+            if role == "Toxic" then
+                ns.MarkToxic(name)
+            else
+                ns.MarkPumper(name)
+            end
             addBox:SetText("")
+            suggestionBox:Hide()
             Refresh()
         end
     end)
@@ -317,9 +426,7 @@ function ns.CreateToxicifyUI()
     reloadBtn:SetSize(80, 22)
     reloadBtn:SetPoint("BOTTOMRIGHT", -20, 15)
     reloadBtn:SetText("ReloadUI")
-    reloadBtn:SetScript("OnClick", function()
-        ReloadUI()
-    end)
+    reloadBtn:SetScript("OnClick", function() ReloadUI() end)
 
     -- Footer
     local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
