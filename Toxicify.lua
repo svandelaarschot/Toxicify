@@ -419,53 +419,56 @@ function ns.ShowIOPopup(mode, data)
         end)
     end
 end
+
 hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     if not entry or not entry.resultID then return end
     local info = C_LFGList.GetSearchResultInfo(entry.resultID)
-    if not info then return end
+    if not info or not info.leaderName then return end
 
-    local toxicNames, pumperNames = {}, {}
+    local leader = info.leaderName
 
-    -- Check alle leden
-    for i = 1, info.numMembers or 0 do
-        local memberName = C_LFGList.GetSearchResultMemberInfo(entry.resultID, i)
-        if memberName then
-            if ns.IsToxic(memberName) then
-                table.insert(toxicNames, memberName)
-            elseif ns.IsPumper(memberName) then
-                table.insert(pumperNames, memberName)
+    -- Reset group name
+    entry.Name:SetText(info.name)
+
+    -- === LEADER HIGHLIGHT ===
+    if ns.IsToxic(leader) then
+        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:14:14|t |cffff0000"..info.name.."|r")
+    elseif ns.IsPumper(leader) then
+        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:14:14|t |cff00ff00"..info.name.."|r")
+    end
+
+    -- === CLASS ICON OVERLAY ===
+    if entry.DataDisplay and entry.DataDisplay.Enumerate and entry.DataDisplay.Enumerate.MemberFrames then
+        local leaderButton = entry.DataDisplay.Enumerate.MemberFrames[1]
+        if leaderButton then
+            -- Toxic overlay
+            if not leaderButton.ToxicOverlay then
+                leaderButton.ToxicOverlay = leaderButton:CreateTexture(nil, "OVERLAY")
+                leaderButton.ToxicOverlay:SetSize(14, 14)
+                leaderButton.ToxicOverlay:SetPoint("TOPRIGHT", leaderButton, "TOPRIGHT", -1, -1)
+                leaderButton.ToxicOverlay:Hide()
+            end
+            -- Pumper overlay
+            if not leaderButton.PumperOverlay then
+                leaderButton.PumperOverlay = leaderButton:CreateTexture(nil, "OVERLAY")
+                leaderButton.PumperOverlay:SetSize(14, 14)
+                leaderButton.PumperOverlay:SetPoint("BOTTOMRIGHT", leaderButton, "BOTTOMRIGHT", -1, 1)
+                leaderButton.PumperOverlay:Hide()
+            end
+
+            -- Reset
+            leaderButton.ToxicOverlay:Hide()
+            leaderButton.PumperOverlay:Hide()
+
+            -- Apply
+            if ns.IsToxic(leader) then
+                leaderButton.ToxicOverlay:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+                leaderButton.ToxicOverlay:Show()
+            elseif ns.IsPumper(leader) then
+                leaderButton.PumperOverlay:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
+                leaderButton.PumperOverlay:Show()
             end
         end
-    end
-
-    local toxicFound, pumperFound = #toxicNames > 0, #pumperNames > 0
-
-    -- Markeer de groepnaam
-    if toxicFound then
-        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t " .. info.name)
-        entry.Name:SetTextColor(1, 0, 0)
-    elseif pumperFound then
-        entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t " .. info.name)
-        entry.Name:SetTextColor(0, 1, 0)
-    end
-
-    if toxicFound or pumperFound then
-        entry:HookScript("OnEnter", function(self)
-            GameTooltip:AddLine(" ")
-            if toxicFound then
-                GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Players (" .. #toxicNames .. ")|r")
-                for _, n in ipairs(toxicNames) do
-                    GameTooltip:AddLine("  - " .. n, 1, 0, 0)
-                end
-            end
-            if pumperFound then
-                GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper Players (" .. #pumperNames .. ")|r")
-                for _, n in ipairs(pumperNames) do
-                    GameTooltip:AddLine("  - " .. n, 0, 1, 0)
-                end
-            end
-            GameTooltip:Show()
-        end)
     end
 end)
 
