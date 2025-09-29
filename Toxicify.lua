@@ -468,7 +468,7 @@ function ns.RefreshSharedList(content)
     for name, status in pairs(ToxicifyDB) do
         if status == "toxic" or status == "pumper" then
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(360, 22)
+            row:SetSize(400, 22)
             row:SetPoint("TOPLEFT", 0, y)
 
             -- Icon
@@ -479,11 +479,13 @@ function ns.RefreshSharedList(content)
             -- Name label
             local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
             text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            text:SetWidth(150) -- vaste breedte zodat dropdown altijd gelijk staat
+            text:SetJustifyH("LEFT")
 
             -- Dropdown
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
-            drop:SetPoint("LEFT", text, "RIGHT", -10, -3)
-            UIDropDownMenu_SetWidth(drop, 80)
+            drop:SetPoint("LEFT", text, "RIGHT", -12, -3)
+            UIDropDownMenu_SetWidth(drop, 100) -- vaste breedte
 
             local function UpdateVisual()
                 if ToxicifyDB[name] == "toxic" then
@@ -519,7 +521,7 @@ function ns.RefreshSharedList(content)
             -- Delete button
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
             del:SetSize(60, 20)
-            del:SetPoint("RIGHT", 0, 0)
+            del:SetPoint("LEFT", drop, "RIGHT", 10, 0)
             del:SetText("Delete")
             del:SetScript("OnClick", function()
                 ToxicifyDB[name] = nil
