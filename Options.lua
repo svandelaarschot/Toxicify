@@ -62,7 +62,7 @@ end
 addToxicBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ns.MarkToxic(name)
+        ns.Player.MarkToxic(name)
         input:SetText("")
         RefreshList()
     end
@@ -72,7 +72,7 @@ end)
 addPumperBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ns.MarkPumper(name)
+        ns.Player.MarkPumper(name)
         input:SetText("")
         RefreshList()
     end
@@ -81,7 +81,7 @@ end)
 -- Zorg dat RefreshList er boven staat
 local function RefreshList()
     if content and content:IsShown() then
-        ns.RefreshSharedList(content)
+        ns.UI.RefreshSharedList(content)
     end
 end
 
@@ -119,7 +119,7 @@ exportBtn:SetSize(100, 24)
 exportBtn:SetPoint("TOPLEFT", ioScroll, "BOTTOMLEFT", 0, -8)
 exportBtn:SetText("Export")
 exportBtn:SetScript("OnClick", function()
-    local export = ns.ExportList()
+    local export = ns.Core.ExportList()
     ioBox:SetText(export)
     ioBox:HighlightText()
     print("|cff39FF14Toxicify:|r List exported to box.")
@@ -132,7 +132,7 @@ importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
 importBtn:SetText("Import")
 importBtn:SetScript("OnClick", function()
     local text = ioBox:GetText()
-    local ok, result = ns.ImportList(text)
+    local ok, result = ns.Core.ImportList(text)
     if ok then
         print("|cff39FF14Toxicify:|r Import success: " .. result)
         RefreshList()

@@ -8,5 +8,12 @@
 # ## IconTexture: Interface\Icons\inv_potion_118
 # ## IconAtlas: poi-soulspiritghost
 
+Core.lua
+Player.lua
+Events.lua
+UI.lua
+GroupFinder.lua
+Commands.lua
+Minimap.lua
 Toxicify.lua
 Options.lua

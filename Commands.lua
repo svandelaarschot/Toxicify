@@ -1,0 +1,50 @@
+-- Commands.lua - Slash command functionality
+local addonName, ns = ...
+
+-- Commands namespace
+ns.Commands = {}
+
+-- Initialize Commands module
+function ns.Commands.Initialize()
+    SLASH_TOXICIFY1 = "/toxic"
+    SlashCmdList["TOXICIFY"] = function(msg)
+        local cmd, arg1, arg2 = strsplit(" ", msg, 3)
+        cmd = string.lower(cmd or "")
+
+        if cmd == "add" and arg1 then
+            ns.Player.MarkToxic(arg1)
+        elseif cmd == "addpumper" and arg1 then
+            ns.Player.MarkPumper(arg1)
+        elseif cmd == "del" and arg1 then
+            ns.Player.UnmarkToxic(arg1)
+        elseif cmd == "list" then
+            print("|cff39FF14Toxicify:|r Current list:")
+            for name, status in pairs(ToxicifyDB) do
+                if status then
+                    print(" - " .. name .. " (" .. status .. ")")
+                end
+            end
+        elseif cmd == "export" then
+            ns.UI.ShowIOPopup("export")
+        elseif cmd == "import" then
+            ns.UI.ShowIOPopup("import")
+        elseif cmd == "ui" then
+            if not _G.ToxicifyListFrame then ns.UI.CreateToxicifyUI() end
+            if _G.ToxicifyListFrame:IsShown() then
+                _G.ToxicifyListFrame:Hide()
+            else
+                _G.ToxicifyListFrame:Refresh()
+                _G.ToxicifyListFrame:Show()
+            end
+        else
+            print("|cff39FF14Toxicify Commands:|r")
+            print("/toxic add <name-realm>        - Mark player as Toxic")
+            print("/toxic addpumper <name-realm>  - Mark player as Pumper")
+            print("/toxic del <name-realm>        - Remove player from list")
+            print("/toxic list                    - Show current list")
+            print("/toxic export                  - Export list (string)")
+            print("/toxic import <string>         - Import list from string")
+            print("/toxic ui                      - Toggle Toxicify list window")
+        end
+    end
+end
