@@ -419,44 +419,53 @@ function ns.ShowIOPopup(mode, data)
         end)
     end
 end
-
----------------------------------------------------
--- Premade Groups hook (toxic vs pumper)
----------------------------------------------------
 hooksecurefunc("LFGListSearchEntry_Update", function(entry)
     if not entry or not entry.resultID then return end
     local info = C_LFGList.GetSearchResultInfo(entry.resultID)
-    if not info or not info.leaderName then return end
+    if not info then return end
 
-    local leader = info.leaderName
+    local toxicNames, pumperNames = {}, {}
 
-    if ns.IsToxic(leader) then
-        -- Toxic speler => schedel + rood
+    -- Check alle leden
+    for i = 1, info.numMembers or 0 do
+        local memberName = C_LFGList.GetSearchResultMemberInfo(entry.resultID, i)
+        if memberName then
+            if ns.IsToxic(memberName) then
+                table.insert(toxicNames, memberName)
+            elseif ns.IsPumper(memberName) then
+                table.insert(pumperNames, memberName)
+            end
+        end
+    end
+
+    local toxicFound, pumperFound = #toxicNames > 0, #pumperNames > 0
+
+    -- Markeer de groepnaam
+    if toxicFound then
         entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t " .. info.name)
-        entry.Name:SetTextColor(1, 0, 0) -- rood
-        entry.Name:SetFontObject("GameFontNormalLarge")
-        entry.Name:SetFormattedText("|cffff0000%s|r", entry.Name:GetText())
-        entry:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine("Leader: " .. leader)
-            GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
-            GameTooltip:Show()
-        end)
-        entry:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-    elseif ns.IsPumper(leader) then
-        -- Pumper speler => ster + groen
+        entry.Name:SetTextColor(1, 0, 0)
+    elseif pumperFound then
         entry.Name:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t " .. info.name)
-        entry.Name:SetTextColor(0, 1, 0) -- groen
-        entry.Name:SetFontObject("GameFontNormalLarge")
-        entry.Name:SetFormattedText("|cff00ff00%s|r", entry.Name:GetText())
-        entry:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine("Leader: " .. leader)
-            GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+        entry.Name:SetTextColor(0, 1, 0)
+    end
+
+    if toxicFound or pumperFound then
+        entry:HookScript("OnEnter", function(self)
+            GameTooltip:AddLine(" ")
+            if toxicFound then
+                GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Players (" .. #toxicNames .. ")|r")
+                for _, n in ipairs(toxicNames) do
+                    GameTooltip:AddLine("  - " .. n, 1, 0, 0)
+                end
+            end
+            if pumperFound then
+                GameTooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper Players (" .. #pumperNames .. ")|r")
+                for _, n in ipairs(pumperNames) do
+                    GameTooltip:AddLine("  - " .. n, 0, 1, 0)
+                end
+            end
             GameTooltip:Show()
         end)
-        entry:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
 end)
 
@@ -468,32 +477,43 @@ function ns.RefreshSharedList(content)
     for name, status in pairs(ToxicifyDB) do
         if status == "toxic" or status == "pumper" then
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(400, 22)
+            row:SetSize(400, 26)
             row:SetPoint("TOPLEFT", 0, y)
 
             -- Icon
             local icon = row:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(16, 16)
+            icon:SetSize(18, 18)
             icon:SetPoint("LEFT", 0, 0)
 
-            -- Name label
-            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            text:SetWidth(150) -- vaste breedte zodat dropdown altijd gelijk staat
-            text:SetJustifyH("LEFT")
+            -- Editbox (voor de naam, gelijk aan dropdown hoogte)
+            local edit = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+            edit:SetSize(150, 26)
+            edit:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            edit:SetAutoFocus(false)
+            edit:SetText(name) -- direct invullen
+            edit:SetCursorPosition(0)
 
-            -- Dropdown
+            edit:SetScript("OnEnterPressed", function(self)
+                local newName = self:GetText()
+                if newName and newName ~= "" and newName ~= name then
+                    ToxicifyDB[newName] = ToxicifyDB[name]
+                    ToxicifyDB[name] = nil
+                    ns.RefreshSharedList(content)
+                end
+            end)
+
+            -- Dropdown (status kiezen)
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
-            drop:SetPoint("LEFT", text, "RIGHT", -12, -3)
-            UIDropDownMenu_SetWidth(drop, 100) -- vaste breedte
+            drop:SetPoint("LEFT", edit, "RIGHT", -12, -3)
+            UIDropDownMenu_SetWidth(drop, 100)
 
             local function UpdateVisual()
-                if ToxicifyDB[name] == "toxic" then
+                if ToxicifyDB[edit:GetText()] == "toxic" then
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
-                    text:SetText("|cffff0000" .. name .. "|r")
+                    edit:SetTextColor(1, 0, 0) -- rood
                 else
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
-                    text:SetText("|cff00ff00" .. name .. "|r")
+                    edit:SetTextColor(0, 1, 0) -- groen
                 end
             end
 
@@ -502,14 +522,14 @@ function ns.RefreshSharedList(content)
 
                 info.text = "Toxic"
                 info.func = function()
-                    ToxicifyDB[name] = "toxic"
+                    ToxicifyDB[edit:GetText()] = "toxic"
                     UpdateVisual()
                 end
                 UIDropDownMenu_AddButton(info)
 
                 info.text = "Pumper"
                 info.func = function()
-                    ToxicifyDB[name] = "pumper"
+                    ToxicifyDB[edit:GetText()] = "pumper"
                     UpdateVisual()
                 end
                 UIDropDownMenu_AddButton(info)
@@ -518,18 +538,18 @@ function ns.RefreshSharedList(content)
             UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
             UpdateVisual()
 
-            -- Delete button
+            -- Delete button (zelfde hoogte als dropdown)
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            del:SetSize(60, 20)
-            del:SetPoint("LEFT", drop, "RIGHT", 10, 0)
+            del:SetSize(80, 26)
+            del:SetPoint("LEFT", drop, "RIGHT", 8, 0)
             del:SetText("Delete")
             del:SetScript("OnClick", function()
-                ToxicifyDB[name] = nil
+                ToxicifyDB[edit:GetText()] = nil
                 ns.RefreshSharedList(content)
             end)
 
             table.insert(content.children, row)
-            y = y - 26
+            y = y - 32
         end
     end
 end

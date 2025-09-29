@@ -78,9 +78,17 @@ addPumperBtn:SetScript("OnClick", function()
     end
 end)
 
+-- Zorg dat RefreshList er boven staat
+local function RefreshList()
+    if content and content:IsShown() then
+        ns.RefreshSharedList(content)
+    end
+end
+
+-- Panel OnShow
 generalPanel:SetScript("OnShow", RefreshList)
 
--- Zorg dat lijst meteen zichtbaar is bij openen
+-- Forceer 1x initial load zodat lijst meteen zichtbaar is
 C_Timer.After(0.1, RefreshList)
 
 ---------------------------------------------------
@@ -97,7 +105,7 @@ ioScroll:SetSize(400, 100)
 
 local ioBox = CreateFrame("EditBox", "ToxicifyIOBox", ioScroll)
 ioBox:SetMultiLine(true)
-ioBox:SetSize(400, 100)
+ioBox:SetSize(380, 100)
 ioBox:SetAutoFocus(false)
 ioBox:SetFontObject(ChatFontNormal)
 ioBox:SetMaxLetters(4000)
