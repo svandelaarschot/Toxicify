@@ -7,6 +7,36 @@ ToxicifyDB = ToxicifyDB or {}
 local generalPanel = CreateFrame("Frame", "ToxicifyGeneralOptionsPanel")
 generalPanel.name = "General"
 
+-- Description / info
+local desc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+desc:SetWidth(550)
+desc:SetJustifyH("LEFT")
+desc:SetText([[
+Toxicify helps you mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r. 
+Once added to your list, they will be clearly highlighted in Party/Raid frames and in the Group Finder.
+
+Features:
+- Add players with /toxic add <name-realm>
+- Quickly mark players using the context menu (right-click on a player or target)
+- Color-coded names and icons in the Group Finder and tooltips
+- Options to automatically whisper and/or ignore toxic players
+- Import and export your list to share with friends
+
+Quick Commands:
+/toxic add <name-realm>         - Add as Toxic
+/toxic add pumper <name-realm>  - Add as Pumper
+/toxic del <name-realm>         - Remove player from list
+/toxic list                     - Show all stored players
+/toxic ui                       - Open the Toxicify list window
+/toxicexport                    - Print export string in chat
+/toxicimport <string>           - Import a shared list
+
+Enjoy keeping your runs clean and smooth!
+
+|cffaaaaaaKind Regards,|r
+|cff39FF14Alvarín-Silvermoon|r
+]])
 
 ---------------------------------------------------
 -- Import / Export
@@ -283,6 +313,24 @@ addToxicBtn:SetScript("OnClick", function()
         input:SetText("")
         RefreshList()
     end
+end)
+
+-- Export button
+local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+exportBtn:SetSize(80, 22)
+exportBtn:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -5)
+exportBtn:SetText("Export")
+exportBtn:SetScript("OnClick", function()
+    ns.ShowIOPopup("export")
+end)
+
+-- Import button
+local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
+importBtn:SetSize(80, 22)
+importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
+importBtn:SetText("Import")
+importBtn:SetScript("OnClick", function()
+    ns.ShowIOPopup("import")
 end)
 
 -- Add Pumper

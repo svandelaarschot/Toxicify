@@ -296,13 +296,26 @@ end
 ---------------------------------------------------
 SLASH_TOXICIFY1 = "/toxic"
 SlashCmdList["TOXICIFY"] = function(msg)
-    local cmd, player = strsplit(" ", msg, 2)
-    if cmd == "add" and player then
-        ns.MarkToxic(player)
-    elseif cmd == "add pumper" and player then
-        ns.MarkPumper(player)
-    elseif cmd == "del" and player then
-        ns.UnmarkToxic(player)
+    local cmd, arg1, arg2 = strsplit(" ", msg, 3)
+    cmd = string.lower(cmd or "")
+
+    if cmd == "add" and arg1 then
+        ns.MarkToxic(arg1)
+    elseif cmd == "addpumper" and arg1 then
+        ns.MarkPumper(arg1)
+    elseif cmd == "del" and arg1 then
+        ns.UnmarkToxic(arg1)
+    elseif cmd == "list" then
+        print("|cff39FF14Toxicify:|r Current list:")
+        for name, status in pairs(ToxicifyDB) do
+            if status then
+                print(" - " .. name .. " (" .. status .. ")")
+            end
+        end
+    elseif cmd == "export" then
+        ns.ShowIOPopup("export")
+    elseif cmd == "import" then
+        ns.ShowIOPopup("import")
     elseif cmd == "ui" then
         if not _G.ToxicifyListFrame then ns.CreateToxicifyUI() end
         if _G.ToxicifyListFrame:IsShown() then
@@ -311,28 +324,93 @@ SlashCmdList["TOXICIFY"] = function(msg)
             _G.ToxicifyListFrame:Refresh()
             _G.ToxicifyListFrame:Show()
         end
-    elseif cmd == "list" then
-        print("|cff39FF14Toxicify:|r Current list:")
-        for name, status in pairs(ToxicifyDB) do
-            if status then print(" - " .. name .. " (" .. status .. ")") end
-        end
+    else
+        print("|cff39FF14Toxicify Commands:|r")
+        print("/toxic add <name-realm>        - Mark player as Toxic")
+        print("/toxic addpumper <name-realm>  - Mark player as Pumper")
+        print("/toxic del <name-realm>        - Remove player from list")
+        print("/toxic list                    - Show current list")
+        print("/toxic export                  - Export list (string)")
+        print("/toxic import <string>         - Import list from string")
+        print("/toxic ui                      - Toggle Toxicify list window")
     end
 end
 
-SLASH_TOXICIFY2 = "/toxicexport"
-SlashCmdList["TOXICIFY2"] = function()
-    local export = ns.ExportList()
-    print("|cff39FF14Toxicify:|r Export string:")
-    print(export)
-end
+---------------------------------------------------
+-- Import/Export Popup
+---------------------------------------------------
+function ns.ShowIOPopup(mode, data)
+    if not _G.ToxicifyIOFrame then
+        local f = CreateFrame("Frame", "ToxicifyIOFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+        f:SetSize(500, 300)
+        f:SetPoint("CENTER")
+        f:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 16,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        })
+        f:SetFrameStrata("DIALOG")
+        f:Hide()
 
-SLASH_TOXICIFY3 = "/toxicimport"
-SlashCmdList["TOXICIFY3"] = function(msg)
-    local ok, result = ns.ImportList(msg)
-    if ok then
-        print("|cff39FF14Toxicify:|r Import success: " .. result)
-    else
-        print("|cffff0000Toxicify:|r Import failed: " .. result)
+        -- Titel
+        f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        f.title:SetPoint("TOP", 0, -15)
+
+        -- EditBox + Scroll
+        f.scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+        f.scroll:SetPoint("TOPLEFT", 20, -50)
+        f.scroll:SetPoint("BOTTOMRIGHT", -40, 50)
+
+        f.editBox = CreateFrame("EditBox", nil, f.scroll)
+        f.editBox:SetMultiLine(true)
+        f.editBox:SetFontObject("ChatFontNormal")
+        f.editBox:SetWidth(420)
+        f.editBox:SetAutoFocus(false)
+        f.scroll:SetScrollChild(f.editBox)
+
+        -- Buttons
+        f.closeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.closeBtn:SetSize(100, 22)
+        f.closeBtn:SetPoint("BOTTOMRIGHT", -20, 15)
+        f.closeBtn:SetText("Close")
+        f.closeBtn:SetScript("OnClick", function() f:Hide() end)
+
+        f.actionBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        f.actionBtn:SetSize(100, 22)
+        f.actionBtn:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+
+        _G.ToxicifyIOFrame = f
+    end
+
+    local f = _G.ToxicifyIOFrame
+    f:Show()
+    f.editBox:SetText("")
+    f.editBox:HighlightText()
+
+    if mode == "export" then
+        f.title:SetText("|cff39FF14Toxicify|r - Export List")
+        f.editBox:SetText(ns.ExportList())
+        f.editBox:HighlightText()
+        f.actionBtn:SetText("Copy")
+        f.actionBtn:SetScript("OnClick", function()
+            f.editBox:HighlightText()
+            print("|cff39FF14Toxicify:|r Copy the string with CTRL+C.")
+        end)
+    elseif mode == "import" then
+        f.title:SetText("|cff39FF14Toxicify|r - Import List")
+        f.actionBtn:SetText("Import")
+        f.actionBtn:SetScript("OnClick", function()
+            local ok, result = ns.ImportList(f.editBox:GetText())
+            if ok then
+                print("|cff39FF14Toxicify:|r Import success: " .. result)
+                if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
+                    _G.ToxicifyListFrame:Refresh()
+                end
+            else
+                print("|cffff0000Toxicify:|r Import failed: " .. result)
+            end
+        end)
     end
 end
 
