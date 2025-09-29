@@ -286,11 +286,13 @@ function ns.CreateToxicifyUI()
     suggestionBox:SetSize(200, 110) -- max 5 * 20px + marge
     suggestionBox:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -2)
     suggestionBox:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground", -- zwarte achtergrond
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile = true, tileSize = 16, edgeSize = 12,
         insets = { left = 2, right = 2, top = 2, bottom = 2 }
     })
+    suggestionBox:SetBackdropColor(0, 0, 0, 0.9) -- echt zwart met lichte transparantie
+    suggestionBox:SetFrameStrata("TOOLTIP")      -- altijd bovenop
     suggestionBox:Hide()
 
     local function UpdateSuggestions()
