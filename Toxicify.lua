@@ -46,13 +46,13 @@ local function UpdateGroupMembers()
         if UnitExists(unit) then
             local name = GetUnitName(unit, true)
             if name and ns.IsToxic(name) then
-                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                local frame = ns.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
                 end
             end
             if name and ns.IsPumper(name) then
-                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                local frame = ns.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                 end
@@ -126,13 +126,13 @@ local function UpdateGroupMembers()
         if UnitExists(unit) then
             local name = GetUnitName(unit, true)
             if name and ns.IsToxic(name) then
-                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                local frame = ns.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
                 end
             end
             if name and ns.IsPumper(name) then
-                local frame = CompactUnitFrame_GetUnitFrame(unit)
+                local frame = ns.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                 end
@@ -610,7 +610,6 @@ hooksecurefunc("LFGListSearchEntry_Update", function(entry)
         end
     end
 end)
-
 function ns.RefreshSharedList(content, filterText)
     for _, child in ipairs(content.children or {}) do child:Hide() end
     content.children = {}
@@ -623,7 +622,7 @@ function ns.RefreshSharedList(content, filterText)
            and (filterText == "" or name:lower():find(filterText, 1, true)) then
 
             local row = CreateFrame("Frame", nil, content)
-            row:SetSize(400, 22)
+            row:SetSize(520, 26)
             row:SetPoint("TOPLEFT", 0, y)
 
             -- Icon
@@ -631,24 +630,25 @@ function ns.RefreshSharedList(content, filterText)
             icon:SetSize(16, 16)
             icon:SetPoint("LEFT", 0, 0)
 
-            -- Name label
-            local text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            text:SetPoint("LEFT", icon, "RIGHT", 6, 0)
-            text:SetWidth(150)
-            text:SetJustifyH("LEFT")
+            -- Editable name field
+            local nameBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+            nameBox:SetSize(180, 22)
+            nameBox:SetPoint("LEFT", icon, "RIGHT", 6, 0)
+            nameBox:SetAutoFocus(false)
+            nameBox:SetText(name)
 
             -- Dropdown
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
-            drop:SetPoint("LEFT", text, "RIGHT", -12, -3)
+            drop:SetPoint("LEFT", nameBox, "RIGHT", -10, -3)
             UIDropDownMenu_SetWidth(drop, 100)
 
             local function UpdateVisual()
                 if ToxicifyDB[name] == "toxic" then
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
-                    text:SetText("|cffff0000" .. name .. "|r")
+                    nameBox:SetTextColor(1, 0, 0) -- rood
                 else
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
-                    text:SetText("|cff00ff00" .. name .. "|r")
+                    nameBox:SetTextColor(0, 1, 0) -- groen
                 end
             end
 
@@ -673,10 +673,25 @@ function ns.RefreshSharedList(content, filterText)
             UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
             UpdateVisual()
 
+            -- Save button
+            local save = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            save:SetSize(60, 22)
+            save:SetPoint("LEFT", drop, "RIGHT", 10, 0)
+            save:SetText("Save")
+            save:SetScript("OnClick", function()
+                local newName = ns.NormalizePlayerName(nameBox:GetText())
+                if newName and newName ~= name then
+                    local role = ToxicifyDB[name]
+                    ToxicifyDB[name] = nil
+                    ToxicifyDB[newName] = role
+                end
+                ns.RefreshSharedList(content, filterText)
+            end)
+
             -- Delete button
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            del:SetSize(100, 22) -- zelfde breedte als dropdown
-            del:SetPoint("LEFT", drop, "RIGHT", 10, 0)
+            del:SetSize(60, 22)
+            del:SetPoint("LEFT", save, "RIGHT", 10, 0)
             del:SetText("Delete")
             del:SetScript("OnClick", function()
                 ToxicifyDB[name] = nil
@@ -684,11 +699,10 @@ function ns.RefreshSharedList(content, filterText)
             end)
 
             table.insert(content.children, row)
-            y = y - 26
+            y = y - 28
         end
     end
 end
-
 
 -- Add Toxic
 local addToxicBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
@@ -732,6 +746,23 @@ TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tool
         end
     end
 end)
+
+---------------------------------------------------
+-- Helper: Find Compact UnitFrame for a unit
+---------------------------------------------------
+function ns.GetUnitFrame(unit)
+    if not C_CompactUnitFrame or not C_CompactUnitFrame.GetAllFrames then
+        return nil
+    end
+
+    for _, frame in ipairs(C_CompactUnitFrame.GetAllFrames()) do
+        if frame and frame.unit == unit then
+            return frame
+        end
+    end
+
+    return nil
+end
 
 ---------------------------------------------------
 -- Modern context menu
