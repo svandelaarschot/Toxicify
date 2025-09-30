@@ -19,10 +19,16 @@ desc:SetWidth(500)
 desc:SetJustifyH("LEFT")
 desc:SetText("Manage your toxic/pumper player list. They will be marked in party/raid frames and in the Group Finder.\n\nYou can add names manually below or with /toxic add Name-Realm.")
 
+-- Input label
+local inputLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+inputLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+inputLabel:SetText("Player Name:")
+inputLabel:SetTextColor(1, 1, 1) -- White color
+
 -- Input + add buttons
 local input = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
 input:SetSize(200, 30)
-input:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -20)
+input:SetPoint("LEFT", inputLabel, "RIGHT", 10, 0)
 input:SetAutoFocus(false)
 input:SetMaxLetters(50)
 
@@ -48,15 +54,36 @@ end)
 -- ScrollFrame for list
 local scrollFrame = CreateFrame("ScrollFrame", nil, generalPanel, "UIPanelScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", hideCheck, "BOTTOMLEFT", 0, -20)
-scrollFrame:SetSize(400, 200)
+scrollFrame:SetSize(500, 200)
 
 local content = CreateFrame("Frame", nil, scrollFrame)
-content:SetSize(400, 200)
+content:SetSize(500, 200)
 scrollFrame:SetScrollChild(content)
 
 local function RefreshList()
-    ns.RefreshSharedList(content)
+    if ns.UI and ns.UI.RefreshSharedList then
+        ns.UI.RefreshSharedList(content)
+    end
 end
+
+-- Laad de lijst direct nadat content is aangemaakt
+local function InitializeList()
+    if ns.UI and ns.UI.RefreshSharedList then
+        RefreshList()
+    else
+        C_Timer.After(0.1, InitializeList)
+    end
+end
+
+-- Probeer meerdere keren te laden
+InitializeList()
+
+-- Probeer na verschillende delays
+C_Timer.After(0.5, function()
+    if ns.UI and ns.UI.RefreshSharedList then
+        RefreshList()
+    end
+end)
 
 -- Add toxic
 addToxicBtn:SetScript("OnClick", function()
@@ -78,18 +105,12 @@ addPumperBtn:SetScript("OnClick", function()
     end
 end)
 
--- Zorg dat RefreshList er boven staat
-local function RefreshList()
-    if content and content:IsShown() then
-        ns.UI.RefreshSharedList(content)
-    end
-end
-
 -- Panel OnShow
-generalPanel:SetScript("OnShow", RefreshList)
-
--- Forceer 1x initial load zodat lijst meteen zichtbaar is
-C_Timer.After(0.1, RefreshList)
+generalPanel:SetScript("OnShow", function()
+    if ns.UI and ns.UI.RefreshSharedList then
+        RefreshList()
+    end
+end)
 
 ---------------------------------------------------
 -- Import / Export (strakke layout + textarea)
@@ -101,11 +122,11 @@ ioLabel:SetText("Import / Export List:")
 -- ScrollFrame + Multiline EditBox
 local ioScroll = CreateFrame("ScrollFrame", "ToxicifyIOScroll", generalPanel, "UIPanelScrollFrameTemplate")
 ioScroll:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -10)
-ioScroll:SetSize(400, 100)
+ioScroll:SetSize(500, 100)
 
 local ioBox = CreateFrame("EditBox", "ToxicifyIOBox", ioScroll)
 ioBox:SetMultiLine(true)
-ioBox:SetSize(380, 100)
+ioBox:SetSize(480, 100)
 ioBox:SetAutoFocus(false)
 ioBox:SetFontObject(ChatFontNormal)
 ioBox:SetMaxLetters(4000)
@@ -165,11 +186,35 @@ local ignoreCheck = CreateFrame("CheckButton", "ToxicifyIgnoreCheck", whisperPan
 ignoreCheck:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
 ignoreCheck.Text:SetText("Also add toxic players to Ignore list")
 
+-- Create a label for the whisper box
+local whisperLabel = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+whisperLabel:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -10)
+whisperLabel:SetText("Whisper:")
+whisperLabel:SetTextColor(1, 1, 1) -- White color
+
+-- Create a simple editbox with template
 local whisperBox = CreateFrame("EditBox", "ToxicifyWhisperBox", whisperPanel, "InputBoxTemplate")
 whisperBox:SetSize(400, 30)
-whisperBox:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -10)
+whisperBox:SetPoint("LEFT", whisperLabel, "RIGHT", 10, 0)
 whisperBox:SetAutoFocus(false)
 whisperBox:SetMaxLetters(200)
+whisperBox:SetFontObject("GameFontNormal")
+whisperBox:SetTextColor(1, 1, 1)
+whisperBox:SetTextInsets(5, 5, 0, 0)
+
+-- Try to set text immediately after creation
+local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+whisperBox:SetText(defaultMsg)
+whisperBox:SetTextColor(1, 1, 1) -- Force text color again
+whisperBox:SetFontObject("GameFontNormal") -- Force font again
+whisperBox:Show() -- Force show
+whisperBox:Enable() -- Force enable
+
+-- Add a text label to show the current message
+local whisperStatusLabel = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+whisperStatusLabel:SetPoint("TOPLEFT", whisperBox, "BOTTOMLEFT", 0, -5)
+whisperStatusLabel:SetText("Current message: " .. defaultMsg)
+whisperStatusLabel:SetTextColor(1, 1, 0) -- Yellow color
 
 -- Defaults
 local function EnsureDefaults()
@@ -182,25 +227,54 @@ local function EnsureDefaults()
     if ToxicifyDB.IgnoreOnMark == nil then
         ToxicifyDB.IgnoreOnMark = false
     end
+    if ToxicifyDB.DebugEnabled == nil then
+        ToxicifyDB.DebugEnabled = false
+    end
+    -- Debug: print the current whisper message
 end
 
+-- Initialize defaults and set values
 EnsureDefaults()
 whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
 ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
-whisperBox:SetText(ToxicifyDB.WhisperMessage)
-if whisperCheck:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
+-- Force set the default message
+local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
+whisperBox:SetText(currentMsg)
+whisperBox:SetTextColor(1, 1, 1) -- Force white text
+whisperBox:SetFontObject("GameFontNormal") -- Force font
+whisperBox:Show() -- Force show
+whisperBox:Enable() -- Force enable
+
+-- Delayed initialization to ensure editbox is fully loaded
+C_Timer.After(0.5, function()
+    local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+    local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
+    whisperBox:SetText(currentMsg)
+    whisperBox:SetTextColor(1, 1, 1)
+    whisperBox:SetFontObject("GameFontNormal")
+    whisperBox:Show() -- Force show
+    whisperBox:Enable() -- Always enable
+end)
 
 whisperPanel:SetScript("OnShow", function()
     EnsureDefaults()
     whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
     ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
-    whisperBox:SetText(ToxicifyDB.WhisperMessage)
-    if whisperCheck:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
+    -- Force set the default message
+    local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+    local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
+    whisperBox:SetText(currentMsg)
+    whisperBox:SetTextColor(1, 1, 1) -- Force white text
+    whisperBox:SetFontObject("GameFontNormal") -- Force font
+    whisperBox:Show() -- Force show
 end)
 
 whisperCheck:SetScript("OnClick", function(self)
     ToxicifyDB.WhisperOnMark = self:GetChecked()
-    if self:GetChecked() then whisperBox:Enable() else whisperBox:Disable() end
+    -- Always keep the editbox enabled so users can see and edit the message
+    whisperBox:Enable()
+
 end)
 
 ignoreCheck:SetScript("OnClick", function(self)
@@ -211,6 +285,28 @@ whisperBox:SetScript("OnTextChanged", function(self)
     if whisperCheck:GetChecked() then
         ToxicifyDB.WhisperMessage = self:GetText()
     end
+    -- Update the status label to show current text
+    whisperStatusLabel:SetText("Current message: " .. self:GetText())
+end)
+
+-- Force set text after a short delay to ensure editbox is ready
+C_Timer.After(0.1, function()
+    local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+    local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
+    whisperBox:SetText(currentMsg)
+    whisperBox:SetTextColor(1, 1, 1)
+    whisperBox:SetFontObject("GameFontNormal")
+end)
+
+-- Additional delayed attempt
+C_Timer.After(1.0, function()
+    local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
+    local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
+    whisperBox:SetText(currentMsg)
+    whisperBox:SetTextColor(1, 1, 1)
+    whisperBox:SetFontObject("GameFontNormal")
+    whisperBox:Show() -- Force show
+    whisperBox:Enable() -- Force enable
 end)
 
 ---------------------------------------------------
@@ -267,6 +363,13 @@ Enjoy keeping your runs clean and smooth!
 |cffaaaaaaKind Regards,|r  
 |cff39FF14Alvarín-Silvermoon|r  
 ]])
+
+-- Root panel OnShow event
+rootPanel:SetScript("OnShow", function()
+    if ns.UI and ns.UI.RefreshSharedList then
+        RefreshList()
+    end
+end)
 
 ---------------------------------------------------
 -- Register Panels (Retail vs Classic)

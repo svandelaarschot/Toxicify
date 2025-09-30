@@ -9,9 +9,12 @@ end
 -- Core namespace
 ns.Core = {}
 
--- Initialize Core module
-function ns.Core.Initialize()
-    -- Core initialization if needed
+-- Debug helper function
+function ns.Core.DebugPrint(message)
+    -- Only print if debug is enabled
+    if ToxicifyDB and ToxicifyDB.DebugEnabled then
+        print("|cff39FF14[Toxicify DEBUG]|r " .. message)
+    end
 end
 
 -- Database initialization
@@ -35,6 +38,10 @@ local function InitializeDefaults()
         ToxicifyDB.HideInFinder = false
     end
     
+    if ToxicifyDB.DebugEnabled == nil then
+        ToxicifyDB.DebugEnabled = false
+    end
+    
     if not ToxicifyDB.minimap then
         ToxicifyDB.minimap = { hide = false }
     end
@@ -44,6 +51,9 @@ end
 function ns.Core.Initialize()
     InitializeDefaults()
     print("|cff39FF14Toxicify:|r Addon is loading...")
+    if ToxicifyDB.DebugEnabled then
+        print("|cff39FF14Toxicify:|r Debug mode is enabled.")
+    end
 end
 
 -- Database access functions

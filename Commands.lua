@@ -36,6 +36,34 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Refresh()
                 _G.ToxicifyListFrame:Show()
             end
+        elseif cmd == "settings" or cmd == "config" then
+            -- Sluit het huidige Toxicify dialoog als het open is
+            if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then
+                _G.ToxicifyListFrame:Hide()
+            end
+            
+            -- Open de juiste settings
+            if Settings and Settings.OpenToCategory then
+                -- Retail (Dragonflight+)
+                Settings.OpenToCategory("|cff39FF14Toxicify|r")
+            elseif InterfaceOptionsFrame_OpenToCategory then
+                -- Classic/older versions
+                InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
+                InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r") -- double call fixes Blizzard bug
+            else
+                -- Fallback: open interface options
+                InterfaceOptionsFrame:Show()
+                print("|cff39FF14Toxicify:|r Please navigate to the Toxicify section in Interface Options.")
+            end
+        elseif cmd == "debug" then
+            if ToxicifyDB.DebugEnabled then
+                ToxicifyDB.DebugEnabled = false
+                print("|cff39FF14Toxicify:|r Debug mode disabled.")
+            else
+                ToxicifyDB.DebugEnabled = true
+                print("|cff39FF14Toxicify:|r Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
+                print("|cffaaaaaaDebug messages will appear when you use Toxicify features.|r")
+            end
         else
             print("|cff39FF14Toxicify Commands:|r")
             print("/toxic add <name-realm>        - Mark player as Toxic")
@@ -45,6 +73,9 @@ function ns.Commands.Initialize()
             print("/toxic export                  - Export list (string)")
             print("/toxic import <string>         - Import list from string")
             print("/toxic ui                      - Toggle Toxicify list window")
+            print("/toxic settings                - Open addon settings")
+            print("/toxic config                  - Open addon settings (alias)")
+            print("/toxic debug                   - Toggle debug mode (shows in main chat)")
         end
     end
 end

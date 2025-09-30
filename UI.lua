@@ -46,7 +46,12 @@ function ns.UI.CreateToxicifyUI()
     f:SetFrameStrata("DIALOG")
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
-
+    f:SetScript("OnShow", function(self)
+        if self.Refresh then
+            self:Refresh()
+        end
+    end)
+    
     -- Title
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -15)
@@ -238,10 +243,33 @@ function ns.UI.CreateToxicifyUI()
         Refresh()
     end)
 
-    -- ReloadUI button rechtsonder
+    -- Settings button rechtsonder
+    local settingsBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    settingsBtn:SetSize(80, 22)
+    settingsBtn:SetPoint("BOTTOMRIGHT", -20, 15)
+    settingsBtn:SetText("Settings")
+    settingsBtn:SetScript("OnClick", function() 
+        -- Sluit het huidige dialoog
+        f:Hide()
+        
+        -- Open de juiste settings
+        if Settings and Settings.OpenToCategory then
+            -- Retail (Dragonflight+)
+            Settings.OpenToCategory("|cff39FF14Toxicify|r")
+        elseif InterfaceOptionsFrame_OpenToCategory then
+            -- Classic/older versions
+            InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
+            InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r") -- double call fixes Blizzard bug
+        else
+            -- Fallback: open interface options
+            InterfaceOptionsFrame:Show()
+        end
+    end)
+
+    -- ReloadUI button links van Settings
     local reloadBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     reloadBtn:SetSize(80, 22)
-    reloadBtn:SetPoint("BOTTOMRIGHT", -20, 15)
+    reloadBtn:SetPoint("RIGHT", settingsBtn, "LEFT", -10, 0)
     reloadBtn:SetText("ReloadUI")
     reloadBtn:SetScript("OnClick", function() ReloadUI() end)
 
@@ -259,6 +287,7 @@ function ns.UI.RefreshSharedList(content, filterText)
     filterText = filterText and filterText:lower() or ""
 
     local y = -5
+    local count = 0
     for name, status in pairs(ToxicifyDB) do
         if (status == "toxic" or status == "pumper") 
            and (filterText == "" or name:lower():find(filterText, 1, true)) then
@@ -278,6 +307,10 @@ function ns.UI.RefreshSharedList(content, filterText)
             nameBox:SetPoint("LEFT", icon, "RIGHT", 6, 0)
             nameBox:SetAutoFocus(false)
             nameBox:SetText(name)
+            
+            -- Force text to be visible
+            nameBox:SetTextColor(1, 1, 1) -- Witte tekst
+            nameBox:SetFontObject("GameFontNormal")
 
             -- Dropdown
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
@@ -292,6 +325,8 @@ function ns.UI.RefreshSharedList(content, filterText)
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
                     nameBox:SetTextColor(0, 1, 0) -- groen
                 end
+                -- Zorg dat de tekst zichtbaar is
+                nameBox:SetText(name)
             end
 
             UIDropDownMenu_Initialize(drop, function(self, level)
@@ -342,6 +377,7 @@ function ns.UI.RefreshSharedList(content, filterText)
 
             table.insert(content.children, row)
             y = y - 28
+            count = count + 1
         end
     end
 end
