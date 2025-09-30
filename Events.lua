@@ -5,28 +5,38 @@ local addonName, ns = ...
 ns.Events = {}
 
 -- Update group members (party/raid/M+)
-local function UpdateGroupMembers()
-    if not IsInGroup() then return end
-    
+function ns.Events.UpdateGroupMembers()
     local toxicPlayers = {}
     local pumperPlayers = {}
     
-    for i = 1, GetNumGroupMembers() do
-        local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
-        if UnitExists(unit) then
-            local name = GetUnitName(unit, true)
-            if name and ns.Player.IsToxic(name) then
-                table.insert(toxicPlayers, name)
-                local frame = ns.UI.GetUnitFrame(unit)
-                if frame and frame.name and frame.name.SetText then
-                    frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
+    -- Check yourself first
+    local playerName = GetUnitName("player", true)
+    if playerName and ns.Player.IsToxic(playerName) then
+        table.insert(toxicPlayers, playerName)
+    end
+    if playerName and ns.Player.IsPumper(playerName) then
+        table.insert(pumperPlayers, playerName)
+    end
+    
+    -- Check group members if in group
+    if IsInGroup() then
+        for i = 1, GetNumGroupMembers() do
+            local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
+            if UnitExists(unit) then
+                local name = GetUnitName(unit, true)
+                if name and ns.Player.IsToxic(name) then
+                    table.insert(toxicPlayers, name)
+                    local frame = ns.UI.GetUnitFrame(unit)
+                    if frame and frame.name and frame.name.SetText then
+                        frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
+                    end
                 end
-            end
-            if name and ns.Player.IsPumper(name) then
-                table.insert(pumperPlayers, name)
-                local frame = ns.UI.GetUnitFrame(unit)
-                if frame and frame.name and frame.name.SetText then
-                    frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                if name and ns.Player.IsPumper(name) then
+                    table.insert(pumperPlayers, name)
+                    local frame = ns.UI.GetUnitFrame(unit)
+                    if frame and frame.name and frame.name.SetText then
+                        frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                    end
                 end
             end
         end
@@ -56,7 +66,7 @@ function ns.Events.Initialize()
     local rosterFrame = CreateFrame("Frame")
     rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    rosterFrame:SetScript("OnEvent", UpdateGroupMembers)
+    rosterFrame:SetScript("OnEvent", ns.Events.UpdateGroupMembers)
     
     -- Tooltip integration
     if TooltipDataProcessor then
@@ -74,9 +84,17 @@ function ns.Events.Initialize()
     end
     
     -- Context menu integration
+    -- Add Toxicify options to all unit types (Mark as Toxic, Mark as Pumper, Remove from List - submenu)
+    -- Self, Player, Target, Friend, Enemy Player, Party, Raid
+    -- Party members (specific slots)
+    -- Raid members (specific slots)
     if Menu then
         local function AddToxicifyContextMenu(_, rootDescription, contextData)
             if not contextData or not contextData.unit then return end
+            
+            -- Only show for real players, not NPCs
+            if not UnitIsPlayer(contextData.unit) then return end
+            
             local playerName = GetUnitName(contextData.unit, true)
             if not playerName then return end
 
@@ -86,9 +104,21 @@ function ns.Events.Initialize()
             toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
         end
 
+        -- Core unit types
+        Menu.ModifyMenu("MENU_UNIT_SELF", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_PLAYER", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
+        
+        -- Party members (specific slots)
+        for i = 1, 4 do
+            Menu.ModifyMenu("MENU_UNIT_PARTY" .. i, AddToxicifyContextMenu)
+        end
+        
+        -- Raid members (specific slots)
+        for i = 1, 40 do
+            Menu.ModifyMenu("MENU_UNIT_RAID" .. i, AddToxicifyContextMenu)
+        end
     end
 end

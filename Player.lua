@@ -54,6 +54,11 @@ function ns.Player.MarkPumper(playerName)
         if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
             ns.UI.ToxicUIFrame:Refresh()
         end
+        
+        -- Trigger party warning check
+        if ns.Events and ns.Events.UpdateGroupMembers then
+            ns.Events.UpdateGroupMembers()
+        end
     end
 end
 
@@ -89,6 +94,11 @@ function ns.Player.MarkToxic(playerName)
         -- Force refresh toxic UI if it exists
         if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
             ns.UI.ToxicUIFrame:Refresh()
+        end
+        
+        -- Trigger party warning check
+        if ns.Events and ns.Events.UpdateGroupMembers then
+            ns.Events.UpdateGroupMembers()
         end
     end
 end

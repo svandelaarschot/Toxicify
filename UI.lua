@@ -207,6 +207,11 @@ end
 
 -- Refresh the shared list
 function ns.UI.RefreshSharedList(content, filterText)
+    -- Return early if content is nil (called from Player.lua without parameters)
+    if not content then
+        return
+    end
+    
     for _, child in ipairs(content.children or {}) do child:Hide() end
     content.children = {}
 
@@ -340,6 +345,11 @@ function ns.UI.TriggerRefresh()
     if ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
         ns.UI.ToxicUIFrame:Refresh()
     end
+end
+
+-- Add toxic marking to context menu (now handled in Events.lua)
+function ns.UI.AddContextMenuMarking()
+    -- Context menu functionality moved to Events.lua using Menu API
 end
 
 -- Show Import/Export popup

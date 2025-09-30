@@ -162,6 +162,12 @@ function ns.Core.Initialize()
     if ToxicifyDB.DebugEnabled then
         print("|cff39FF14Toxicify:|r Debug mode is enabled.")
     end
+    
+    -- Add context menu marking functionality
+    if ns.UI and ns.UI.AddContextMenuMarking then
+        ns.UI.AddContextMenuMarking()
+    end
+    
     print("|cff39FF14Toxicify:|r Addon Loaded.")
 end
 

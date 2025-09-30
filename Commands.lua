@@ -88,6 +88,13 @@ function ns.Commands.Initialize()
                 SetCVar("scriptErrors", "1")
                 print("|cff39FF14Toxicify:|r Lua errors enabled - /console scriptErrors set to 1")
             end
+        elseif cmd == "contextmenu" then
+            if ns.UI and ns.UI.AddContextMenuMarking then
+                ns.UI.AddContextMenuMarking()
+                print("|cff39FF14Toxicify:|r Context menu marking activated.")
+            else
+                print("|cffff0000Toxicify:|r Context menu marking not available.")
+            end
         else
             print("|cff39FF14Toxicify Commands:|r")
             print("/toxic add <name-realm>        - Mark player as Toxic")
@@ -102,6 +109,7 @@ function ns.Commands.Initialize()
             print("/toxic debug                   - Toggle debug mode (shows in main chat)")
             print("/toxic partywarning            - Toggle party warning")
             print("/toxic luaerrors               - Toggle Lua errors (requires debug mode)")
+            print("/toxic contextmenu              - Activate context menu marking")
         end
     end
 end
