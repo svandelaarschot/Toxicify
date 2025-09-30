@@ -8,22 +8,44 @@ ns.Events = {}
 local function UpdateGroupMembers()
     if not IsInGroup() then return end
     
+    local toxicPlayers = {}
+    local pumperPlayers = {}
+    
     for i = 1, GetNumGroupMembers() do
         local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
         if UnitExists(unit) then
             local name = GetUnitName(unit, true)
             if name and ns.Player.IsToxic(name) then
+                table.insert(toxicPlayers, name)
                 local frame = ns.UI.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cffff0000 Toxic: " .. name .. "|r")
                 end
             end
             if name and ns.Player.IsPumper(name) then
+                table.insert(pumperPlayers, name)
                 local frame = ns.UI.GetUnitFrame(unit)
                 if frame and frame.name and frame.name.SetText then
                     frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                 end
             end
+        end
+    end
+    
+    -- Show warning if toxic/pumper players found and warning is enabled
+    if ToxicifyDB.PartyWarningEnabled and (#toxicPlayers > 0 or #pumperPlayers > 0) then
+        local warningMsg = "|cffff0000[Toxicify Warning]|r "
+        if #toxicPlayers > 0 then
+            warningMsg = warningMsg .. "Toxic players detected: " .. table.concat(toxicPlayers, ", ") .. " "
+        end
+        if #pumperPlayers > 0 then
+            warningMsg = warningMsg .. "Pumper players detected: " .. table.concat(pumperPlayers, ", ")
+        end
+        print(warningMsg)
+        
+        -- Show UI warning
+        if UIErrorsFrame then
+            UIErrorsFrame:AddMessage(warningMsg, 1.0, 0.0, 0.0, 1.0, 1)
         end
     end
 end

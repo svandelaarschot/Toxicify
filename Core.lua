@@ -17,6 +17,93 @@ function ns.Core.DebugPrint(message)
     end
 end
 
+-- Shared auto-completion functionality
+function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
+    -- Suggestion box for auto-completion
+    local suggestionBox = CreateFrame("Frame", nil, parentFrame, BackdropTemplateMixin and "BackdropTemplate")
+    suggestionBox:SetSize(200, 110) -- max 5 * 20px + marge
+    suggestionBox:SetPoint("TOPLEFT", inputBox, "BOTTOMLEFT", 0, -2)
+    suggestionBox:SetBackdrop({
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true, tileSize = 16, edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    suggestionBox:SetBackdropColor(0, 0, 0, 0.9)
+    suggestionBox:SetFrameStrata("TOOLTIP")
+    suggestionBox:Hide()
+
+    local function UpdateSuggestions()
+        for _, child in ipairs(suggestionBox.children or {}) do child:Hide() end
+        suggestionBox.children = {}
+
+        local text = inputBox:GetText():lower()
+        if text == "" then suggestionBox:Hide() return end
+
+        local suggestions = {}
+
+        -- Groepsleden
+        for i = 1, GetNumGroupMembers() do
+            local unit = (IsInRaid() and ("raid"..i)) or ("party"..i)
+            if UnitExists(unit) then
+                local name = GetUnitName(unit, true)
+                if name and name:lower():find(text) then
+                    table.insert(suggestions, name)
+                end
+            end
+        end
+
+        -- Guildleden
+        if IsInGuild() then
+            for i = 1, GetNumGuildMembers() do
+                local name = GetGuildRosterInfo(i)
+                if name and name:lower():find(text) then
+                    table.insert(suggestions, name)
+                end
+            end
+        end
+
+        -- Friends
+        for i = 1, C_FriendList.GetNumFriends() do
+            local info = C_FriendList.GetFriendInfoByIndex(i)
+            if info and info.name and info.name:lower():find(text) then
+                table.insert(suggestions, info.name)
+            end
+        end
+
+        -- Bouw max 5
+        local y = -5
+        local count = 0
+        for _, name in ipairs(suggestions) do
+            count = count + 1
+            if count > 5 then break end
+
+            local btn = CreateFrame("Button", nil, suggestionBox, "UIPanelButtonTemplate")
+            btn:SetSize(180, 18)
+            btn:SetPoint("TOPLEFT", 10, y)
+            btn:SetText(name)
+            btn:SetScript("OnClick", function()
+                inputBox:SetText(name)
+                suggestionBox:Hide()
+            end)
+            table.insert(suggestionBox.children, btn)
+            y = y - 20
+        end
+
+        if count > 0 then
+            suggestionBox:SetHeight(count * 20 + 10)
+            suggestionBox:Show()
+        else
+            suggestionBox:Hide()
+        end
+    end
+
+    inputBox:SetScript("OnTextChanged", UpdateSuggestions)
+    inputBox:SetScript("OnEditFocusLost", function() C_Timer.After(0.2, function() suggestionBox:Hide() end) end)
+    
+    return suggestionBox
+end
+
 -- Database initialization
 ToxicifyDB = ToxicifyDB or {}
 
@@ -41,6 +128,9 @@ local function InitializeDefaults()
     if ToxicifyDB.DebugEnabled == nil then
         ToxicifyDB.DebugEnabled = false
     end
+    if ToxicifyDB.PartyWarningEnabled == nil then
+        ToxicifyDB.PartyWarningEnabled = true
+    end
     
     if not ToxicifyDB.minimap then
         ToxicifyDB.minimap = { hide = false }
@@ -50,10 +140,10 @@ end
 -- Core initialization
 function ns.Core.Initialize()
     InitializeDefaults()
-    print("|cff39FF14Toxicify:|r Addon is loading...")
     if ToxicifyDB.DebugEnabled then
         print("|cff39FF14Toxicify:|r Debug mode is enabled.")
     end
+    print("|cff39FF14Toxicify:|r Addon Loaded.")
 end
 
 -- Database access functions

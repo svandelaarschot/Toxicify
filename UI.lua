@@ -103,87 +103,8 @@ function ns.UI.CreateToxicifyUI()
     clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
     clearBtn:SetText("Remove All")
 
-    -- Suggestion box (max 5)
-    local suggestionBox = CreateFrame("Frame", nil, f, BackdropTemplateMixin and "BackdropTemplate")
-    suggestionBox:SetSize(200, 110) -- max 5 * 20px + marge
-    suggestionBox:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -2)
-    suggestionBox:SetBackdrop({
-        bgFile = "Interface\\ChatFrame\\ChatFrameBackground", -- zwarte achtergrond
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile = true, tileSize = 16, edgeSize = 12,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 }
-    })
-    suggestionBox:SetBackdropColor(0, 0, 0, 0.9) -- echt zwart met lichte transparantie
-    suggestionBox:SetFrameStrata("TOOLTIP")      -- altijd bovenop
-    suggestionBox:Hide()
-
-    local function UpdateSuggestions()
-        for _, child in ipairs(suggestionBox.children or {}) do child:Hide() end
-        suggestionBox.children = {}
-
-        local text = addBox:GetText():lower()
-        if text == "" then suggestionBox:Hide() return end
-
-        local suggestions = {}
-
-        -- Groepsleden
-        for i = 1, GetNumGroupMembers() do
-            local unit = (IsInRaid() and ("raid"..i)) or ("party"..i)
-            if UnitExists(unit) then
-                local name = GetUnitName(unit, true)
-                if name and name:lower():find(text) then
-                    table.insert(suggestions, name)
-                end
-            end
-        end
-
-        -- Guildleden
-        if IsInGuild() then
-            for i = 1, GetNumGuildMembers() do
-                local name = GetGuildRosterInfo(i)
-                if name and name:lower():find(text) then
-                    table.insert(suggestions, name)
-                end
-            end
-        end
-
-        -- Friends
-        for i = 1, C_FriendList.GetNumFriends() do
-            local info = C_FriendList.GetFriendInfoByIndex(i)
-            if info and info.name and info.name:lower():find(text) then
-                table.insert(suggestions, info.name)
-            end
-        end
-
-        -- Bouw max 5
-        local y = -5
-        local count = 0
-        for _, name in ipairs(suggestions) do
-            count = count + 1
-            if count > 5 then break end
-
-            local btn = CreateFrame("Button", nil, suggestionBox, "UIPanelButtonTemplate")
-            btn:SetSize(180, 18)
-            btn:SetPoint("TOPLEFT", 10, y)
-            btn:SetText(name)
-            btn:SetScript("OnClick", function()
-                addBox:SetText(name)
-                suggestionBox:Hide()
-            end)
-            table.insert(suggestionBox.children, btn)
-            y = y - 20
-        end
-
-        if count > 0 then
-            suggestionBox:SetHeight(count * 20 + 10)
-            suggestionBox:Show()
-        else
-            suggestionBox:Hide()
-        end
-    end
-
-    addBox:SetScript("OnTextChanged", UpdateSuggestions)
-    addBox:SetScript("OnEditFocusLost", function() C_Timer.After(0.2, function() suggestionBox:Hide() end) end)
+    -- Auto-completion using shared functionality
+    local suggestionBox = ns.Core.CreateAutoCompletion(addBox, f)
 
     -- Filter toxic groups checkbox
     local hideToxicCheck = CreateFrame("CheckButton", nil, f, "InterfaceOptionsCheckButtonTemplate")
@@ -303,14 +224,23 @@ function ns.UI.RefreshSharedList(content, filterText)
 
             -- Editable name field
             local nameBox = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
-            nameBox:SetSize(180, 22)
+            nameBox:SetSize(250, 22)
             nameBox:SetPoint("LEFT", icon, "RIGHT", 6, 0)
             nameBox:SetAutoFocus(false)
             nameBox:SetText(name)
             
-            -- Force text to be visible
-            nameBox:SetTextColor(1, 1, 1) -- Witte tekst
+            -- Force text to be visible immediately
             nameBox:SetFontObject("GameFontNormal")
+            nameBox:SetCursorPosition(0)
+            nameBox:HighlightText(0, -1)
+            nameBox:ClearFocus()
+            
+            -- Set initial color based on status
+            if ToxicifyDB[name] == "toxic" then
+                nameBox:SetTextColor(1, 0, 0) -- rood
+            else
+                nameBox:SetTextColor(0, 1, 0) -- groen
+            end
 
             -- Dropdown
             local drop = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
@@ -327,6 +257,9 @@ function ns.UI.RefreshSharedList(content, filterText)
                 end
                 -- Zorg dat de tekst zichtbaar is
                 nameBox:SetText(name)
+                nameBox:SetCursorPosition(0)
+                nameBox:HighlightText(0, -1)
+                nameBox:ClearFocus()
             end
 
             UIDropDownMenu_Initialize(drop, function(self, level)
@@ -336,6 +269,8 @@ function ns.UI.RefreshSharedList(content, filterText)
                 info.func = function()
                     ToxicifyDB[name] = "toxic"
                     UpdateVisual()
+                    -- Update list immediately after status change
+                    ns.UI.RefreshSharedList(content, filterText)
                 end
                 UIDropDownMenu_AddButton(info)
 
@@ -343,6 +278,8 @@ function ns.UI.RefreshSharedList(content, filterText)
                 info.func = function()
                     ToxicifyDB[name] = "pumper"
                     UpdateVisual()
+                    -- Update list immediately after status change
+                    ns.UI.RefreshSharedList(content, filterText)
                 end
                 UIDropDownMenu_AddButton(info)
             end)
@@ -350,25 +287,31 @@ function ns.UI.RefreshSharedList(content, filterText)
             UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
             UpdateVisual()
 
-            -- Save button
-            local save = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            save:SetSize(60, 22)
-            save:SetPoint("LEFT", drop, "RIGHT", 10, 0)
-            save:SetText("Save")
-            save:SetScript("OnClick", function()
-                local newName = ns.Player.NormalizePlayerName(nameBox:GetText())
+            -- Auto-save on text change
+            nameBox:SetScript("OnTextChanged", function(self)
+                local newName = ns.Player.NormalizePlayerName(self:GetText())
                 if newName and newName ~= name then
                     local role = ToxicifyDB[name]
                     ToxicifyDB[name] = nil
                     ToxicifyDB[newName] = role
+                    name = newName
+                    
+                    -- Update list immediately after name change
+                    ns.UI.RefreshSharedList(content, filterText)
                 end
-                ns.UI.RefreshSharedList(content, filterText)
+                -- Keep text visible with correct color
+                self:SetFontObject("GameFontNormal")
+                if ToxicifyDB[name] == "toxic" then
+                    self:SetTextColor(1, 0, 0) -- rood
+                else
+                    self:SetTextColor(0, 1, 0) -- groen
+                end
             end)
 
             -- Delete button
             local del = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-            del:SetSize(60, 22)
-            del:SetPoint("LEFT", save, "RIGHT", 10, 0)
+            del:SetSize(80, 28)
+            del:SetPoint("LEFT", drop, "RIGHT", 2, 3)
             del:SetText("Delete")
             del:SetScript("OnClick", function()
                 ToxicifyDB[name] = nil

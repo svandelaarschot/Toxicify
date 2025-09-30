@@ -64,6 +64,14 @@ function ns.Commands.Initialize()
                 print("|cff39FF14Toxicify:|r Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
                 print("|cffaaaaaaDebug messages will appear when you use Toxicify features.|r")
             end
+        elseif cmd == "partywarning" then
+            if ToxicifyDB.PartyWarningEnabled then
+                ToxicifyDB.PartyWarningEnabled = false
+                print("|cff39FF14Toxicify:|r Party warning disabled.")
+            else
+                ToxicifyDB.PartyWarningEnabled = true
+                print("|cff39FF14Toxicify:|r Party warning enabled.")
+            end
         else
             print("|cff39FF14Toxicify Commands:|r")
             print("/toxic add <name-realm>        - Mark player as Toxic")
@@ -76,6 +84,7 @@ function ns.Commands.Initialize()
             print("/toxic settings                - Open addon settings")
             print("/toxic config                  - Open addon settings (alias)")
             print("/toxic debug                   - Toggle debug mode (shows in main chat)")
+            print("/toxic partywarning            - Toggle party warning")
         end
     end
 end

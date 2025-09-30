@@ -39,6 +39,11 @@ function ns.Player.MarkPumper(playerName)
     if norm then
         ToxicifyDB[norm] = "pumper"
         print("|cff00ff00Toxicify:|r " .. playerName .. " marked as Pumper.")
+        
+        -- Update list immediately
+        if ns.UI and ns.UI.RefreshSharedList then
+            ns.UI.RefreshSharedList()
+        end
     end
 end
 
@@ -60,6 +65,11 @@ function ns.Player.MarkToxic(playerName)
             C_FriendList.AddIgnore(playerName)
             print("|cffaaaaaaToxicify:|r " .. playerName .. " has also been added to your Ignore list.")
         end
+        
+        -- Update list immediately
+        if ns.UI and ns.UI.RefreshSharedList then
+            ns.UI.RefreshSharedList()
+        end
     end
 end
 
@@ -69,6 +79,11 @@ function ns.Player.UnmarkToxic(playerName)
     if norm and ToxicifyDB[norm] then
         ToxicifyDB[norm] = nil
         print("|cffaaaaaaToxicify:|r " .. playerName .. " removed from list.")
+        
+        -- Update list immediately
+        if ns.UI and ns.UI.RefreshSharedList then
+            ns.UI.RefreshSharedList()
+        end
     end
     
     -- Remove from ignore if option is enabled
@@ -104,4 +119,9 @@ function ns.Player.ClearAllPlayers()
         end
     end
     print("|cffaaaaaaToxicify:|r All players removed from list.")
+    
+    -- Update list immediately
+    if ns.UI and ns.UI.RefreshSharedList then
+        ns.UI.RefreshSharedList()
+    end
 end
