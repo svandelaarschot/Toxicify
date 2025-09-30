@@ -6,15 +6,20 @@ ns.Events = {}
 
 -- Update group members (party/raid/M+)
 function ns.Events.UpdateGroupMembers()
+    ns.Core.DebugPrint("UpdateGroupMembers called")
+    
     local toxicPlayers = {}
     local pumperPlayers = {}
     
     -- Check yourself first
     local playerName = GetUnitName("player", true)
+    ns.Core.DebugPrint("Player name: " .. tostring(playerName))
     if playerName and ns.Player.IsToxic(playerName) then
+        ns.Core.DebugPrint("Player is toxic!")
         table.insert(toxicPlayers, playerName)
     end
     if playerName and ns.Player.IsPumper(playerName) then
+        ns.Core.DebugPrint("Player is pumper!")
         table.insert(pumperPlayers, playerName)
     end
     
@@ -42,22 +47,99 @@ function ns.Events.UpdateGroupMembers()
         end
     end
     
+    -- Only set default if not already configured by user
+    if ToxicifyDB.PartyWarningEnabled == nil then
+        ns.Core.DebugPrint("Setting default PartyWarningEnabled to true (was nil)")
+        ToxicifyDB.PartyWarningEnabled = true
+    end
+    
     -- Show warning if toxic/pumper players found and warning is enabled
-    if ToxicifyDB.PartyWarningEnabled and (#toxicPlayers > 0 or #pumperPlayers > 0) then
-        local warningMsg = "|cffff0000[Toxicify Warning]|r "
-        if #toxicPlayers > 0 then
-            warningMsg = warningMsg .. "Toxic players detected: " .. table.concat(toxicPlayers, ", ") .. " "
-        end
-        if #pumperPlayers > 0 then
-            warningMsg = warningMsg .. "Pumper players detected: " .. table.concat(pumperPlayers, ", ")
-        end
-        print(warningMsg)
-        
-        -- Show UI warning
-        if UIErrorsFrame then
-            UIErrorsFrame:AddMessage(warningMsg, 1.0, 0.0, 0.0, 1.0, 1)
+    ns.Core.DebugPrint("PartyWarningEnabled: " .. tostring(ToxicifyDB.PartyWarningEnabled))
+    ns.Core.DebugPrint("ToxicifyDB table dump:")
+    for k, v in pairs(ToxicifyDB) do
+        if type(v) == "boolean" then
+            ns.Core.DebugPrint("  " .. tostring(k) .. " = " .. tostring(v))
         end
     end
+    ns.Core.DebugPrint("Toxic players count: " .. #toxicPlayers)
+    ns.Core.DebugPrint("Pumper players count: " .. #pumperPlayers)
+    
+    if ToxicifyDB.PartyWarningEnabled and (#toxicPlayers > 0 or #pumperPlayers > 0) then
+        -- Show popup warning (only once per session)
+        if not _G.ToxicifyWarningShown then
+            ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
+            _G.ToxicifyWarningShown = true
+        end
+    else
+        ns.Core.DebugPrint("No warning shown - conditions not met")
+    end
+end
+
+-- Show toxic warning popup
+function ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
+    if _G.ToxicifyWarningFrame then
+        _G.ToxicifyWarningFrame:Hide()
+    end
+    
+    local frame = CreateFrame("Frame", "ToxicifyWarningFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    frame:SetSize(400, 300)
+    frame:SetPoint("CENTER")
+    frame:SetFrameStrata("DIALOG")
+    frame:SetFrameLevel(1000)
+    
+    -- Backdrop
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true, tileSize = 32, edgeSize = 16,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+    frame:SetBackdropColor(0, 0, 0, 0.8)
+    
+    -- Title
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -20)
+    title:SetText("|cffff0000⚠ TOXIC PLAYERS DETECTED ⚠|r")
+    
+    -- Content
+    local content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    content:SetPoint("TOP", title, "BOTTOM", 0, -20)
+    content:SetWidth(350)
+    content:SetJustifyH("CENTER")
+    content:SetJustifyV("TOP")
+    
+    local warningText = "|cffff0000WARNING:|r Toxic or pumper players detected in your group!\n\n"
+    
+    if #toxicPlayers > 0 then
+        warningText = warningText .. "|cffff0000Toxic Players:|r\n" .. table.concat(toxicPlayers, ", ") .. "\n\n"
+    end
+    
+    if #pumperPlayers > 0 then
+        warningText = warningText .. "|cff00ff00Pumper Players:|r\n" .. table.concat(pumperPlayers, ", ") .. "\n\n"
+    end
+    
+    warningText = warningText .. "|cffaaaaaaBe cautious when playing with these players.|r"
+    
+    content:SetText(warningText)
+    
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    closeBtn:SetSize(100, 30)
+    closeBtn:SetPoint("BOTTOM", 0, 20)
+    closeBtn:SetText("Close")
+    closeBtn:SetScript("OnClick", function()
+        frame:Hide()
+    end)
+    
+    -- Show the frame
+    frame:Show()
+    
+    -- Auto-hide after 30 seconds
+    C_Timer.After(30, function()
+        if frame and frame:IsVisible() then
+            frame:Hide()
+        end
+    end)
 end
 
 -- Initialize event handlers

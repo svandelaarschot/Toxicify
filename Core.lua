@@ -128,8 +128,13 @@ local function InitializeDefaults()
     if ToxicifyDB.DebugEnabled == nil then
         ToxicifyDB.DebugEnabled = false
     end
+    -- Set default party warning setting
+    ns.Core.DebugPrint("PartyWarningEnabled before: " .. tostring(ToxicifyDB.PartyWarningEnabled))
     if ToxicifyDB.PartyWarningEnabled == nil then
         ToxicifyDB.PartyWarningEnabled = true
+        ns.Core.DebugPrint("Set PartyWarningEnabled to true (was nil)")
+    else
+        ns.Core.DebugPrint("PartyWarningEnabled already exists: " .. tostring(ToxicifyDB.PartyWarningEnabled))
     end
     
     if ToxicifyDB.LuaErrorsEnabled == nil then
