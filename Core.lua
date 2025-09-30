@@ -136,6 +136,13 @@ local function InitializeDefaults()
         ToxicifyDB.LuaErrorsEnabled = false
     end
     
+    -- Check if scriptErrors is enabled in console
+    if GetCVar("scriptErrors") == "1" then
+        ToxicifyDB.LuaErrorsEnabled = true
+    else
+        ToxicifyDB.LuaErrorsEnabled = false
+    end
+    
     if not ToxicifyDB.minimap then
         ToxicifyDB.minimap = { hide = false }
     end
@@ -144,6 +151,14 @@ end
 -- Core initialization
 function ns.Core.Initialize()
     InitializeDefaults()
+    
+    -- Sync Lua errors setting with scriptErrors
+    if ToxicifyDB.LuaErrorsEnabled then
+        SetCVar("scriptErrors", "1")
+    else
+        SetCVar("scriptErrors", "0")
+    end
+    
     if ToxicifyDB.DebugEnabled then
         print("|cff39FF14Toxicify:|r Debug mode is enabled.")
     end

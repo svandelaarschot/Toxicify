@@ -135,6 +135,9 @@ function ns.UI.CreateToxicifyUI()
         scroll:SetVerticalScroll(0)
     end
     f.Refresh = Refresh
+    
+    -- Store reference to this frame for external refresh
+    ns.UI.ToxicUIFrame = f
 
     -- Buttons logic
     addToxicBtn:SetScript("OnClick", function()
@@ -329,6 +332,13 @@ function ns.UI.RefreshSharedList(content, filterText)
     -- Force all children to be visible
     for _, child in ipairs(content.children or {}) do 
         child:Show() 
+    end
+end
+
+-- Trigger refresh for toxic UI
+function ns.UI.TriggerRefresh()
+    if ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
+        ns.UI.ToxicUIFrame:Refresh()
     end
 end
 

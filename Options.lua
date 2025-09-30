@@ -43,11 +43,16 @@ luaErrorsCheck:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -10)
 luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
 luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
 luaErrorsCheck:SetScript("OnClick", function(self)
-    ToxicifyDB.LuaErrorsEnabled = self:GetChecked()
-    if ToxicifyDB.LuaErrorsEnabled then
-        print("|cff39FF14[Toxicify Debug]:|r Lua errors will be shown in chat")
+    local enabled = self:GetChecked()
+    ToxicifyDB.LuaErrorsEnabled = enabled
+    
+    -- Set console scriptErrors based on toggle
+    if enabled then
+        SetCVar("scriptErrors", "1")
+        print("|cff39FF14[Toxicify Debug]:|r Lua errors enabled - /console scriptErrors set to 1")
     else
-        print("|cff39FF14[Toxicify Debug]:|r Lua errors will be hidden")
+        SetCVar("scriptErrors", "0")
+        print("|cff39FF14[Toxicify Debug]:|r Lua errors disabled - /console scriptErrors set to 0")
     end
 end)
 
@@ -57,6 +62,10 @@ generalPanel:SetScript("OnShow", function()
     -- Show/hide Lua errors toggle based on debug mode
     if ToxicifyDB.DebugEnabled then
         luaErrorsCheck:Show()
+        -- Sync toggle with current scriptErrors setting
+        local scriptErrorsEnabled = GetCVar("scriptErrors") == "1"
+        luaErrorsCheck:SetChecked(scriptErrorsEnabled)
+        ToxicifyDB.LuaErrorsEnabled = scriptErrorsEnabled
     else
         luaErrorsCheck:Hide()
     end

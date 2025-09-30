@@ -44,6 +44,16 @@ function ns.Player.MarkPumper(playerName)
         if ns.UI and ns.UI.RefreshSharedList then
             ns.UI.RefreshSharedList()
         end
+        
+        -- Trigger custom event for UI updates
+        if ns.UI and ns.UI.TriggerRefresh then
+            ns.UI.TriggerRefresh()
+        end
+        
+        -- Force refresh toxic UI if it exists
+        if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
+            ns.UI.ToxicUIFrame:Refresh()
+        end
     end
 end
 
@@ -70,6 +80,16 @@ function ns.Player.MarkToxic(playerName)
         if ns.UI and ns.UI.RefreshSharedList then
             ns.UI.RefreshSharedList()
         end
+        
+        -- Trigger custom event for UI updates
+        if ns.UI and ns.UI.TriggerRefresh then
+            ns.UI.TriggerRefresh()
+        end
+        
+        -- Force refresh toxic UI if it exists
+        if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
+            ns.UI.ToxicUIFrame:Refresh()
+        end
     end
 end
 
@@ -83,6 +103,16 @@ function ns.Player.UnmarkToxic(playerName)
         -- Update list immediately
         if ns.UI and ns.UI.RefreshSharedList then
             ns.UI.RefreshSharedList()
+        end
+        
+        -- Trigger custom event for UI updates
+        if ns.UI and ns.UI.TriggerRefresh then
+            ns.UI.TriggerRefresh()
+        end
+        
+        -- Force refresh toxic UI if it exists
+        if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
+            ns.UI.ToxicUIFrame:Refresh()
         end
     end
     
@@ -123,5 +153,15 @@ function ns.Player.ClearAllPlayers()
     -- Update list immediately
     if ns.UI and ns.UI.RefreshSharedList then
         ns.UI.RefreshSharedList()
+    end
+    
+    -- Trigger custom event for UI updates
+    if ns.UI and ns.UI.TriggerRefresh then
+        ns.UI.TriggerRefresh()
+    end
+    
+    -- Force refresh toxic UI if it exists
+    if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
+        ns.UI.ToxicUIFrame:Refresh()
     end
 end

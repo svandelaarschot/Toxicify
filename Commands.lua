@@ -81,10 +81,12 @@ function ns.Commands.Initialize()
             end
             if ToxicifyDB.LuaErrorsEnabled then
                 ToxicifyDB.LuaErrorsEnabled = false
-                print("|cff39FF14Toxicify:|r Lua errors disabled.")
+                SetCVar("scriptErrors", "0")
+                print("|cff39FF14Toxicify:|r Lua errors disabled - /console scriptErrors set to 0")
             else
                 ToxicifyDB.LuaErrorsEnabled = true
-                print("|cff39FF14Toxicify:|r Lua errors enabled.")
+                SetCVar("scriptErrors", "1")
+                print("|cff39FF14Toxicify:|r Lua errors enabled - /console scriptErrors set to 1")
             end
         else
             print("|cff39FF14Toxicify Commands:|r")
