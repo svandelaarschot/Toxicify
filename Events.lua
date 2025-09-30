@@ -101,7 +101,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Title bar for dragging
     local titleBar = CreateFrame("Frame", nil, frame)
-    titleBar:SetSize(380, 30)
+    titleBar:SetSize(380, 35)
     titleBar:SetPoint("TOP", 0, -5)
     titleBar:SetFrameLevel(frame:GetFrameLevel() + 1)
     titleBar:EnableMouse(true)
@@ -117,7 +117,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     local titleBarBg = titleBar:CreateTexture(nil, "BACKGROUND")
     titleBarBg:SetAllPoints()
     titleBarBg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
-    titleBarBg:SetVertexColor(0.5, 0, 0, 0.8)
+    titleBarBg:SetVertexColor(0.2, 0.2, 0.2, 0.9)
     
     -- Addon icon in top-left corner
     local icon = frame:CreateTexture(nil, "OVERLAY")
@@ -146,7 +146,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Content
     local content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    content:SetPoint("TOP", title, "BOTTOM", 0, -20)
+    content:SetPoint("TOP", titleBar, "BOTTOM", 0, -15)
     content:SetWidth(350)
     content:SetJustifyH("CENTER")
     content:SetJustifyV("TOP")
@@ -174,15 +174,10 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Countdown bar
     local countdownBar = CreateFrame("StatusBar", nil, frame)
-    countdownBar:SetSize(360, 8)
-    countdownBar:SetPoint("BOTTOM", 0, 20) -- Moved down
+    countdownBar:SetSize(360, 12)
+    countdownBar:SetPoint("BOTTOM", 0, 30)
     countdownBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     countdownBar:SetStatusBarColor(1, 1, 0, 0.8) -- Yellow
-    
-    -- Ensure PopupTimerSeconds is valid
-    local timerSeconds = ToxicifyDB.PopupTimerSeconds or 25
-    countdownBar:SetMinMaxValues(0, timerSeconds)
-    countdownBar:SetValue(timerSeconds)
     
     -- Countdown bar background
     local countdownBg = countdownBar:CreateTexture(nil, "BACKGROUND")
@@ -190,22 +185,33 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     countdownBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
     countdownBg:SetVertexColor(0.3, 0.3, 0.3, 0.5)
     
+    -- Ensure PopupTimerSeconds is valid
+    local timerSeconds = ToxicifyDB.PopupTimerSeconds or 25
+    countdownBar:SetMinMaxValues(0, timerSeconds)
+    countdownBar:SetValue(timerSeconds)
+    
     -- Countdown text
     local countdownText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    countdownText:SetPoint("BOTTOM", countdownBar, "TOP", 0, 2)
+    countdownText:SetPoint("BOTTOM", countdownBar, "TOP", 0, 5)
     countdownText:SetText("Auto-close in " .. timerSeconds .. " seconds")
+    countdownText:SetTextColor(1, 1, 1, 0.8)
     
-    -- Close button
-    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    closeBtn:SetSize(100, 30)
-    closeBtn:SetPoint("BOTTOM", 0, 20)
-    closeBtn:SetText("Close")
-    closeBtn:SetScript("OnClick", function()
+    -- Leave Group button
+    local leaveBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    leaveBtn:SetSize(120, 30)
+    leaveBtn:SetPoint("BOTTOM", countdownBar, "TOP", 0, 20)
+    leaveBtn:SetText("Leave Group")
+    leaveBtn:SetScript("OnClick", function()
+        if IsInGroup() then
+            C_PartyInfo.LeaveParty()
+            ns.Core.DebugPrint("Left group due to toxic players detected")
+        end
         if frame.countdownTimer then
             frame.countdownTimer:Cancel()
         end
         frame:Hide()
     end)
+    
     
     -- Show the frame
     frame:Show()
@@ -216,9 +222,11 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
         timeLeft = timeLeft - 1
         countdownBar:SetValue(timeLeft)
         countdownText:SetText("Auto-close in " .. timeLeft .. " seconds")
-        
+
         if timeLeft <= 0 then
-            countdownTimer:Cancel()
+            if countdownTimer then
+                countdownTimer:Cancel()
+            end
             frame:Hide()
         end
     end)
