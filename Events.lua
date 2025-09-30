@@ -99,45 +99,30 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     })
     frame:SetBackdropColor(0, 0, 0, 0.8)
     
-    -- Title bar for dragging
-    local titleBar = CreateFrame("Frame", nil, frame)
-    titleBar:SetSize(380, 35)
-    titleBar:SetPoint("TOP", 0, -5)
-    titleBar:SetFrameLevel(frame:GetFrameLevel() + 1)
-    titleBar:EnableMouse(true)
-    titleBar:RegisterForDrag("LeftButton")
-    titleBar:SetScript("OnDragStart", function(self)
+    -- Make frame movable
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", function(self)
         frame:StartMoving()
     end)
-    titleBar:SetScript("OnDragStop", function(self)
+    frame:SetScript("OnDragStop", function(self)
         frame:StopMovingOrSizing()
     end)
     
-    -- Title bar background
-    local titleBarBg = titleBar:CreateTexture(nil, "BACKGROUND")
-    titleBarBg:SetAllPoints()
-    titleBarBg:SetTexture("Interface\\DialogFrame\\UI-DialogBox-Header")
-    titleBarBg:SetVertexColor(0.2, 0.2, 0.2, 0.9)
-    
-    -- Addon icon in top-left corner
-    local icon = frame:CreateTexture(nil, "OVERLAY")
-    icon:SetTexture("Interface\\AddOns\\Toxicify\\Assets\\logo.png")
-    icon:SetSize(24, 24)
-    icon:SetPoint("LEFT", titleBar, "LEFT", 10, 0)
-    
     -- Title
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    title:SetPoint("CENTER", titleBar, "CENTER", 0, 0)
+    title:SetPoint("TOP", 0, -20)
     title:SetText("|cffff0000TOXIC PLAYERS DETECTED|r")
     
-    -- Close button in title bar
-    local titleCloseBtn = CreateFrame("Button", nil, titleBar)
-    titleCloseBtn:SetSize(20, 20)
-    titleCloseBtn:SetPoint("RIGHT", titleBar, "RIGHT", -10, 0)
-    titleCloseBtn:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
-    titleCloseBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
-    titleCloseBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
-    titleCloseBtn:SetScript("OnClick", function()
+    -- Close button
+    local closeBtn = CreateFrame("Button", nil, frame)
+    closeBtn:SetSize(20, 20)
+    closeBtn:SetPoint("TOPRIGHT", -10, -10)
+    closeBtn:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+    closeBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
+    closeBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+    closeBtn:SetScript("OnClick", function()
         if frame.countdownTimer then
             frame.countdownTimer:Cancel()
         end
@@ -146,7 +131,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Content
     local content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    content:SetPoint("TOP", titleBar, "BOTTOM", 0, -15)
+    content:SetPoint("TOP", title, "BOTTOM", 0, -15)
     content:SetWidth(350)
     content:SetJustifyH("CENTER")
     content:SetJustifyV("TOP")
