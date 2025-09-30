@@ -132,6 +132,10 @@ local function InitializeDefaults()
         ToxicifyDB.PartyWarningEnabled = true
     end
     
+    if ToxicifyDB.LuaErrorsEnabled == nil then
+        ToxicifyDB.LuaErrorsEnabled = false
+    end
+    
     if not ToxicifyDB.minimap then
         ToxicifyDB.minimap = { hide = false }
     end

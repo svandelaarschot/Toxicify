@@ -73,34 +73,22 @@ function ns.UI.CreateToxicifyUI()
     addBox:SetPoint("LEFT", playerLabel, "RIGHT", 10, 0)
     addBox:SetAutoFocus(false)
 
-    -- Dropdown voor Toxic/Pumper
-    local roleDrop = CreateFrame("Frame", "ToxicifyRoleDrop", f, "UIDropDownMenuTemplate")
-    roleDrop:SetPoint("LEFT", addBox, "RIGHT", -15, -3)
-    UIDropDownMenu_SetWidth(roleDrop, 100)
-    UIDropDownMenu_SetText(roleDrop, "Toxic")
+    -- Add Toxic button
+    local addToxicBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    addToxicBtn:SetSize(80, 22)
+    addToxicBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
+    addToxicBtn:SetText("Add Toxic")
 
-    UIDropDownMenu_Initialize(roleDrop, function(self, level)
-        local info = UIDropDownMenu_CreateInfo()
-
-        info.text = "Toxic"
-        info.func = function() UIDropDownMenu_SetText(roleDrop, "Toxic") end
-        UIDropDownMenu_AddButton(info)
-
-        info.text = "Pumper"
-        info.func = function() UIDropDownMenu_SetText(roleDrop, "Pumper") end
-        UIDropDownMenu_AddButton(info)
-    end)
-
-    -- Add button
-    local addBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    addBtn:SetSize(60, 22)
-    addBtn:SetPoint("LEFT", roleDrop, "RIGHT", 10, 0)
-    addBtn:SetText("Add")
+    -- Add Pumper button
+    local addPumperBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    addPumperBtn:SetSize(80, 22)
+    addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 10, 0)
+    addPumperBtn:SetText("Add Pumper")
 
     -- Remove all
     local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
     clearBtn:SetSize(100, 22)
-    clearBtn:SetPoint("LEFT", addBtn, "RIGHT", 10, 0)
+    clearBtn:SetPoint("LEFT", addPumperBtn, "RIGHT", 10, 0)
     clearBtn:SetText("Remove All")
 
     -- Auto-completion using shared functionality
@@ -140,22 +128,36 @@ function ns.UI.CreateToxicifyUI()
 
     local function Refresh()
         ns.UI.RefreshSharedList(content, searchBox:GetText():lower())
+        -- Force content to be visible
+        content:Show()
+        scroll:Show()
+        scroll:UpdateScrollChildRect()
+        scroll:SetVerticalScroll(0)
     end
     f.Refresh = Refresh
 
     -- Buttons logic
-    addBtn:SetScript("OnClick", function()
+    addToxicBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
-            local role = UIDropDownMenu_GetText(roleDrop)
-            if role == "Toxic" then
-                ns.Player.MarkToxic(name)
-            else
-                ns.Player.MarkPumper(name)
-            end
+            ns.Player.MarkToxic(name)
             addBox:SetText("")
             suggestionBox:Hide()
             Refresh()
+            -- Force refresh after a small delay
+            C_Timer.After(0.1, function() Refresh() end)
+        end
+    end)
+
+    addPumperBtn:SetScript("OnClick", function()
+        local name = addBox:GetText()
+        if name and name ~= "" then
+            ns.Player.MarkPumper(name)
+            addBox:SetText("")
+            suggestionBox:Hide()
+            Refresh()
+            -- Force refresh after a small delay
+            C_Timer.After(0.1, function() Refresh() end)
         end
     end)
 
@@ -322,6 +324,11 @@ function ns.UI.RefreshSharedList(content, filterText)
             y = y - 28
             count = count + 1
         end
+    end
+    
+    -- Force all children to be visible
+    for _, child in ipairs(content.children or {}) do 
+        child:Show() 
     end
 end
 

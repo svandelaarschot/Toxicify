@@ -59,10 +59,12 @@ function ns.Commands.Initialize()
             if ToxicifyDB.DebugEnabled then
                 ToxicifyDB.DebugEnabled = false
                 print("|cff39FF14Toxicify:|r Debug mode disabled.")
+                print("|cffaaaaaaLua errors toggle is now hidden in settings.|r")
             else
                 ToxicifyDB.DebugEnabled = true
                 print("|cff39FF14Toxicify:|r Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
                 print("|cffaaaaaaDebug messages will appear when you use Toxicify features.|r")
+                print("|cffaaaaaaLua errors toggle is now visible in settings.|r")
             end
         elseif cmd == "partywarning" then
             if ToxicifyDB.PartyWarningEnabled then
@@ -71,6 +73,18 @@ function ns.Commands.Initialize()
             else
                 ToxicifyDB.PartyWarningEnabled = true
                 print("|cff39FF14Toxicify:|r Party warning enabled.")
+            end
+        elseif cmd == "luaerrors" then
+            if not ToxicifyDB.DebugEnabled then
+                print("|cffff0000Toxicify:|r Debug mode must be enabled first. Use /toxic debug")
+                return
+            end
+            if ToxicifyDB.LuaErrorsEnabled then
+                ToxicifyDB.LuaErrorsEnabled = false
+                print("|cff39FF14Toxicify:|r Lua errors disabled.")
+            else
+                ToxicifyDB.LuaErrorsEnabled = true
+                print("|cff39FF14Toxicify:|r Lua errors enabled.")
             end
         else
             print("|cff39FF14Toxicify Commands:|r")
@@ -85,6 +99,7 @@ function ns.Commands.Initialize()
             print("/toxic config                  - Open addon settings (alias)")
             print("/toxic debug                   - Toggle debug mode (shows in main chat)")
             print("/toxic partywarning            - Toggle party warning")
+            print("/toxic luaerrors               - Toggle Lua errors (requires debug mode)")
         end
     end
 end

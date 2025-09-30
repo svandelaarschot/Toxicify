@@ -37,10 +37,29 @@ partyWarningCheck:SetScript("OnClick", function(self)
     ToxicifyDB.PartyWarningEnabled = self:GetChecked()
 end)
 
+-- Lua errors toggle (only visible when debug is enabled)
+local luaErrorsCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
+luaErrorsCheck:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -10)
+luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
+luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
+luaErrorsCheck:SetScript("OnClick", function(self)
+    ToxicifyDB.LuaErrorsEnabled = self:GetChecked()
+    if ToxicifyDB.LuaErrorsEnabled then
+        print("|cff39FF14[Toxicify Debug]:|r Lua errors will be shown in chat")
+    else
+        print("|cff39FF14[Toxicify Debug]:|r Lua errors will be hidden")
+    end
+end)
+
 
 -- Panel OnShow
 generalPanel:SetScript("OnShow", function()
-    -- General panel doesn't need to refresh list anymore
+    -- Show/hide Lua errors toggle based on debug mode
+    if ToxicifyDB.DebugEnabled then
+        luaErrorsCheck:Show()
+    else
+        luaErrorsCheck:Hide()
+    end
 end)
 
 ---------------------------------------------------
