@@ -64,10 +64,10 @@ function ns.Events.UpdateGroupMembers()
     ns.Core.DebugPrint("Toxic players count: " .. #toxicPlayers)
     ns.Core.DebugPrint("Pumper players count: " .. #pumperPlayers)
     
-    if ToxicifyDB.PartyWarningEnabled and (#toxicPlayers > 0 or #pumperPlayers > 0) then
+    if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
         -- Show popup warning (only once per session)
         if not _G.ToxicifyWarningShown then
-            ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
+            ns.Events.ShowToxicWarningPopup(toxicPlayers)
             _G.ToxicifyWarningShown = true
         end
     else
@@ -76,13 +76,13 @@ function ns.Events.UpdateGroupMembers()
 end
 
 -- Show toxic warning popup
-function ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
+function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     if _G.ToxicifyWarningFrame then
         _G.ToxicifyWarningFrame:Hide()
     end
     
     local frame = CreateFrame("Frame", "ToxicifyWarningFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    frame:SetSize(400, 300)
+    frame:SetSize(400, 250)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
     frame:SetFrameLevel(1000)
@@ -96,10 +96,16 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
     })
     frame:SetBackdropColor(0, 0, 0, 0.8)
     
+    -- Addon icon in top-left corner
+    local icon = frame:CreateTexture(nil, "OVERLAY")
+    icon:SetTexture("Interface\\AddOns\\Toxicify\\Assets\\logo.png")
+    icon:SetSize(32, 32)
+    icon:SetPoint("TOPLEFT", 10, -10)
+    
     -- Title
     local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -20)
-    title:SetText("|cffff0000⚠ TOXIC PLAYERS DETECTED ⚠|r")
+    title:SetText("|cffff0000TOXIC PLAYERS DETECTED|r")
     
     -- Content
     local content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -108,19 +114,35 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
     content:SetJustifyH("CENTER")
     content:SetJustifyV("TOP")
     
-    local warningText = "|cffff0000WARNING:|r Toxic or pumper players detected in your group!\n\n"
+    local warningText = "|cffff0000WARNING:|r Toxic players detected in your group!\n\n"
     
     if #toxicPlayers > 0 then
         warningText = warningText .. "|cffff0000Toxic Players:|r\n" .. table.concat(toxicPlayers, ", ") .. "\n\n"
     end
     
-    if #pumperPlayers > 0 then
-        warningText = warningText .. "|cff00ff00Pumper Players:|r\n" .. table.concat(pumperPlayers, ", ") .. "\n\n"
-    end
-    
     warningText = warningText .. "|cffaaaaaaBe cautious when playing with these players.|r"
     
     content:SetText(warningText)
+    
+    -- Countdown bar
+    local countdownBar = CreateFrame("StatusBar", nil, frame)
+    countdownBar:SetSize(360, 8)
+    countdownBar:SetPoint("BOTTOM", 0, 40)
+    countdownBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    countdownBar:SetStatusBarColor(1, 1, 0, 0.8) -- Yellow
+    countdownBar:SetMinMaxValues(0, 10)
+    countdownBar:SetValue(10)
+    
+    -- Countdown bar background
+    local countdownBg = countdownBar:CreateTexture(nil, "BACKGROUND")
+    countdownBg:SetAllPoints()
+    countdownBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    countdownBg:SetVertexColor(0.3, 0.3, 0.3, 0.5)
+    
+    -- Countdown text
+    local countdownText = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    countdownText:SetPoint("BOTTOM", countdownBar, "TOP", 0, 2)
+    countdownText:SetText("Auto-close in 10 seconds")
     
     -- Close button
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
@@ -134,9 +156,15 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers, pumperPlayers)
     -- Show the frame
     frame:Show()
     
-    -- Auto-hide after 30 seconds
-    C_Timer.After(30, function()
-        if frame and frame:IsVisible() then
+    -- Countdown timer
+    local timeLeft = 10
+    local countdownTimer = C_Timer.NewTicker(1, function()
+        timeLeft = timeLeft - 1
+        countdownBar:SetValue(timeLeft)
+        countdownText:SetText("Auto-close in " .. timeLeft .. " seconds")
+        
+        if timeLeft <= 0 then
+            countdownTimer:Cancel()
             frame:Hide()
         end
     end)
