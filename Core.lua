@@ -141,6 +141,11 @@ local function InitializeDefaults()
         ToxicifyDB.LuaErrorsEnabled = false
     end
     
+    -- Popup timer setting
+    if ToxicifyDB.PopupTimerSeconds == nil then
+        ToxicifyDB.PopupTimerSeconds = 25
+    end
+    
     -- Check if scriptErrors is enabled in console
     if GetCVar("scriptErrors") == "1" then
         ToxicifyDB.LuaErrorsEnabled = true
