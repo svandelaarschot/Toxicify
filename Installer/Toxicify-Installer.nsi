@@ -3,7 +3,8 @@
 
 !define APP_NAME "Toxicify WoW Addon"
 !define APP_VERSION "1.0.0"
-!define APP_PUBLISHER "Toxicify Team"
+!define APP_PUBLISHER "Alvarín-Silvermoon"
+!define APP_COMPANY "MythicPlus Rocks"
 !define APP_URL "https://github.com/your-repo/toxicify"
 
 ; Modern UI
@@ -14,6 +15,15 @@ Name "${APP_NAME}"
 OutFile "Toxicify WoW Addon.exe"
 InstallDir "$PROGRAMFILES\${APP_NAME}"
 RequestExecutionLevel admin
+
+; Version Information
+VIProductVersion "${APP_VERSION}.0"
+VIAddVersionKey "ProductName" "${APP_NAME}"
+VIAddVersionKey "ProductVersion" "${APP_VERSION}"
+VIAddVersionKey "CompanyName" "${APP_COMPANY}"
+VIAddVersionKey "LegalCopyright" "© 2025 ${APP_COMPANY}"
+VIAddVersionKey "FileDescription" "${APP_NAME} Installer"
+VIAddVersionKey "FileVersion" "${APP_VERSION}"
 
 ; Interface Settings
 !define MUI_ABORTWARNING
