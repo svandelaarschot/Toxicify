@@ -123,9 +123,26 @@ targetFrameDesc:SetWidth(400)
 targetFrameDesc:SetJustifyH("LEFT")
 targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players")
 
+-- Guild Toast Notifications
+local guildToastCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
+guildToastCheck:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -15)
+guildToastCheck.Text:SetText("Show toast notifications when guild members come online")
+guildToastCheck:SetChecked(ToxicifyDB.GuildToastEnabled or true)
+guildToastCheck:SetScript("OnClick", function(self)
+    ToxicifyDB.GuildToastEnabled = self:GetChecked()
+    ns.Core.DebugPrint("Guild toast notifications " .. (self:GetChecked() and "enabled" or "disabled"))
+end)
+
+-- Guild Toast description
+local guildToastDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+guildToastDesc:SetPoint("TOPLEFT", guildToastCheck, "BOTTOMLEFT", 0, -5)
+guildToastDesc:SetWidth(400)
+guildToastDesc:SetJustifyH("LEFT")
+guildToastDesc:SetText("Shows a toast notification when guild members marked as toxic/pumper come online.")
+
 -- Auto-Close Timer
 local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -15)
+autoCloseLabel:SetPoint("TOPLEFT", guildToastDesc, "BOTTOMLEFT", 0, -15)
 autoCloseLabel:SetText("Auto-Close Timer (seconds):")
 
 -- Auto-Close Timer description

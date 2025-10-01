@@ -45,6 +45,14 @@ function ns.Commands.Initialize()
             else
                 print("|cffff0000Toxicify:|r Events module not loaded!")
             end
+        elseif cmd == "testtoast" or cmd == "testguildtoast" then
+            -- Test the guild toast notification
+            if ns.Events and ns.Events.ShowGuildToast then
+                ns.Events.ShowGuildToast("TestPlayer", "toxic")
+                print("|cff39FF14Toxicify:|r Test guild toast shown!")
+            else
+                print("|cffff0000Toxicify:|r Events module not loaded!")
+            end
         elseif cmd == "settings" or cmd == "config" then
             -- Sluit het huidige Toxicify dialoog als het open is
             if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then

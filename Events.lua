@@ -287,11 +287,102 @@ function ns.Events.UpdateTargetFrame()
     indicator:Show()
 end
 
+-- Check guild members for toxic/pumper status and show toast
+function ns.Events.CheckGuildMemberOnline()
+    if not ToxicifyDB.GuildToastEnabled then
+        return
+    end
+    
+    -- Get guild roster info
+    local numGuildMembers = GetNumGuildMembers()
+    if numGuildMembers == 0 then
+        return
+    end
+    
+    -- Check each guild member
+    for i = 1, numGuildMembers do
+        local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+        
+        if name and online then
+            local fullName = name .. "-" .. GetRealmName()
+            
+            if ns.Player.IsToxic(fullName) then
+                ns.Events.ShowGuildToast(name, "toxic")
+            elseif ns.Player.IsPumper(fullName) then
+                ns.Events.ShowGuildToast(name, "pumper")
+            end
+        end
+    end
+end
+
+-- Show guild member toast notification
+function ns.Events.ShowGuildToast(playerName, status)
+    if not _G.ToxicifyGuildToastFrame then
+        local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+        frame:SetSize(300, 60)
+        frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+        frame:SetFrameStrata("TOOLTIP")
+        frame:SetFrameLevel(1000)
+        frame:Hide()
+        
+        -- Backdrop
+        frame:SetBackdrop({
+            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true, tileSize = 32, edgeSize = 16,
+            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+        })
+        frame:SetBackdropColor(0, 0, 0, 0.8)
+        
+        -- Title
+        frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        frame.title:SetPoint("TOP", 0, -10)
+        frame.title:SetText("Guild Member Online")
+        
+        -- Content
+        frame.content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        frame.content:SetPoint("CENTER", 0, 0)
+        frame.content:SetJustifyH("CENTER")
+        
+        -- Close button
+        frame.closeBtn = CreateFrame("Button", nil, frame)
+        frame.closeBtn:SetSize(20, 20)
+        frame.closeBtn:SetPoint("TOPRIGHT", -10, -10)
+        frame.closeBtn:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+        frame.closeBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
+        frame.closeBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+        frame.closeBtn:SetScript("OnClick", function()
+            frame:Hide()
+        end)
+    end
+    
+    local frame = _G.ToxicifyGuildToastFrame
+    local icon = status == "toxic" and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t"
+    local color = status == "toxic" and "|cffff0000" or "|cff00ff00"
+    local statusText = status == "toxic" and "Toxic Player" or "Pumper"
+    
+    frame.content:SetText(icon .. " " .. color .. playerName .. "|r (" .. statusText .. ")")
+    frame:Show()
+    
+    -- Auto-hide after 5 seconds
+    if frame.hideTimer then
+        frame.hideTimer:Cancel()
+    end
+    frame.hideTimer = C_Timer.NewTimer(5, function()
+        frame:Hide()
+    end)
+end
+
 -- Initialize event handlers
 function ns.Events.Initialize()
     -- Initialize target frame indicator setting
     if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
         ToxicifyDB.TargetFrameIndicatorEnabled = true
+    end
+    
+    -- Initialize guild toast notification setting
+    if ToxicifyDB.GuildToastEnabled == nil then
+        ToxicifyDB.GuildToastEnabled = true
     end
     
     -- Group roster updates
@@ -300,6 +391,13 @@ function ns.Events.Initialize()
     rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     rosterFrame:SetScript("OnEvent", function(self, event, ...)
         ns.Events.UpdateGroupMembers(event)
+    end)
+    
+    -- Guild member online notifications
+    local guildFrame = CreateFrame("Frame")
+    guildFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
+    guildFrame:SetScript("OnEvent", function(self, event, ...)
+        ns.Events.CheckGuildMemberOnline()
     end)
     
     -- Target frame updates
