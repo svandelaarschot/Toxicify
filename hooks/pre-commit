@@ -1,12 +1,21 @@
-@echo off
-REM Toxicify Git Hook Wrapper for GitKraken
-REM This wrapper ensures GitKraken can execute the hook
+#!/bin/sh
+# Pre-commit hook for Toxicify
+# This runs BEFORE a commit
 
-REM Get the directory where this script is located
-set "HOOK_DIR=%~dp0"
+# Set WoW path
+WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 
-REM Run the actual hook script
-call "%HOOK_DIR%pre-commit.cmd"
+# Copy all .lua and .toc files using PowerShell
+powershell.exe -Command "Copy-Item *.lua '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item *.toc '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png '$WOW_PATH' -Force"
 
-REM Exit with the same code as the hook
-exit /b %errorlevel%
+# Copy files to Installer folder
+powershell.exe -Command "Copy-Item *.lua 'Installer' -Force"
+powershell.exe -Command "Copy-Item *.toc 'Installer' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png 'Installer' -Force"
+
+# Build new installer
+powershell.exe -Command "cd Installer; .\Build-Installer-NoDownload.bat"
+
+exit 0

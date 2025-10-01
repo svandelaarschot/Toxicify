@@ -1,26 +1,21 @@
-@echo off
-echo HOOK IS GETRIGGERED > C:\temp\hooktest.txt
-REM === Git pre-push hook (Windows/GitKraken compatible) ===
+#!/bin/sh
+# Pre-push hook for Toxicify
+# This runs BEFORE a push
 
-set "WOW_PATH=D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
-set "INSTALLER_PATH=D:\Development\Toxicify\Installer\Build-Installer-Simple.bat"
-set "LOG_FILE=%~dp0prepush.log"
+# Set WoW path
+WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 
-echo [HOOK] Pre-push started at %date% %time% > "%LOG_FILE%"
+# Copy all .lua and .toc files using PowerShell
+powershell.exe -Command "Copy-Item *.lua '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item *.toc '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png '$WOW_PATH' -Force"
 
-REM 1) Run installer (ignore Git arguments)
-echo [HOOK] Running installer: %INSTALLER_PATH% >> "%LOG_FILE%"
-call "%INSTALLER_PATH%" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-    echo [HOOK] Installer failed, aborting push. >> "%LOG_FILE%"
-    exit /b 1
-)
+# Copy files to Installer folder
+powershell.exe -Command "Copy-Item *.lua 'Installer' -Force"
+powershell.exe -Command "Copy-Item *.toc 'Installer' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png 'Installer' -Force"
 
-REM 2) Copy addon files
-echo [HOOK] Copying addon files to WoW folder... >> "%LOG_FILE%"
-copy "*.lua" "%WOW_PATH%\" >> "%LOG_FILE%" 2>&1
-copy "*.toc" "%WOW_PATH%\" >> "%LOG_FILE%" 2>&1
-copy "Assets\logo.png" "%WOW_PATH%\" >> "%LOG_FILE%" 2>&1
+# Build new installer
+powershell.exe -Command "cd Installer; .\Build-Installer-NoDownload.bat"
 
-echo [HOOK] Pre-push finished successfully. >> "%LOG_FILE%"
 exit 0

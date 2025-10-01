@@ -1,120 +1,21 @@
-@echo off
-setlocal enabledelayedexpansion
+#!/bin/sh
+# Post-commit hook for Toxicify
+# This runs AFTER a successful commit
 
-REM Toxicify Auto-Sync Post-Commit Hook
-REM This runs AFTER a successful commit to sync files
+# Set WoW path
+WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 
-echo Running post-commit sync...
+# Copy all .lua and .toc files using PowerShell
+powershell.exe -Command "Copy-Item *.lua '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item *.toc '$WOW_PATH' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png '$WOW_PATH' -Force"
 
-REM Get the project root directory
-for /f "delims=" %%i in ('git rev-parse --show-toplevel') do set "PROJECT_ROOT=%%i"
-cd /d "%PROJECT_ROOT%"
+# Copy files to Installer folder
+powershell.exe -Command "Copy-Item *.lua 'Installer' -Force"
+powershell.exe -Command "Copy-Item *.toc 'Installer' -Force"
+powershell.exe -Command "Copy-Item Assets/logo.png 'Installer' -Force"
 
-echo Project root: %PROJECT_ROOT%
+# Build new installer
+powershell.exe -Command "cd Installer; .\Build-Installer-NoDownload.bat"
 
-REM Create installer directory if it doesn't exist
-if not exist "Installer" mkdir Installer
-
-echo Syncing addon files to installer directory...
-
-REM Copy all Lua and TOC files to installer directory
-copy "Commands.lua" "Installer\" >nul 2>&1 && echo   Copied: Commands.lua || echo   Commands.lua not found
-copy "Constants.lua" "Installer\" >nul 2>&1 && echo   Copied: Constants.lua || echo   Constants.lua not found
-copy "Core.lua" "Installer\" >nul 2>&1 && echo   Copied: Core.lua || echo   Core.lua not found
-copy "Events.lua" "Installer\" >nul 2>&1 && echo   Copied: Events.lua || echo   Events.lua not found
-copy "GroupFinder.lua" "Installer\" >nul 2>&1 && echo   Copied: GroupFinder.lua || echo   GroupFinder.lua not found
-copy "Minimap.lua" "Installer\" >nul 2>&1 && echo   Copied: Minimap.lua || echo   Minimap.lua not found
-copy "Options.lua" "Installer\" >nul 2>&1 && echo   Copied: Options.lua || echo   Options.lua not found
-copy "Player.lua" "Installer\" >nul 2>&1 && echo   Copied: Player.lua || echo   Player.lua not found
-copy "Toxicify.lua" "Installer\" >nul 2>&1 && echo   Copied: Toxicify.lua || echo   Toxicify.lua not found
-copy "UI.lua" "Installer\" >nul 2>&1 && echo   Copied: UI.lua || echo   UI.lua not found
-copy "Toxicify.toc" "Installer\" >nul 2>&1 && echo   Copied: Toxicify.toc || echo   Toxicify.toc not found
-
-REM Copy logo if it exists
-if exist "Assets\logo.png" (
-    copy "Assets\logo.png" "Installer\" >nul 2>&1 && echo   Copied: logo.png || echo   Could not copy logo.png
-)
-
-echo Files synced to installer directory
-
-echo Syncing addon files to WoW AddOns directory...
-
-REM Define WoW AddOns path
-set "WOW_ADDONS_PATH=D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
-
-REM Check if WoW AddOns directory exists
-if not exist "D:\World of Warcraft\_retail_\Interface\AddOns" (
-    echo WoW AddOns directory not found: D:\World of Warcraft\_retail_\Interface\AddOns
-    echo Please check your WoW installation path
-    goto :skip_wow_sync
-)
-
-REM Create Toxicify addon directory if it doesn't exist
-if not exist "!WOW_ADDONS_PATH!" (
-    mkdir "!WOW_ADDONS_PATH!" >nul 2>&1
-    echo Created WoW AddOns directory: !WOW_ADDONS_PATH!
-)
-
-REM Copy all Lua and TOC files to WoW AddOns directory
-copy "Commands.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Commands.lua || echo   Commands.lua not found
-copy "Constants.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Constants.lua || echo   Constants.lua not found
-copy "Core.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Core.lua || echo   Core.lua not found
-copy "Events.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Events.lua || echo   Events.lua not found
-copy "GroupFinder.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: GroupFinder.lua || echo   GroupFinder.lua not found
-copy "Minimap.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Minimap.lua || echo   Minimap.lua not found
-copy "Options.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Options.lua || echo   Options.lua not found
-copy "Player.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Player.lua || echo   Player.lua not found
-copy "Toxicify.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Toxicify.lua || echo   Toxicify.lua not found
-copy "UI.lua" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: UI.lua || echo   UI.lua not found
-copy "Toxicify.toc" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: Toxicify.toc || echo   Toxicify.toc not found
-
-REM Copy logo if it exists
-if exist "Assets\logo.png" (
-    copy "Assets\logo.png" "!WOW_ADDONS_PATH!\" >nul 2>&1 && echo   Copied to WoW: logo.png || echo   Could not copy logo.png
-)
-
-echo Files synced to WoW AddOns directory
-echo Addon is now available in WoW!
-
-:skip_wow_sync
-
-echo Rebuilding installer...
-
-cd Installer
-
-REM Check if NSIS is available
-where makensis >nul 2>&1
-if %errorlevel% equ 0 (
-    echo NSIS found, building installer...
-    makensis Toxicify-Installer.nsi
-    
-    if %errorlevel% equ 0 (
-        echo Installer built successfully: Toxicify WoW Addon.exe
-        
-        REM Show file size if it exists
-        if exist "Toxicify WoW Addon.exe" (
-            for %%A in ("Toxicify WoW Addon.exe") do (
-                set /a "size=%%~zA/1024"
-                echo Installer size: !size! KB
-            )
-        )
-    ) else (
-        echo Failed to build installer
-        cd ..
-        exit /b 1
-    )
-) else (
-    echo NSIS not found. Installer not rebuilt.
-    echo To enable auto-installer building, install NSIS:
-    echo    - Download from: https://nsis.sourceforge.io/
-    echo    - Or use: choco install nsis
-    echo    - Or use: winget install NSIS.NSIS
-)
-
-cd ..
-
-echo Post-commit sync completed successfully!
-echo Installer files have been updated.
-echo Addon files have been synced to WoW!
-
-exit /b 0
+exit 0
