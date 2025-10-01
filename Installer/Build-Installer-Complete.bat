@@ -2,6 +2,12 @@
 REM Complete installer build with zip creation and cleanup
 echo Building Toxicify Installer with zip files...
 
+REM Create proper icon from logo
+if exist "logo.png" (
+    echo Creating icon from logo...
+    powershell -ExecutionPolicy Bypass -File create-icon.ps1
+)
+
 REM Build the installer
 call Build-Installer-NoDownload.bat
 
