@@ -19,7 +19,7 @@ local function InitializeEditBox(editBox, value, debugName)
     
     -- Force the text to be visible
     editBox:SetCursorPosition(0)
-    editBox:HighlightText(0, -1)
+    -- editBox:HighlightText(0, -1) -- Removed highlight
     editBox:SetCursorPosition(0)
 end
 
@@ -272,7 +272,7 @@ exportBtn:SetText("Export")
 exportBtn:SetScript("OnClick", function()
     local export = ns.Core.ExportList()
     ioBox:SetText(export)
-    ioBox:HighlightText()
+    -- ioBox:HighlightText() -- Removed highlight
     print("|cff39FF14Toxicify:|r List exported to box.")
 end)
 
@@ -593,7 +593,6 @@ C_Timer.After(0.1, function()
     
     -- Force text to be visible immediately
     whisperBox:SetCursorPosition(0)
-    whisperBox:HighlightText(0, -1)
     whisperBox:ClearFocus()
 end)
 
@@ -609,7 +608,6 @@ C_Timer.After(1.0, function()
     
     -- Force text to be visible immediately
     whisperBox:SetCursorPosition(0)
-    whisperBox:HighlightText(0, -1)
     whisperBox:ClearFocus()
 end)
 
@@ -622,7 +620,7 @@ whisperFooter:SetText(ns.Core.GetFooterText())
 -- Root Info Panel
 ---------------------------------------------------
 local rootPanel = CreateFrame("Frame", "ToxicifyRootPanel")
-rootPanel.name = "|cff39FF14Toxicify|r"
+rootPanel.name = "Toxicify"
 
 local titleRoot = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 titleRoot:SetPoint("TOPLEFT", 16, -16)

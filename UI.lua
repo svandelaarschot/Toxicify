@@ -181,11 +181,11 @@ function ns.UI.CreateToxicifyUI()
         -- Open de juiste settings
         if Settings and Settings.OpenToCategory then
             -- Retail (Dragonflight+)
-            Settings.OpenToCategory("|cff39FF14Toxicify|r")
+            Settings.OpenToCategory("Toxicify")
         elseif InterfaceOptionsFrame_OpenToCategory then
             -- Classic/older versions
-            InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
-            InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r") -- double call fixes Blizzard bug
+            InterfaceOptionsFrame_OpenToCategory("Toxicify")
+            InterfaceOptionsFrame_OpenToCategory("Toxicify") -- double call fixes Blizzard bug
         else
             -- Fallback: open interface options
             InterfaceOptionsFrame:Show()
@@ -242,7 +242,6 @@ function ns.UI.RefreshSharedList(content, filterText)
             -- Force text to be visible immediately
             nameBox:SetFontObject("GameFontNormal")
             nameBox:SetCursorPosition(0)
-            nameBox:HighlightText(0, -1)
             nameBox:ClearFocus()
             
             -- Set initial color based on status
@@ -268,7 +267,7 @@ function ns.UI.RefreshSharedList(content, filterText)
                 -- Zorg dat de tekst zichtbaar is
                 nameBox:SetText(name)
                 nameBox:SetCursorPosition(0)
-                nameBox:HighlightText(0, -1)
+                -- nameBox:HighlightText(0, -1) -- Removed highlight
                 nameBox:ClearFocus()
             end
 
@@ -408,12 +407,10 @@ function ns.UI.ShowIOPopup(mode, data)
     local f = _G.ToxicifyIOFrame
     f:Show()
     f.editBox:SetText("")
-    f.editBox:HighlightText()
 
     if mode == "export" then
         f.title:SetText("|cff39FF14Toxicify|r - Export List")
         f.editBox:SetText(ns.Core.ExportList())
-        f.editBox:HighlightText()
         f.actionBtn:SetText("Copy")
         f.actionBtn:SetScript("OnClick", function()
             f.editBox:HighlightText()

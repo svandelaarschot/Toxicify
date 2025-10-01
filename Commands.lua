@@ -18,10 +18,10 @@ function ns.Commands.Initialize()
         elseif cmd == "del" and arg1 then
             ns.Player.UnmarkToxic(arg1)
         elseif cmd == "list" then
-            print("|cff39FF14Toxicify:|r Current list:")
+            ns.Core.DebugPrint("|cff39FF14Toxicify:|r Current list:", true)
             for name, status in pairs(ToxicifyDB) do
                 if status then
-                    print(" - " .. name .. " (" .. status .. ")")
+                    ns.Core.DebugPrint(" - " .. name .. " (" .. status .. ")", true)
                 end
             end
         elseif cmd == "export" then
@@ -41,35 +41,19 @@ function ns.Commands.Initialize()
             local testPlayers = {"TestPlayer1", "TestPlayer2"}
             if ns.Events and ns.Events.ShowToxicWarningPopup then
                 ns.Events.ShowToxicWarningPopup(testPlayers)
-                print("|cff39FF14Toxicify:|r Test warning popup shown!")
-            else
-                print("|cffff0000Toxicify:|r Events module not loaded!")
             end
         elseif cmd == "testtoast" or cmd == "testguildtoast" then
             -- Test the guild toast notification
             if ns.Events and ns.Events.ShowGuildToast then
                 ns.Events.ShowGuildToast("TestPlayer", "toxic")
-                print("|cff39FF14Toxicify:|r Test guild toast shown!")
-            else
-                print("|cffff0000Toxicify:|r Events module not loaded!")
             end
         elseif cmd == "testguild" then
             -- Test guild roster hook
             if GuildRosterFrame then
-                print("|cff39FF14Toxicify:|r Guild roster frame found!")
                 local selection = GetGuildRosterSelection()
                 if selection and selection > 0 then
                     local name = GetGuildRosterInfo(selection)
-                    if name then
-                        print("|cff39FF14Toxicify:|r Selected guild member: " .. name)
-                    else
-                        print("|cffff0000Toxicify:|r No guild member selected")
-                    end
-                else
-                    print("|cffff0000Toxicify:|r No guild member selected")
                 end
-            else
-                print("|cffff0000Toxicify:|r Guild roster frame not found")
             end
         elseif cmd == "settings" or cmd == "config" then
             -- Sluit het huidige Toxicify dialoog als het open is
@@ -79,82 +63,81 @@ function ns.Commands.Initialize()
             
             -- Open de juiste settings en ga direct naar Toxicify tab
             if Settings and Settings.OpenToCategory then
-                -- Retail (Dragonflight+)
-                Settings.OpenToCategory("|cff39FF14Toxicify|r")
-                print("|cff39FF14Toxicify:|r Opening settings...")
+                -- Retail (Dragonflight+) - probeer eerst de nieuwe interface
+                Settings.OpenToCategory("Toxicify")
+                ns.Core.DebugPrint("Opening settings...", true)
             elseif InterfaceOptionsFrame_OpenToCategory then
                 -- Classic/older versions - double call fixes Blizzard bug
-                InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
+                InterfaceOptionsFrame_OpenToCategory("Toxicify")
                 C_Timer.After(0.1, function()
-                    InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
+                    InterfaceOptionsFrame_OpenToCategory("Toxicify")
                 end)
-                print("|cff39FF14Toxicify:|r Opening settings...")
+                ns.Core.DebugPrint("Opening settings...", true)
             else
                 -- Fallback: open interface options
                 InterfaceOptionsFrame:Show()
-                print("|cff39FF14Toxicify:|r Please navigate to the Toxicify section in Interface Options.")
+                ns.Core.DebugPrint("Please navigate to the Toxicify section in Interface Options.")
             end
         elseif cmd == "debug" then
             if ToxicifyDB.DebugEnabled then
                 ToxicifyDB.DebugEnabled = false
-                print("|cff39FF14Toxicify:|r Debug mode disabled.")
-                print("|cffaaaaaaLua errors toggle is now hidden in settings.|r")
+                ns.Core.DebugPrint("Lua errors toggle is now hidden in settings")
             else
                 ToxicifyDB.DebugEnabled = true
-                print("|cff39FF14Toxicify:|r Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
-                print("|cffaaaaaaDebug messages will appear when you use Toxicify features.|r")
-                print("|cffaaaaaaLua errors toggle is now visible in settings.|r")
+                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.", true)
+                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.", true)
+                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.", true)
             end
         elseif cmd == "partywarning" then
             if ToxicifyDB.PartyWarningEnabled then
                 ToxicifyDB.PartyWarningEnabled = false
-                print("|cff39FF14Toxicify:|r Party warning disabled.")
+                ns.Core.DebugPrint("Party warning disabled.", true)
             else
                 ToxicifyDB.PartyWarningEnabled = true
-                print("|cff39FF14Toxicify:|r Party warning enabled.")
+                ns.Core.DebugPrint("Party warning enabled.", true)
             end
         elseif cmd == "luaerrors" then
             if not ToxicifyDB.DebugEnabled then
-                print("|cffff0000Toxicify:|r Debug mode must be enabled first. Use /toxic debug")
+                ns.Core.DebugPrint("Debug mode must be enabled first. Use /toxic debug", true)
                 return
             end
             if ToxicifyDB.LuaErrorsEnabled then
                 ToxicifyDB.LuaErrorsEnabled = false
                 SetCVar("scriptErrors", "0")
-                print("|cff39FF14Toxicify:|r Lua errors disabled - /console scriptErrors set to 0")
+                ns.Core.DebugPrint("Lua errors disabled - /console scriptErrors set to 0", true)
             else
                 ToxicifyDB.LuaErrorsEnabled = true
                 SetCVar("scriptErrors", "1")
-                print("|cff39FF14Toxicify:|r Lua errors enabled - /console scriptErrors set to 1")
+                ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
             end
         elseif cmd == "contextmenu" then
             if ns.UI and ns.UI.AddContextMenuMarking then
                 ns.UI.AddContextMenuMarking()
-                print("|cff39FF14Toxicify:|r Context menu marking activated.")
+                ns.Core.DebugPrint("Context menu marking activated.", true)
             else
-                print("|cffff0000Toxicify:|r Context menu marking not available.")
+                ns.Core.DebugPrint("Context menu marking not available.", true)
             end
         elseif cmd == "testwarning" then
             -- Show warning popup for testing
             local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
             ns.Events.ShowToxicWarningPopup(testToxicPlayers)
-            print("|cff39FF14Toxicify:|r Test warning popup shown.")
+            ns.Core.DebugPrint("Test warning popup shown.", true)
         else
-            print("|cff39FF14Toxicify Commands:|r")
-            print("/toxic add <name-realm>        - Mark player as Toxic")
-            print("/toxic addpumper <name-realm>  - Mark player as Pumper")
-            print("/toxic del <name-realm>        - Remove player from list")
-            print("/toxic list                    - Show current list")
-            print("/toxic export                  - Export list (string)")
-            print("/toxic import <string>         - Import list from string")
-            print("/toxic ui                      - Toggle Toxicify list window")
-            print("/toxic settings                - Open addon settings")
-            print("/toxic config                  - Open addon settings (alias)")
-            print("/toxic debug                   - Toggle debug mode (shows in main chat)")
-            print("/toxic partywarning            - Toggle party warning")
-            print("/toxic luaerrors               - Toggle Lua errors (requires debug mode)")
-            print("/toxic contextmenu             - Activate context menu marking")
-            print("/toxic testwarning             - Show test warning popup")
+            ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
+            ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
+            ns.Core.DebugPrint("/toxic addpumper <name-realm>  - Mark player as Pumper", true)
+            ns.Core.DebugPrint("/toxic del <name-realm>        - Remove player from list", true)
+            ns.Core.DebugPrint("/toxic list                    - Show current list", true)
+            ns.Core.DebugPrint("/toxic export                  - Export list (string)", true)
+            ns.Core.DebugPrint("/toxic import <string>         - Import list from string", true)
+            ns.Core.DebugPrint("/toxic ui                      - Toggle Toxicify list window", true)
+            ns.Core.DebugPrint("/toxic settings                - Open addon settings", true)
+            ns.Core.DebugPrint("/toxic config                  - Open addon settings (alias)", true)
+            ns.Core.DebugPrint("/toxic debug                   - Toggle debug mode (shows in main chat)", true)
+            ns.Core.DebugPrint("/toxic partywarning            - Toggle party warning", true)
+            ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
+            ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
+            ns.Core.DebugPrint("/toxic testwarning             - Show test warning popup", true)
         end
     end
 end

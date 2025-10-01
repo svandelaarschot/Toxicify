@@ -10,9 +10,9 @@ end
 ns.Core = {}
 
 -- Debug helper function
-function ns.Core.DebugPrint(message)
-    -- Only print if debug is explicitly enabled
-    if ToxicifyDB and ToxicifyDB.DebugEnabled == true then
+function ns.Core.DebugPrint(message, forcePrint)
+    -- Only print if debug is explicitly enabled OR if forcePrint is true
+    if (ToxicifyDB and ToxicifyDB.DebugEnabled == true) or forcePrint then
         print("|cff39FF14[Toxicify DEBUG]|r " .. message)
     end
 end

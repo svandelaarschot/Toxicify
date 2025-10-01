@@ -16,6 +16,16 @@ function ns.Events.UpdateGroupMembers(event)
         return
     end
     
+    -- Check if we're in a Mythic+ dungeon and if the key is already activated
+    if C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive() then
+        local challengeInfo = C_ChallengeMode.GetActiveKeystoneInfo()
+        if challengeInfo and challengeInfo.active then
+            -- Skip warning popup if M+ key is already activated
+            ns.Core.DebugPrint("Mythic+ key is already activated, skipping warning popup")
+            return
+        end
+    end
+    
     local toxicPlayers = {}
     local pumperPlayers = {}
     
@@ -399,8 +409,31 @@ function ns.Events.Initialize()
     local rosterFrame = CreateFrame("Frame")
     rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    rosterFrame:RegisterEvent("CHALLENGE_MODE_START")
+    rosterFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+    rosterFrame:RegisterEvent("CHALLENGE_MODE_RESET")
+    rosterFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     rosterFrame:SetScript("OnEvent", function(self, event, ...)
-        ns.Events.UpdateGroupMembers(event)
+        if event == "CHALLENGE_MODE_START" then
+            ns.Core.DebugPrint("Mythic+ key activated - no warning popup")
+            -- No warning popup when M+ key is activated
+        elseif event == "CHALLENGE_MODE_COMPLETED" or event == "CHALLENGE_MODE_RESET" then
+            -- No warning popup when M+ ends
+        elseif event == "ZONE_CHANGED_NEW_AREA" then
+            -- Check if we're entering a M+ dungeon but key not yet activated
+            local zoneName = GetZoneText()
+            if zoneName and (zoneName:find("Mythic") or zoneName:find("Challenge")) then
+                -- Check if we're in a group and M+ key is not yet activated
+                if IsInGroup() and C_ChallengeMode and not C_ChallengeMode.IsChallengeModeActive() then
+                    ns.Core.DebugPrint("Entering M+ dungeon area - showing warning popup before key activation")
+                    C_Timer.After(2, function() -- Delay to ensure we're fully loaded
+                        ns.Events.UpdateGroupMembers("ZONE_CHANGED_NEW_AREA")
+                    end)
+                end
+            end
+        else
+            ns.Events.UpdateGroupMembers(event)
+        end
     end)
     
     -- Guild member online notifications
