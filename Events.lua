@@ -372,7 +372,7 @@ function ns.Events.Initialize()
             local playerName = GetUnitName(contextData.unit, true)
             if not playerName then return end
 
-            local toxicSubmenu = rootDescription:CreateButton("Toxicify")
+            local toxicSubmenu = rootDescription:CreateSubmenu("Toxicify")
             toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
             toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.Player.MarkPumper(playerName) end)
             toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
@@ -384,6 +384,10 @@ function ns.Events.Initialize()
         Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
+        
+        -- Battle.net friends
+        Menu.ModifyMenu("MENU_UNIT_BNET_FRIEND", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_BATTLE_NET_FRIEND", AddToxicifyContextMenu)
         
         -- Party members (specific slots)
         for i = 1, 4 do
