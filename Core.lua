@@ -17,6 +17,11 @@ function ns.Core.DebugPrint(message)
     end
 end
 
+-- General footer function
+function ns.Core.GetFooterText()
+    return "|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r"
+end
+
 -- Shared auto-completion functionality
 function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
     -- Suggestion box for auto-completion

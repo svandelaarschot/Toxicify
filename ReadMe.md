@@ -187,4 +187,4 @@ Enable debug mode with `/toxic debug` to see detailed information about:
 
 ***
 
-⚔️ **Created by Alvarín-Silvermoon (EU)**
+⚔️ **Created by Alvarín-Silvermoon**

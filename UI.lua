@@ -202,7 +202,7 @@ function ns.UI.CreateToxicifyUI()
     -- Footer
     local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     footer:SetPoint("BOTTOMLEFT", 20, 20)
-    footer:SetText("|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r")
+    footer:SetText(ns.Core.GetFooterText())
 end
 
 -- Refresh the shared list
@@ -393,6 +393,11 @@ function ns.UI.ShowIOPopup(mode, data)
         f.actionBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
         f.actionBtn:SetSize(100, 22)
         f.actionBtn:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
+
+        -- Footer
+        local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        footer:SetPoint("BOTTOMLEFT", 20, 20)
+        footer:SetText(ns.Core.GetFooterText())
 
         _G.ToxicifyIOFrame = f
     end

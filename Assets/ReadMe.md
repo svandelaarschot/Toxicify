@@ -96,4 +96,4 @@ Share lists with guildmates to keep groups smooth.
 
 Auto-ignore toxic players to never see them again.
 
-⚔️ Created by Alvarín-Silvermoon (EU)
+⚔️ Created by Alvarín-Silvermoon - v2025
