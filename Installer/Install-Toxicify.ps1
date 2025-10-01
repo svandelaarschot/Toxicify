@@ -29,11 +29,24 @@ function Test-Administrator {
 # Function to find WoW installations
 function Find-WoWInstallations {
     $commonPaths = @(
+        # Retail WoW paths
         "C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns",
         "C:\Program Files\World of Warcraft\_retail_\Interface\AddOns",
         "D:\World of Warcraft\_retail_\Interface\AddOns",
         "E:\World of Warcraft\_retail_\Interface\AddOns",
-        "F:\World of Warcraft\_retail_\Interface\AddOns"
+        "F:\World of Warcraft\_retail_\Interface\AddOns",
+        # Classic WoW paths
+        "C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns",
+        "C:\Program Files\World of Warcraft\_classic_\Interface\AddOns",
+        "D:\World of Warcraft\_classic_\Interface\AddOns",
+        "E:\World of Warcraft\_classic_\Interface\AddOns",
+        "F:\World of Warcraft\_classic_\Interface\AddOns",
+        # Classic Era WoW paths
+        "C:\Program Files (x86)\World of Warcraft\_classic_era_\Interface\AddOns",
+        "C:\Program Files\World of Warcraft\_classic_era_\Interface\AddOns",
+        "D:\World of Warcraft\_classic_era_\Interface\AddOns",
+        "E:\World of Warcraft\_classic_era_\Interface\AddOns",
+        "F:\World of Warcraft\_classic_era_\Interface\AddOns"
     )
     
     $foundPaths = @()

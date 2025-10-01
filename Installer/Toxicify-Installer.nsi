@@ -31,6 +31,7 @@ RequestExecutionLevel admin
     !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
 !endif
 !insertmacro MUI_PAGE_DIRECTORY
+!define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify will be installed to your World of Warcraft AddOns folder.$\r$\n$\r$\nIf you have multiple WoW installations, please select the correct one.$\r$\n$\r$\nThe installer has automatically detected the best location."
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
@@ -44,10 +45,9 @@ RequestExecutionLevel admin
 
 ; Installer Sections
 Section "Toxicify Addon" SecMain
+    ; Create the addon directory
+    CreateDirectory "$INSTDIR"
     SetOutPath "$INSTDIR"
-    
-    ; Create AddOns directory structure
-    CreateDirectory "$INSTDIR\Interface\AddOns\Toxicify"
     
     ; Install only .lua and .toc files
     File "Commands.lua"
@@ -93,7 +93,7 @@ Section "Toxicify Addon" SecMain
     !endif
     
     ; Show success message
-    MessageBox MB_OK "Toxicify WoW Addon has been successfully installed!$\r$\n$\r$\nThe addon will appear in your WoW AddOns list.$\r$\nYou can uninstall it from Windows Programs and Features."
+    MessageBox MB_OK "Toxicify WoW Addon has been successfully installed!$\r$\n$\r$\nInstallation location: $INSTDIR$\r$\n$\r$\nThe addon will appear in your WoW AddOns list.$\r$\nYou can uninstall it from Windows Programs and Features."
 SectionEnd
 
 ; Uninstaller Section
@@ -134,23 +134,91 @@ SectionEnd
 ; Function to detect WoW installation
 Function DetectWoW
     ; Check common WoW installation paths
+    ; Retail WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns" 0 +3
         StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
         Return
     
+    IfFileExists "$PROGRAMFILES64\World of Warcraft\_retail_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        Return
+    
+    ; Classic WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_classic_\Interface\AddOns" 0 +3
         StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_\Interface\AddOns\Toxicify"
         Return
     
+    IfFileExists "$PROGRAMFILES64\World of Warcraft\_classic_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_\Interface\AddOns\Toxicify"
+        Return
+    
+    ; Classic Era WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_classic_era_\Interface\AddOns" 0 +3
         StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_era_\Interface\AddOns\Toxicify"
         Return
     
-    ; Default to Program Files if not found
-    StrCpy $INSTDIR "$PROGRAMFILES\${APP_NAME}"
+    IfFileExists "$PROGRAMFILES64\World of Warcraft\_classic_era_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_era_\Interface\AddOns\Toxicify"
+        Return
+    
+    ; Check common alternative drive locations
+    IfFileExists "D:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        Return
+    
+    IfFileExists "E:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "E:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        Return
+    
+    IfFileExists "F:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
+        StrCpy $INSTDIR "F:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        Return
+    
+    ; If no WoW installation found, show error and ask user
+    MessageBox MB_YESNO "No World of Warcraft installation detected.$\r$\n$\r$\nWould you like to manually select the WoW AddOns folder?" IDYES ManualSelect IDNO DefaultInstall
+    
+    ManualSelect:
+        ; Let user browse for WoW AddOns folder
+        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        Return
+    
+    DefaultInstall:
+        ; Default to Program Files if user cancels
+        StrCpy $INSTDIR "$PROGRAMFILES\${APP_NAME}"
+        Return
+FunctionEnd
+
+; Function to validate installation directory
+Function ValidateInstallDir
+    ; Check if the directory looks like a WoW AddOns folder
+    StrCpy $R0 "$INSTDIR"
+    
+    ; If it contains "AddOns" in the path, it's likely correct
+    StrCpy $R1 "$INSTDIR" "" -7
+    StrCmp $R1 "\AddOns" PathValid PathInvalid
+    
+    PathValid:
+        Return
+        
+    PathInvalid:
+        ; Check if it's the default Program Files path
+        StrCmp $INSTDIR "$PROGRAMFILES\${APP_NAME}" DefaultPath ManualPath
+        
+    DefaultPath:
+        ; This is the fallback path, which is OK
+        Return
+        
+    ManualPath:
+        ; Ask user if this is correct
+        MessageBox MB_YESNO "The selected directory doesn't appear to be a WoW AddOns folder.$\r$\n$\r$\nSelected: $INSTDIR$\r$\n$\r$\nIs this correct?" IDYES PathValid IDNO PathInvalid
 FunctionEnd
 
 ; Initialize installer
 Function .onInit
     Call DetectWoW
+FunctionEnd
+
+; Validate directory before installation
+Function .onVerifyInstDir
+    Call ValidateInstallDir
 FunctionEnd

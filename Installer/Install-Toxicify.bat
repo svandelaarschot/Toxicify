@@ -22,6 +22,16 @@ set "WOW_PATHS[1]=C:\Program Files\World of Warcraft\_retail_\Interface\AddOns"
 set "WOW_PATHS[2]=D:\World of Warcraft\_retail_\Interface\AddOns"
 set "WOW_PATHS[3]=E:\World of Warcraft\_retail_\Interface\AddOns"
 set "WOW_PATHS[4]=F:\World of Warcraft\_retail_\Interface\AddOns"
+set "WOW_PATHS[5]=C:\Program Files (x86)\World of Warcraft\_classic_\Interface\AddOns"
+set "WOW_PATHS[6]=C:\Program Files\World of Warcraft\_classic_\Interface\AddOns"
+set "WOW_PATHS[7]=D:\World of Warcraft\_classic_\Interface\AddOns"
+set "WOW_PATHS[8]=E:\World of Warcraft\_classic_\Interface\AddOns"
+set "WOW_PATHS[9]=F:\World of Warcraft\_classic_\Interface\AddOns"
+set "WOW_PATHS[10]=C:\Program Files (x86)\World of Warcraft\_classic_era_\Interface\AddOns"
+set "WOW_PATHS[11]=C:\Program Files\World of Warcraft\_classic_era_\Interface\AddOns"
+set "WOW_PATHS[12]=D:\World of Warcraft\_classic_era_\Interface\AddOns"
+set "WOW_PATHS[13]=E:\World of Warcraft\_classic_era_\Interface\AddOns"
+set "WOW_PATHS[14]=F:\World of Warcraft\_classic_era_\Interface\AddOns"
 
 :: Find existing WoW installations
 echo Searching for World of Warcraft installations...
@@ -30,7 +40,7 @@ echo.
 set "FOUND_PATHS="
 set "PATH_COUNT=0"
 
-for /L %%i in (0,1,4) do (
+for /L %%i in (0,1,14) do (
     if exist "!WOW_PATHS[%%i]!" (
         set /a PATH_COUNT+=1
         set "FOUND_PATHS=!FOUND_PATHS!%%i "

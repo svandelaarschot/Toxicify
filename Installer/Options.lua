@@ -6,7 +6,7 @@ local function InitializeEditBox(editBox, value, debugName)
     if not editBox then return end
     
     local currentValue = value or ""
-    if debugName then
+    if debugName and ToxicifyDB and ToxicifyDB.DebugEnabled == true then
         print("|cff39FF14[Toxicify DEBUG]|r " .. debugName .. " value: " .. tostring(currentValue))
     end
     
@@ -89,18 +89,6 @@ partyWarningDesc:SetWidth(400)
 partyWarningDesc:SetJustifyH("LEFT")
 partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
 
--- Auto-Close Timer
-local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -15)
-autoCloseLabel:SetText("Auto-Close Timer (seconds):")
-
--- Auto-Close Timer description
-local autoCloseDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-autoCloseDesc:SetPoint("TOPLEFT", autoCloseLabel, "BOTTOMLEFT", 0, -5)
-autoCloseDesc:SetWidth(400)
-autoCloseDesc:SetJustifyH("LEFT")
-autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
-
 -- Target Frame Indicator
 local targetFrameCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
 targetFrameCheck:SetPoint("TOPLEFT", partyWarningDesc, "BOTTOMLEFT", 0, -15)
@@ -135,39 +123,52 @@ targetFrameDesc:SetWidth(400)
 targetFrameDesc:SetJustifyH("LEFT")
 targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players")
 
-local autoCloseEditBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
-autoCloseEditBox:SetPoint("TOPLEFT", autoCloseDesc, "BOTTOMLEFT", 0, -5)
-autoCloseEditBox:SetSize(80, 20)
-autoCloseEditBox:SetAutoFocus(false)
-autoCloseEditBox:SetNumeric(true)
-autoCloseEditBox:SetMaxLetters(3)
+-- Auto-Close Timer
+local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -15)
+autoCloseLabel:SetText("Auto-Close Timer (seconds):")
 
--- Initialize immediately after creation
-InitializeEditBox(autoCloseEditBox, ToxicifyDB.PopupTimerSeconds or 25, "Auto-Close timer")
+-- Auto-Close Timer description
+local autoCloseDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+autoCloseDesc:SetPoint("TOPLEFT", autoCloseLabel, "BOTTOMLEFT", 0, -5)
+autoCloseDesc:SetWidth(400)
+autoCloseDesc:SetJustifyH("LEFT")
+autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
 
-autoCloseEditBox:SetScript("OnTextChanged", function(self)
-    local value = tonumber(self:GetText())
-    if value and value > 0 and value <= 300 then
-        ToxicifyDB.PopupTimerSeconds = value
-        ns.Core.DebugPrint("Auto-Close timer set to: " .. value .. " seconds")
-        -- Update description with new value (using the local variable)
-        if autoCloseDesc then
-            autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
-        end
-    end
-end)
-autoCloseEditBox:SetScript("OnEnterPressed", function(self)
-    self:ClearFocus()
-end)
-autoCloseEditBox:SetScript("OnEscapePressed", function(self)
-    self:ClearFocus()
+-- Auto-Close timer slider
+local autoCloseSlider = CreateFrame("Slider", nil, generalPanel, "OptionsSliderTemplate")
+autoCloseSlider:SetPoint("TOPLEFT", autoCloseDesc, "BOTTOMLEFT", 0, -10)
+autoCloseSlider:SetSize(200, 20)
+autoCloseSlider:SetMinMaxValues(1, 300)
+autoCloseSlider:SetValue(ToxicifyDB.PopupTimerSeconds or 25)
+autoCloseSlider:SetValueStep(1)
+autoCloseSlider:SetObeyStepOnDrag(true)
+
+-- Slider text
+autoCloseSlider.Low:SetText("1s")
+autoCloseSlider.High:SetText("300s")
+
+-- Value display
+local autoCloseValue = autoCloseSlider:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+autoCloseValue:SetPoint("LEFT", autoCloseSlider, "RIGHT", 10, 0)
+autoCloseValue:SetText(tostring(ToxicifyDB.PopupTimerSeconds or 25) .. "s")
+
+-- Initialize slider
+autoCloseSlider:SetScript("OnValueChanged", function(self, value)
+    local intValue = math.floor(value + 0.5)
+    ToxicifyDB.PopupTimerSeconds = intValue
+    autoCloseValue:SetText(intValue .. "s")
+    ns.Core.DebugPrint("Auto-Close timer set to: " .. intValue .. " seconds")
 end)
 
 -- Lua errors toggle (only visible when debug is enabled)
 local luaErrorsCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-luaErrorsCheck:SetPoint("TOPLEFT", autoCloseEditBox, "BOTTOMLEFT", 0, -15)
+luaErrorsCheck:SetPoint("TOPLEFT", autoCloseSlider, "BOTTOMLEFT", 0, -15)
 luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
 luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
+-- Lua Errors description
+local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+
 luaErrorsCheck:SetScript("OnClick", function(self)
     local enabled = self:GetChecked()
     ToxicifyDB.LuaErrorsEnabled = enabled
@@ -184,9 +185,6 @@ luaErrorsCheck:SetScript("OnClick", function(self)
         print("|cff39FF14[Toxicify Debug]:|r Lua errors disabled - /console scriptErrors set to 0")
     end
 end)
-
--- Lua Errors description
-local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 luaErrorsDesc:SetPoint("TOPLEFT", luaErrorsCheck, "BOTTOMLEFT", 0, -5)
 luaErrorsDesc:SetWidth(400)
 luaErrorsDesc:SetJustifyH("LEFT")
@@ -207,9 +205,14 @@ generalPanel:SetScript("OnShow", function()
     targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
     targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players.")
     
+    -- Initialize Auto-Close timer slider
+    autoCloseSlider:SetValue(ToxicifyDB.PopupTimerSeconds or 25)
+    autoCloseValue:SetText(tostring(ToxicifyDB.PopupTimerSeconds or 25) .. "s")
+    
     -- Show/hide Lua errors toggle based on debug mode
     if ToxicifyDB.DebugEnabled then
         luaErrorsCheck:Show()
+        luaErrorsDesc:Show()
         -- Sync toggle with current scriptErrors setting
         local scriptErrorsEnabled = GetCVar("scriptErrors") == "1"
         luaErrorsCheck:SetChecked(scriptErrorsEnabled)
@@ -218,6 +221,7 @@ generalPanel:SetScript("OnShow", function()
         luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled.")
     else
         luaErrorsCheck:Hide()
+        luaErrorsDesc:Hide()
     end
 end)
 
@@ -499,8 +503,9 @@ C_Timer.After(0.5, function()
     local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
     InitializeEditBox(whisperBox, currentMsg, "Delayed whisper message")
     
-    -- Also initialize Auto-Close timer with delay
-    InitializeEditBox(autoCloseEditBox, ToxicifyDB.PopupTimerSeconds or 25, "Delayed Auto-Close timer")
+    -- Also initialize Auto-Close timer slider with delay
+    autoCloseSlider:SetValue(ToxicifyDB.PopupTimerSeconds or 25)
+    autoCloseValue:SetText(tostring(ToxicifyDB.PopupTimerSeconds or 25) .. "s")
 end)
 
 whisperPanel:SetScript("OnShow", function()
