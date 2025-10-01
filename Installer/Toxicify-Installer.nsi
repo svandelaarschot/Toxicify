@@ -43,7 +43,7 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
     !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
 !endif
 !insertmacro MUI_PAGE_DIRECTORY
-!define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify is a powerful World of Warcraft addon that enhances your gameplay experience.$\r$\n$\r$\nFeatures:$\r$\n• Advanced player tracking and monitoring$\r$\n• Customizable UI with modern design$\r$\n• Group finder integration$\r$\n• Real-time player statistics$\r$\n• Easy-to-use configuration options$\r$\n$\r$\nThe installer will install Toxicify to your WoW AddOns folder. If you have multiple WoW installations, please select the correct one."
+!define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify is a powerful World of Warcraft addon that enhances your gameplay experience.$\r$\n$\r$\nFeatures:$\r$\n• Advanced player tracking and monitoring$\r$\n• Customizable UI with modern design$\r$\n• Group finder integration$\r$\n• Real-time player statistics$\r$\n• Easy-to-use configuration options$\r$\n$\r$\nThe installer will create a 'Toxicify' folder in your WoW AddOns directory.$\r$\nIf you have multiple WoW installations, please select the correct AddOns folder."
 !define MUI_DIRECTORYPAGE_VALIDATE ""
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -140,9 +140,17 @@ FunctionEnd
 ; Function to validate installation directory
 Function ValidateInstallDir
     ; Always allow installation - we'll create the directory if needed
-    ; Enable the Install button by setting a valid path
-    StrCpy $INSTDIR "$INSTDIR"
-    Return
+    ; Ensure the path ends with Toxicify subfolder
+    StrCpy $R0 "$INSTDIR"
+    StrCpy $R1 "$INSTDIR" "" -8
+    StrCmp $R1 "\Toxicify" PathValid AddToxicify
+    
+    AddToxicify:
+        ; Add Toxicify subfolder if not present
+        StrCpy $INSTDIR "$INSTDIR\Toxicify"
+    
+    PathValid:
+        Return
 FunctionEnd
 
 ; Initialize installer
