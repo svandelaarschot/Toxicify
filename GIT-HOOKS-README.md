@@ -1,162 +1,105 @@
-# 🔧 Toxicify Git Hooks
+# Toxicify Git Hooks
 
-Deze repository bevat automatische Git hooks die de addon bestanden sync en een nieuwe installer bouwt wanneer er wijzigingen zijn in Lua bestanden.
+Deze Git hooks zorgen voor automatische sync en installer build bij elke commit en push.
 
-## 📋 Beschikbare Hooks
+## 🎯 Wat De Hooks Doen
 
-### 1. **pre-commit** (Unix/Linux/macOS)
-- **Bestand**: `.git/hooks/pre-commit`
-- **Beschrijving**: Bash script voor Unix-achtige systemen
-- **Gebruik**: Automatisch actief na installatie
+### Pre-commit Hook
+- **Wanneer:** Draait VOOR elke commit
+- **Wat:** 
+  - Kopieert alle `.lua` bestanden naar WoW AddOns folder
+  - Kopieert alle `.toc` bestanden naar WoW AddOns folder
+  - Kopieert `logo.png` naar WoW AddOns folder
+  - Kopieert alle bestanden naar Installer folder
+  - Bouwt nieuwe installer automatisch
 
-### 2. **pre-commit.ps1** (Windows PowerShell)
-- **Bestand**: `.git/hooks/pre-commit.ps1`
-- **Beschrijving**: PowerShell script voor Windows
-- **Gebruik**: Handmatig activeren (zie instructies hieronder)
+### Post-commit Hook
+- **Wanneer:** Draait NA elke commit
+- **Wat:** Zelfde als pre-commit hook
 
-### 3. **pre-commit.bat** (Windows Batch)
-- **Bestand**: `.git/hooks/pre-commit.bat`
-- **Beschrijving**: Batch script voor Windows
-- **Gebruik**: Handmatig activeren (zie instructies hieronder)
+### Pre-push Hook
+- **Wanneer:** Draait VOOR elke push
+- **Wat:** Zelfde als pre-commit hook
 
-## 🚀 Installatie en Gebruik
+## 📁 Bestemmingen
 
-### Voor Unix/Linux/macOS:
-```bash
-# De hook is al geïnstalleerd en actief
-# Geen extra stappen nodig
+**WoW AddOns Folder:**
+```
+D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\
 ```
 
-### Voor Windows:
-
-#### Optie 1: CMD (Aanbevolen voor GitKraken)
-```cmd
-# Kopieer de CMD versie naar de juiste locatie (werkt met GitKraken)
-copy ".git\hooks\pre-commit.cmd" ".git\hooks\pre-commit"
+**Installer Folder:**
+```
+D:\Development\Toxicify\Installer\
 ```
 
-#### Optie 2: PowerShell
+## 🔧 Technische Details
+
+### Hook Bestanden
+- `.git/hooks/pre-commit` - Pre-commit hook
+- `.git/hooks/post-commit` - Post-commit hook  
+- `.git/hooks/pre-push` - Pre-push hook
+
+### PowerShell Commands
+De hooks gebruiken PowerShell voor bestandskopie:
 ```powershell
-# Kopieer de PowerShell versie naar de juiste locatie
-Copy-Item ".git/hooks/pre-commit.ps1" ".git/hooks/pre-commit" -Force
+Copy-Item *.lua 'DESTINATION' -Force
+Copy-Item *.toc 'DESTINATION' -Force
+Copy-Item Assets/logo.png 'DESTINATION' -Force
 ```
 
-#### Optie 3: Batch File
-```cmd
-# Kopieer de batch versie naar de juiste locatie
-copy ".git\hooks\pre-commit.bat" ".git\hooks\pre-commit"
-```
-
-### Voor GitKraken Gebruikers:
-
-#### Optie A: Pre-commit Hook (Aanbevolen)
-De **CMD versie** (`.git/hooks/pre-commit.cmd`) is speciaal geoptimaliseerd voor GitKraken en lost het "pre-commit isn't executable" probleem op.
-
-#### Optie B: Post-commit Hook (Alternatief)
-Als de pre-commit hook nog steeds problemen geeft, kun je de **post-commit hook** gebruiken:
-```cmd
-# De post-commit hook draait NA een succesvolle commit
-# Dit voorkomt het "isn't executable" probleem
-```
-**Voordeel**: Draait na de commit, dus geen blokkering
-**Nadeel**: Bestanden worden pas gesynct na de commit
-
-## 🎯 Wat Doet de Hook?
-
-Wanneer je een commit maakt met wijzigingen in `.lua` bestanden, zal de hook automatisch:
-
-1. **🔍 Detecteren** van Lua bestand wijzigingen
-2. **📋 Syncen** van alle addon bestanden naar de `Installer/` directory
-3. **🎮 Syncen** van alle addon bestanden naar de WoW AddOns directory
-4. **🔨 Bouwen** van een nieuwe installer (als NSIS beschikbaar is)
-5. **📝 Toevoegen** van de bijgewerkte bestanden aan de commit
-
-## 📁 Bestanden die Worden Gesynct
-
-### Naar Installer Directory:
-- `Commands.lua`
-- `Constants.lua`
-- `Core.lua`
-- `Events.lua`
-- `GroupFinder.lua`
-- `Minimap.lua`
-- `Options.lua`
-- `Player.lua`
-- `Toxicify.lua`
-- `UI.lua`
-- `Toxicify.toc`
-- `Assets/logo.png` (als beschikbaar)
-
-### Naar WoW AddOns Directory:
-- Alle bovenstaande bestanden worden ook gesynct naar: `D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify`
-- De addon is direct beschikbaar in WoW na een commit!
-
-## 🔧 Vereisten
-
-### Voor Automatische Installer Bouw:
-- **NSIS** moet geïnstalleerd zijn
-- **Download**: https://nsis.sourceforge.io/
-- **Of via package manager**:
-  - Chocolatey: `choco install nsis`
-  - Winget: `winget install NSIS.NSIS`
-  - Scoop: `scoop install nsis`
-
-### Voor PowerShell Hooks:
-- Windows PowerShell 5.1+ of PowerShell Core 6+
-- Git voor Windows
-
-## 🧪 Testen van de Hook
-
-1. **Maak een wijziging** in een `.lua` bestand
-2. **Stage de wijziging**: `git add <bestand>`
-3. **Maak een commit**: `git commit -m "Test wijziging"`
-4. **Observeer** de automatische sync en installer build
-
-## 🐛 Troubleshooting
-
-### Hook Werkt Niet:
-- Controleer of het bestand uitvoerbaar is (Unix): `chmod +x .git/hooks/pre-commit`
-- Controleer of de juiste versie wordt gebruikt voor je OS
-- Controleer Git configuratie: `git config --list`
-
-### NSIS Niet Gevonden:
-- Installeer NSIS via een van de bovenstaande methoden
-- Controleer of `makensis` beschikbaar is in PATH
-- Test handmatig: `makensis --version`
-
-### PowerShell Execution Policy:
+### Installer Build
+Na elke sync wordt automatisch een nieuwe installer gebouwd:
 ```powershell
-# Als PowerShell scripts niet mogen draaien:
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+cd Installer; .\Build-Installer-NoDownload.bat
 ```
 
-## 📝 Logs en Output
+## ✅ Werkt Met
 
-De hook toont uitgebreide output tijdens het proces:
-- 🔍 Detectie van wijzigingen
-- 📋 Sync status van bestanden
-- 🔨 Installer build status
-- 📊 Installer grootte
-- ✅ Success/error berichten
+- **GitKraken** - Volledig ondersteund
+- **Command Line Git** - Volledig ondersteund
+- **Visual Studio Code** - Volledig ondersteund
+- **Andere Git GUI's** - Volledig ondersteund
 
-## 🔄 Uitschakelen
+## 🚀 Gebruik
 
-Om de hook tijdelijk uit te schakelen:
-```bash
-# Rename het bestand
-mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
+**Geen handmatige actie nodig!**
 
-# Of verwijder het
-rm .git/hooks/pre-commit
-```
+1. **Maak wijzigingen** in Lua bestanden
+2. **Commit in GitKraken** → Hooks draaien automatisch
+3. **Push in GitKraken** → Hooks draaien automatisch
+4. **Bestanden zijn gesynct** naar WoW AddOns folder
+5. **Nieuwe installer** is gebouwd
 
-## 📞 Support
+## 🔍 Troubleshooting
 
-Voor problemen met de Git hooks:
-1. Controleer de logs in de terminal output
-2. Test handmatig de NSIS build: `cd Installer && makensis Toxicify-Installer.nsi`
-3. Controleer of alle bestanden correct zijn gesynct
+### Hooks Draaien Niet
+- Controleer of Git hooks zijn ingeschakeld
+- Controleer of PowerShell beschikbaar is
+- Controleer of WoW AddOns folder bestaat
 
----
+### Bestanden Worden Niet Gekopieerd
+- Controleer of bestanden bestaan in project root
+- Controleer of doel folders bestaan
+- Controleer PowerShell execution policy
 
-**🎉 Geniet van automatische addon sync en installer builds!**
+### Installer Wordt Niet Gebouwd
+- Controleer of NSIS geïnstalleerd is
+- Controleer of `Build-Installer-NoDownload.bat` bestaat
+- Controleer of Installer folder bestaat
+
+## 📝 Logs
+
+De hooks draaien stil (geen output), maar je kunt zien dat ze werken door:
+- **Windows Command Prompt** verschijnt tijdens commit/push
+- **Bestanden worden bijgewerkt** in WoW AddOns folder
+- **Nieuwe installer** wordt gebouwd in Installer folder
+
+## 🎉 Resultaat
+
+Na elke commit/push:
+- ✅ **Alle Lua bestanden** gesynct naar WoW
+- ✅ **Alle TOC bestanden** gesynct naar WoW
+- ✅ **Logo bestand** gesynct naar WoW
+- ✅ **Nieuwe installer** gebouwd
+- ✅ **Geen handmatige actie** nodig
