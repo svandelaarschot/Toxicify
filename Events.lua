@@ -290,14 +290,20 @@ end
 -- Check guild members for toxic/pumper status and show toast
 function ns.Events.CheckGuildMemberOnline()
     if not ToxicifyDB.GuildToastEnabled then
+        ns.Core.DebugPrint("Guild toast notifications disabled")
         return
     end
+    
+    ns.Core.DebugPrint("Checking guild members for online status...")
     
     -- Get guild roster info
     local numGuildMembers = GetNumGuildMembers()
     if numGuildMembers == 0 then
+        ns.Core.DebugPrint("No guild members found")
         return
     end
+    
+    ns.Core.DebugPrint("Found " .. numGuildMembers .. " guild members")
     
     -- Check each guild member
     for i = 1, numGuildMembers do
@@ -305,10 +311,13 @@ function ns.Events.CheckGuildMemberOnline()
         
         if name and online then
             local fullName = name .. "-" .. GetRealmName()
+            ns.Core.DebugPrint("Checking online guild member: " .. name .. " (full: " .. fullName .. ")")
             
             if ns.Player.IsToxic(fullName) then
+                ns.Core.DebugPrint("Found toxic guild member: " .. name)
                 ns.Events.ShowGuildToast(name, "toxic")
             elseif ns.Player.IsPumper(fullName) then
+                ns.Core.DebugPrint("Found pumper guild member: " .. name)
                 ns.Events.ShowGuildToast(name, "pumper")
             end
         end
@@ -318,9 +327,9 @@ end
 -- Show guild member toast notification
 function ns.Events.ShowGuildToast(playerName, status)
     if not _G.ToxicifyGuildToastFrame then
-        local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-        frame:SetSize(300, 60)
-        frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+    local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    frame:SetSize(350, 80)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
         frame:SetFrameStrata("TOOLTIP")
         frame:SetFrameLevel(1000)
         frame:Hide()
@@ -337,12 +346,13 @@ function ns.Events.ShowGuildToast(playerName, status)
         -- Title
         frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         frame.title:SetPoint("TOP", 0, -10)
-        frame.title:SetText("Guild Member Online")
+        frame.title:SetText("|cff39FF14Guild Member Online|r")
         
         -- Content
         frame.content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        frame.content:SetPoint("CENTER", 0, 0)
+        frame.content:SetPoint("CENTER", 0, -5)
         frame.content:SetJustifyH("CENTER")
+        frame.content:SetWidth(320)
         
         -- Close button
         frame.closeBtn = CreateFrame("Button", nil, frame)
@@ -396,8 +406,20 @@ function ns.Events.Initialize()
     -- Guild member online notifications
     local guildFrame = CreateFrame("Frame")
     guildFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
+    guildFrame:RegisterEvent("CHAT_MSG_SYSTEM")
     guildFrame:SetScript("OnEvent", function(self, event, ...)
-        ns.Events.CheckGuildMemberOnline()
+        if event == "GUILD_ROSTER_UPDATE" then
+            ns.Events.CheckGuildMemberOnline()
+        elseif event == "CHAT_MSG_SYSTEM" then
+            local message = ...
+            -- Check for guild member online messages
+            if message and (message:find("has come online") or message:find("is now online")) then
+                ns.Core.DebugPrint("Guild member online detected: " .. message)
+                C_Timer.After(1, function() -- Delay to ensure roster is updated
+                    ns.Events.CheckGuildMemberOnline()
+                end)
+            end
+        end
     end)
     
     -- Target frame updates
