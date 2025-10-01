@@ -423,17 +423,17 @@ whisperCheck:SetPoint("TOPLEFT", desc2, "BOTTOMLEFT", 0, -10)
 whisperCheck.Text:SetText("Whisper players when marked toxic")
 
 local ignoreCheck = CreateFrame("CheckButton", "ToxicifyIgnoreCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
-ignoreCheck:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -10)
+ignoreCheck:SetPoint("TOPLEFT", whisperDesc, "BOTTOMLEFT", 0, -15)
 ignoreCheck.Text:SetText("Also add toxic players to Ignore list")
 
 local partyWarningCheck = CreateFrame("CheckButton", "ToxicifyPartyWarningCheck", whisperPanel, "InterfaceOptionsCheckButtonTemplate")
-partyWarningCheck:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -10)
+partyWarningCheck:SetPoint("TOPLEFT", ignoreDesc, "BOTTOMLEFT", 0, -15)
 partyWarningCheck.Text:SetText("Show warning when joining party with toxic/pumper players")
 partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
 
 -- Create a label for the whisper box
 local whisperLabel = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-whisperLabel:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -10)
+whisperLabel:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -15)
 whisperLabel:SetText("Whisper:")
 whisperLabel:SetTextColor(1, 1, 1) -- White color
 
@@ -494,6 +494,11 @@ whisperPanel:SetScript("OnShow", function()
     whisperCheck:SetChecked(ToxicifyDB.WhisperOnMark)
     ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
     partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled)
+    
+    -- Initialize descriptions
+    whisperDesc:SetText("Automatically whisper players when they are marked as toxic.")
+    ignoreDesc:SetText("Adds toxic players to your ignore list when they are marked as toxic.")
+    
     -- Force set the default message
     local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
     local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
@@ -504,12 +509,31 @@ whisperCheck:SetScript("OnClick", function(self)
     ToxicifyDB.WhisperOnMark = self:GetChecked()
     -- Always keep the editbox enabled so users can see and edit the message
     whisperBox:Enable()
-
+    
+    -- Update description
+    whisperDesc:SetText("Automatically whisper players when they are marked as toxic.")
 end)
+
+-- Whisper description
+local whisperDesc = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+whisperDesc:SetPoint("TOPLEFT", whisperCheck, "BOTTOMLEFT", 0, -5)
+whisperDesc:SetWidth(400)
+whisperDesc:SetJustifyH("LEFT")
+whisperDesc:SetText("Automatically whisper players when they are marked as toxic.")
 
 ignoreCheck:SetScript("OnClick", function(self)
     ToxicifyDB.IgnoreOnMark = self:GetChecked()
+    
+    -- Update description
+    ignoreDesc:SetText("Adds toxic players to your ignore list when they are marked as toxic.")
 end)
+
+-- Ignore description
+local ignoreDesc = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+ignoreDesc:SetPoint("TOPLEFT", ignoreCheck, "BOTTOMLEFT", 0, -5)
+ignoreDesc:SetWidth(400)
+ignoreDesc:SetJustifyH("LEFT")
+ignoreDesc:SetText("Adds toxic players to your ignore list when they are marked as toxic.")
 
 partyWarningCheck:SetScript("OnClick", function(self)
     ToxicifyDB.PartyWarningEnabled = self:GetChecked()

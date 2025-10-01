@@ -42,14 +42,18 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Hide()
             end
             
-            -- Open de juiste settings
+            -- Open de juiste settings en ga direct naar Toxicify tab
             if Settings and Settings.OpenToCategory then
                 -- Retail (Dragonflight+)
                 Settings.OpenToCategory("|cff39FF14Toxicify|r")
+                print("|cff39FF14Toxicify:|r Opening settings...")
             elseif InterfaceOptionsFrame_OpenToCategory then
-                -- Classic/older versions
+                -- Classic/older versions - double call fixes Blizzard bug
                 InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
-                InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r") -- double call fixes Blizzard bug
+                C_Timer.After(0.1, function()
+                    InterfaceOptionsFrame_OpenToCategory("|cff39FF14Toxicify|r")
+                end)
+                print("|cff39FF14Toxicify:|r Opening settings...")
             else
                 -- Fallback: open interface options
                 InterfaceOptionsFrame:Show()
