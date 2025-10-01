@@ -1,17 +1,20 @@
 #!/bin/sh
-# === Pre-push hook wrapper (Git Bash compatible) ===
+# === Pre-push hook: Run Installer + Sync WoW Addon ===
 
-echo "[HOOK] Calling Windows batch..."
-cmd.exe /c "D:\Development\Toxicify\Installer\Build-Installer-Simple.bat"
+WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
+INSTALLER_BAT="D:/Development/Toxicify/Installer/Build-Installer-Simple.bat"
+
+echo "[HOOK] Running installer via cmd.exe..."
+cmd.exe /c "$INSTALLER_BAT"
 if [ $? -ne 0 ]; then
   echo "[HOOK] Installer failed, aborting push."
   exit 1
 fi
 
-echo "[HOOK] Syncing addon files..."
-cmd.exe /c "copy \"*.lua\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
-cmd.exe /c "copy \"*.toc\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
-cmd.exe /c "copy \"Assets\logo.png\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
+echo "[HOOK] Copying addon files to WoW folder..."
+cmd.exe /c "copy \"*.lua\" \"$WOW_PATH\\\" >nul 2>&1"
+cmd.exe /c "copy \"*.toc\" \"$WOW_PATH\\\" >nul 2>&1"
+cmd.exe /c "copy \"Assets\\logo.png\" \"$WOW_PATH\\\" >nul 2>&1"
 
 echo "[HOOK] Pre-push done."
 exit 0
