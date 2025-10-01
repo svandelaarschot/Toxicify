@@ -246,5 +246,3 @@ end
 
 -- Initialize on load
 ns.Core.Initialize()
-
---- test comment voor push sync 20251001
