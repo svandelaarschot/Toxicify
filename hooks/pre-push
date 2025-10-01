@@ -7,9 +7,9 @@ LOG_FILE="prepush.log"
 
 echo "[HOOK] Pre-push started at $(date)" | tee "$LOG_FILE"
 
-# 1) Run installer via cmd.exe
+# 1) Run installer via cmd.exe (ignore git hook arguments)
 echo "[HOOK] Running installer: $INSTALLER_BAT" | tee -a "$LOG_FILE"
-cmd.exe /c "\"$INSTALLER_BAT\"" >>"$LOG_FILE" 2>&1
+cmd.exe /c "\"$INSTALLER_BAT\" " >>"$LOG_FILE" 2>&1
 if [ $? -ne 0 ]; then
   echo "[HOOK] Installer failed, aborting push." | tee -a "$LOG_FILE"
   exit 1
