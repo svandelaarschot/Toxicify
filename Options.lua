@@ -166,6 +166,9 @@ local luaErrorsCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceO
 luaErrorsCheck:SetPoint("TOPLEFT", autoCloseSlider, "BOTTOMLEFT", 0, -15)
 luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
 luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
+-- Lua Errors description
+local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+
 luaErrorsCheck:SetScript("OnClick", function(self)
     local enabled = self:GetChecked()
     ToxicifyDB.LuaErrorsEnabled = enabled
@@ -182,9 +185,6 @@ luaErrorsCheck:SetScript("OnClick", function(self)
         print("|cff39FF14[Toxicify Debug]:|r Lua errors disabled - /console scriptErrors set to 0")
     end
 end)
-
--- Lua Errors description
-local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 luaErrorsDesc:SetPoint("TOPLEFT", luaErrorsCheck, "BOTTOMLEFT", 0, -5)
 luaErrorsDesc:SetWidth(400)
 luaErrorsDesc:SetJustifyH("LEFT")
@@ -212,6 +212,7 @@ generalPanel:SetScript("OnShow", function()
     -- Show/hide Lua errors toggle based on debug mode
     if ToxicifyDB.DebugEnabled then
         luaErrorsCheck:Show()
+        luaErrorsDesc:Show()
         -- Sync toggle with current scriptErrors setting
         local scriptErrorsEnabled = GetCVar("scriptErrors") == "1"
         luaErrorsCheck:SetChecked(scriptErrorsEnabled)
@@ -220,6 +221,7 @@ generalPanel:SetScript("OnShow", function()
         luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled.")
     else
         luaErrorsCheck:Hide()
+        luaErrorsDesc:Hide()
     end
 end)
 

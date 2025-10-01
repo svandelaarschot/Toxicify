@@ -141,7 +141,7 @@ Access settings via `/toxic settings` or the Interface Options:
 
 ## 🚀 Getting Started
 
-1. **Install the addon** - Place in your AddOns folder
+1. **Install from CurseForge** - Download and install via CurseForge or your preferred addon manager
 2. **Mark your first player** - Use `/toxic add PlayerName-Realm` or right-click on a player
 3. **Test the warning** - Use `/toxic testwarning` to see how the warning popup works
 4. **Customize settings** - Use `/toxic settings` to configure the addon to your preferences
@@ -166,6 +166,24 @@ Enable debug mode with `/toxic debug` to see detailed information about:
 *   Use `/toxic debug` to enable debug mode for troubleshooting
 *   Check the chat for debug messages when issues occur
 *   Use `/toxic testwarning` to test the warning system
+
+***
+
+***
+
+## 📦 Distribution
+
+**Toxicify is distributed through CurseForge** for easy installation and automatic updates.
+
+### For Users
+- **Download**: Available on [CurseForge](https://www.curseforge.com/wow/addons/toxicify)
+- **Installation**: Use CurseForge app or your preferred addon manager
+- **Updates**: Automatic updates through CurseForge
+
+### For Developers
+- **Source Code**: Available on GitHub
+- **Contributing**: Pull requests and issues welcome
+- **License**: Open source for community development
 
 ***
 
