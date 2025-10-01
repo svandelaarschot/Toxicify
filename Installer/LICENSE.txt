@@ -1,0 +1,4 @@
+Toxicify Addon License 
+ 
+This addon is provided as-is for educational purposes. 
+Use at your own risk. 

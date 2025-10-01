@@ -16,10 +16,10 @@ ns.Constants.SUGGESTION_BOX_HIDE_DELAY = 0.2 -- Delay before hiding suggestion b
 -- Initialize constants
 function ns.Constants.Initialize()
     -- Debug print if debug mode is enabled
-    if ToxicifyDB and ToxicifyDB.DebugEnabled == true then
+    if ToxicifyDB and ToxicifyDB.DebugEnabled then
         print("|cff39FF14[Toxicify DEBUG]|r Constants initialized")
         print("|cffaaaaaaWarning popup delay: " .. ns.Constants.WARNING_POPUP_DELAY .. " seconds|r")
-        print("|cffaaaaaaWarning popup timer: " .. ns.Constants.WARNING_POPUP_TIMER() .. " seconds|r")
+        print("|cffaaaaaaWarning popup timer: " .. ns.Constants.WARNING_POPUP_TIMER .. " seconds|r")
     end
 end
 
