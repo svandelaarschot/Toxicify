@@ -212,6 +212,10 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
         frame:Hide()
     end)
     
+    -- Footer
+    local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    footer:SetPoint("BOTTOMLEFT", 20, 20)
+    footer:SetText(ns.Core.GetFooterText())
     
     -- Show the frame
     frame:Show()

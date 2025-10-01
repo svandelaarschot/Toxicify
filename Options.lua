@@ -275,6 +275,11 @@ importBtn:SetScript("OnClick", function()
     end
 end)
 
+-- Footer for General Panel
+local footer = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+footer:SetPoint("BOTTOMLEFT", 20, 20)
+footer:SetText(ns.Core.GetFooterText())
+
 ---------------------------------------------------
 -- Toxic & Pumper List Management Panel
 ---------------------------------------------------
@@ -370,6 +375,10 @@ listPanel:SetScript("OnShow", function()
     RefreshList()
 end)
 
+-- Footer for List Panel
+local listFooter = listPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+listFooter:SetPoint("BOTTOMLEFT", 20, 20)
+listFooter:SetText(ns.Core.GetFooterText())
 
 ---------------------------------------------------
 -- Import/Export Panel
@@ -405,6 +414,11 @@ importBtn:SetText("Import List")
 importBtn:SetScript("OnClick", function()
     ns.UI.ShowIOPopup("import")
 end)
+
+-- Footer for IO Panel
+local ioFooter = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+ioFooter:SetPoint("BOTTOMLEFT", 20, 20)
+ioFooter:SetText(ns.Core.GetFooterText())
 
 ---------------------------------------------------
 -- Whisper & Ignore Panel
@@ -582,6 +596,11 @@ C_Timer.After(1.0, function()
     whisperBox:ClearFocus()
 end)
 
+-- Footer for Whisper Panel
+local whisperFooter = whisperPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+whisperFooter:SetPoint("BOTTOMLEFT", 20, 20)
+whisperFooter:SetText(ns.Core.GetFooterText())
+
 ---------------------------------------------------
 -- Root Info Panel
 ---------------------------------------------------
@@ -661,6 +680,11 @@ C_Timer.After(3.0, function()
         RefreshList()
     end
 end)
+
+-- Footer for Root Panel
+local rootFooter = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+rootFooter:SetPoint("BOTTOMLEFT", 20, 20)
+rootFooter:SetText(ns.Core.GetFooterText())
 
 ---------------------------------------------------
 -- Register Panels (Retail vs Classic)
