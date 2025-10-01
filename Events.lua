@@ -30,11 +30,14 @@ function ns.Events.UpdateGroupMembers(event)
     
     -- Check group members if in group
     if IsInGroup() then
+        ns.Core.DebugPrint("Checking group members...")
         for i = 1, GetNumGroupMembers() do
             local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
             if UnitExists(unit) then
                 local name = GetUnitName(unit, true)
+                ns.Core.DebugPrint("Checking player: " .. tostring(name))
                 if name and ns.Player.IsToxic(name) then
+                    ns.Core.DebugPrint("Found toxic player: " .. name)
                     table.insert(toxicPlayers, name)
                     local frame = ns.UI.GetUnitFrame(unit)
                     if frame and frame.name and frame.name.SetText then
@@ -42,6 +45,7 @@ function ns.Events.UpdateGroupMembers(event)
                     end
                 end
                 if name and ns.Player.IsPumper(name) then
+                    ns.Core.DebugPrint("Found pumper player: " .. name)
                     table.insert(pumperPlayers, name)
                     local frame = ns.UI.GetUnitFrame(unit)
                     if frame and frame.name and frame.name.SetText then
@@ -50,32 +54,21 @@ function ns.Events.UpdateGroupMembers(event)
                 end
             end
         end
+        ns.Core.DebugPrint("Total toxic players found: " .. #toxicPlayers)
     end
     
     -- Only set default if not already configured by user
     if ToxicifyDB.PartyWarningEnabled == nil then
         ToxicifyDB.PartyWarningEnabled = true
     end
-    -- Debug: Always show warning popup for testing
-    if ToxicifyDB.PartyWarningEnabled then
-        if #toxicPlayers > 0 then
-            -- Show popup warning (only once per session)
-            if not _G.ToxicifyWarningShown then
-                -- Delay the popup to wait for loading screen to finish
-                C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
-                    ns.Events.ShowToxicWarningPopup(toxicPlayers)
-                end)
-                _G.ToxicifyWarningShown = true
-            end
-        else
-            -- Debug: Show empty warning for testing
-            print("|cff39FF14Toxicify DEBUG:|r No toxic players found, but showing empty warning for testing")
-            if not _G.ToxicifyWarningShown then
-                C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
-                    ns.Events.ShowToxicWarningPopup({})
-                end)
-                _G.ToxicifyWarningShown = true
-            end
+    if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
+        -- Show popup warning (only once per session)
+        if not _G.ToxicifyWarningShown then
+            -- Delay the popup to wait for loading screen to finish
+            C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
+                ns.Events.ShowToxicWarningPopup(toxicPlayers)
+            end)
+            _G.ToxicifyWarningShown = true
         end
     end
 end
@@ -88,7 +81,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     local frame = CreateFrame("Frame", "ToxicifyWarningFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
     frame:SetSize(400, 250)
-    frame:SetPoint("CENTER")
+    frame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     frame:SetFrameStrata("DIALOG")
     frame:SetFrameLevel(1000)
     frame:SetMovable(true)
@@ -102,7 +95,7 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
         tile = true, tileSize = 32, edgeSize = 16,
         insets = { left = 8, right = 8, top = 8, bottom = 8 }
     })
-    frame:SetBackdropColor(0, 0, 0, 0.8)
+    frame:SetBackdropColor(0, 0, 0, 0.9)
     
     -- Make frame movable
     frame:SetMovable(true)
@@ -203,8 +196,8 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Footer
     local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    footer:SetPoint("BOTTOMLEFT", 20, 20)
-    footer:SetText(ns.Core.GetFooterText())
+    footer:SetPoint("BOTTOM", 0, 12)
+    footer:SetText("|cffaaaaaaBy Toxicify Addon v2025|r")
     
     -- Show the frame
     frame:Show()
