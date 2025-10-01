@@ -1,4 +1,10 @@
 @echo off
-REM Wrapper to run Build-Installer-Simple.bat without Git hook arguments
+REM Drop all arguments passed from git
+:loop
+if "%~1"=="" goto start
+shift
+goto loop
+
+:start
 call "D:\Development\Toxicify\Installer\Build-Installer-Simple.bat"
 exit /b %errorlevel%
