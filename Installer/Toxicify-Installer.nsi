@@ -33,6 +33,14 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
     !define MUI_ICON "logo.ico"
     !define MUI_UNICON "logo.ico"
     Icon "logo.ico"
+!else if /FileExists "logo.png"
+    ; Convert PNG to ICO for installer
+    !system 'powershell -Command "Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile(''logo.png''); $img.Save(''logo.ico'', [System.Drawing.Imaging.ImageFormat]::Icon); $img.Dispose()"'
+    !if /FileExists "logo.ico"
+        !define MUI_ICON "logo.ico"
+        !define MUI_UNICON "logo.ico"
+        Icon "logo.ico"
+    !endif
 !endif
 
 ; Pages
@@ -72,6 +80,8 @@ Section "Toxicify Addon" SecMain
     ; Copy logo for uninstaller (only if exists)
     !if /FileExists "logo.ico"
         File "logo.ico"
+    !else if /FileExists "logo.png"
+        File "logo.png"
     !endif
     
     ; No uninstaller or registry entries needed
@@ -146,7 +156,12 @@ Function ValidateInstallDir
     
     ; If it contains "AddOns" in the path, it's likely correct
     StrCpy $R1 "$INSTDIR" "" -7
-    StrCmp $R1 "\AddOns" PathValid PathInvalid
+    StrCmp $R1 "\AddOns" PathValid CheckToxicify
+    
+    CheckToxicify:
+        ; Check if it's the Toxicify subfolder (which is correct)
+        StrCpy $R1 "$INSTDIR" "" -8
+        StrCmp $R1 "\Toxicify" PathValid PathInvalid
     
     PathValid:
         Return
