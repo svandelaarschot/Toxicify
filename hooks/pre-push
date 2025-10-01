@@ -1,24 +1,17 @@
-@echo off
-REM === Pre-push hook: Run Installer + Sync WoW Addon ===
+#!/bin/sh
+# === Pre-push hook wrapper (Git Bash compatible) ===
 
-set "WOW_PATH=D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
-set "INSTALLER_PATH=D:\Development\Toxicify\Installer\Build-Installer-Simple.bat"
+echo "[HOOK] Calling Windows batch..."
+cmd.exe /c "D:\Development\Toxicify\Installer\Build-Installer-Simple.bat"
+if [ $? -ne 0 ]; then
+  echo "[HOOK] Installer failed, aborting push."
+  exit 1
+fi
 
-echo [HOOK] Running pre-push tasks...
+echo "[HOOK] Syncing addon files..."
+cmd.exe /c "copy \"*.lua\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
+cmd.exe /c "copy \"*.toc\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
+cmd.exe /c "copy \"Assets\logo.png\" \"D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify\\\" >nul 2>&1"
 
-REM 1) Run installer build
-echo [HOOK] Running installer: %INSTALLER_PATH%
-call "%INSTALLER_PATH%"
-if errorlevel 1 (
-    echo [HOOK] Installer build failed, aborting push.
-    exit /b 1
-)
-
-REM 2) Sync addon files to WoW
-echo [HOOK] Copying files to WoW addon folder...
-copy "*.lua" "%WOW_PATH%\" >nul 2>&1
-copy "*.toc" "%WOW_PATH%\" >nul 2>&1
-copy "Assets\logo.png" "%WOW_PATH%\" >nul 2>&1
-
-echo [HOOK] Pre-push tasks done!
+echo "[HOOK] Pre-push done."
 exit 0
