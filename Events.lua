@@ -372,10 +372,10 @@ function ns.Events.Initialize()
             local playerName = GetUnitName(contextData.unit, true)
             if not playerName then return end
 
-            rootDescription:CreateDivider()
-            rootDescription:CreateButton("Mark as Toxic", function() ns.Player.MarkToxic(playerName) end)
-            rootDescription:CreateButton("Mark as Pumper", function() ns.Player.MarkPumper(playerName) end)
-            rootDescription:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
+            local toxicSubmenu = rootDescription:CreateButton("Toxicify")
+            toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
+            toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.Player.MarkPumper(playerName) end)
+            toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
         end
 
         -- Core unit types
@@ -384,10 +384,10 @@ function ns.Events.Initialize()
         Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD", AddToxicifyContextMenu)
         
         -- Battle.net friends
-        Menu.ModifyMenu("MENU_UNIT_BNET_FRIEND", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_BATTLE_NET_FRIEND", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_BN_FRIEND", AddToxicifyContextMenu)
         
         -- Party members (specific slots)
         for i = 1, 4 do
