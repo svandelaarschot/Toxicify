@@ -1,4 +1,3 @@
-#!/bin/sh
 @echo off
 REM === Pre-push hook: Run Installer + Sync WoW Addon ===
 
