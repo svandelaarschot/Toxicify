@@ -364,13 +364,82 @@ function ns.Events.Initialize()
     -- Raid members (specific slots)
     if Menu then
         local function AddToxicifyContextMenu(_, rootDescription, contextData)
-            if not contextData or not contextData.unit then return end
+            -- Debug context data
+            ns.Core.DebugPrint("Context Menu Debug:")
+            ns.Core.DebugPrint("- contextData: " .. (contextData and "exists" or "nil"))
+            if contextData then
+                ns.Core.DebugPrint("- unit: " .. (contextData.unit or "nil"))
+                ns.Core.DebugPrint("- name: " .. (contextData.name or "nil"))
+                ns.Core.DebugPrint("- which: " .. (contextData.which or "nil"))
+                ns.Core.DebugPrint("- characterName: " .. (contextData.characterName or "nil"))
+                ns.Core.DebugPrint("- characterRealm: " .. (contextData.characterRealm or "nil"))
+                ns.Core.DebugPrint("- realm: " .. (contextData.realm or "nil"))
+                ns.Core.DebugPrint("- accountInfo: " .. (contextData.accountInfo and "exists" or "nil"))
+                if contextData.accountInfo then
+                    ns.Core.DebugPrint("- accountInfo.battleTag: " .. (contextData.accountInfo.battleTag or "nil"))
+                    ns.Core.DebugPrint("- accountInfo.characterName: " .. (contextData.accountInfo.characterName or "nil"))
+                    ns.Core.DebugPrint("- accountInfo.characterRealm: " .. (contextData.accountInfo.characterRealm or "nil"))
+                end
+                
+                -- Print all available fields in contextData
+                ns.Core.DebugPrint("All contextData fields:")
+                for k, v in pairs(contextData) do
+                    ns.Core.DebugPrint("- " .. tostring(k) .. ": " .. tostring(v))
+                end
+            end
             
-            -- Only show for real players, not NPCs
-            if not UnitIsPlayer(contextData.unit) then return end
+            if not contextData then 
+                ns.Core.DebugPrint("- No contextData, returning")
+                return 
+            end
             
-            local playerName = GetUnitName(contextData.unit, true)
-            if not playerName then return end
+            local playerName = nil
+            
+            -- Handle Battle.net friends (no unit, but have accountInfo)
+            if contextData.accountInfo and contextData.accountInfo.battleTag then
+                -- Try to get character name and realm from ALL possible fields
+                local charName = contextData.name or contextData.characterName or contextData.accountInfo.characterName
+                local realm = contextData.realm or contextData.characterRealm or contextData.accountInfo.characterRealm
+                
+                if charName and realm then
+                    playerName = charName .. "-" .. realm
+                    ns.Core.DebugPrint("- Using Battle.net character: " .. playerName)
+                elseif charName then
+                    playerName = charName
+                    ns.Core.DebugPrint("- Using Battle.net character name: " .. playerName)
+                else
+                    -- Extract character name from Battle.net tag (remove #numbers)
+                    local battleTag = contextData.accountInfo.battleTag
+                    local charNameFromTag = battleTag:match("^([^#]+)")
+                    if charNameFromTag then
+                        playerName = charNameFromTag
+                        ns.Core.DebugPrint("- Using character name from Battle.net tag: " .. playerName)
+                    else
+                        -- Fallback to full Battle.net tag
+                        playerName = battleTag
+                        ns.Core.DebugPrint("- Using full Battle.net tag: " .. playerName)
+                    end
+                end
+            -- Handle regular players (have unit)
+            elseif contextData.unit then
+                -- Only show for real players, not NPCs
+                if not UnitIsPlayer(contextData.unit) then 
+                        ns.Core.DebugPrint("- Not a player, returning")
+                    return 
+                end
+                
+                playerName = GetUnitName(contextData.unit, true)
+                if not playerName then 
+                        ns.Core.DebugPrint("- No playerName, returning")
+                    return 
+                end
+                    ns.Core.DebugPrint("- Using unit name: " .. playerName)
+            else
+                    ns.Core.DebugPrint("- No unit or accountInfo, returning")
+                return 
+            end
+            
+            ns.Core.DebugPrint("- Adding menu for player: " .. playerName)
 
             local toxicSubmenu = rootDescription:CreateButton("Toxicify")
             toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
@@ -385,9 +454,30 @@ function ns.Events.Initialize()
         Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_GUILD", AddToxicifyContextMenu)
-        
+
         -- Battle.net friends
         Menu.ModifyMenu("MENU_UNIT_BN_FRIEND", AddToxicifyContextMenu)
+        
+        -- Guild-specific menu types
+        Menu.ModifyMenu("MENU_UNIT_GUILD_MEMBER", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_OFFICER", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_LEADER", AddToxicifyContextMenu)
+        
+        -- Additional guild menu types that might exist
+        Menu.ModifyMenu("MENU_UNIT_GUILD_ONLINE", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_OFFLINE", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_RANK", AddToxicifyContextMenu)
+        
+        -- Try to add to all possible guild-related menu types
+        for i = 1, 100 do
+            Menu.ModifyMenu("MENU_UNIT_GUILD" .. i, AddToxicifyContextMenu)
+        end
+        
+        -- Additional guild menu types that might exist
+        Menu.ModifyMenu("MENU_UNIT_GUILD_ROSTER", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_LIST", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_PANEL", AddToxicifyContextMenu)
+        Menu.ModifyMenu("MENU_UNIT_GUILD_FRAME", AddToxicifyContextMenu)
         
         -- Party members (specific slots)
         for i = 1, 4 do
