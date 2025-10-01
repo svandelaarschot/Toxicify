@@ -128,23 +128,16 @@ Function DetectWoW
         StrCpy $INSTDIR "F:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
         Return
     
-    ; If no WoW installation found, show error and ask user
-    MessageBox MB_YESNO "No World of Warcraft installation detected.$\r$\n$\r$\nWould you like to manually select the WoW AddOns folder?" IDYES ManualSelect IDNO DefaultInstall
-    
-    ManualSelect:
-        ; Let user browse for WoW AddOns folder
-        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
-        Return
-    
-    DefaultInstall:
-        ; Default to Program Files if user cancels
-        StrCpy $INSTDIR "$PROGRAMFILES\${APP_NAME}"
-        Return
+    ; If no WoW installation found, set a default path
+    StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+    Return
 FunctionEnd
 
 ; Function to validate installation directory
 Function ValidateInstallDir
     ; Always allow installation - we'll create the directory if needed
+    ; Enable the Install button by setting a valid path
+    StrCpy $INSTDIR "$INSTDIR"
     Return
 FunctionEnd
 
