@@ -244,5 +244,5 @@ function ns.Core.ImportList(str)
     return true, count .. " entries imported"
 end
 
--- Initialize on load
+-- Initialize on load :)
 ns.Core.Initialize()

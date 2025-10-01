@@ -33,14 +33,6 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
     !define MUI_ICON "logo.ico"
     !define MUI_UNICON "logo.ico"
     Icon "logo.ico"
-!else if /FileExists "logo.png"
-    ; Convert PNG to ICO for installer
-    !system 'powershell -Command "Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile(''logo.png''); $img.Save(''logo.ico'', [System.Drawing.Imaging.ImageFormat]::Icon); $img.Dispose()"'
-    !if /FileExists "logo.ico"
-        !define MUI_ICON "logo.ico"
-        !define MUI_UNICON "logo.ico"
-        Icon "logo.ico"
-    !endif
 !endif
 
 ; Pages
