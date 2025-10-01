@@ -42,6 +42,7 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
 !endif
 !insertmacro MUI_PAGE_DIRECTORY
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify will be installed to your World of Warcraft AddOns folder.$\r$\n$\r$\nIf you have multiple WoW installations, please select the correct one.$\r$\n$\r$\nThe installer has automatically detected the best location."
+!define MUI_DIRECTORYPAGE_VALIDATE ""
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
