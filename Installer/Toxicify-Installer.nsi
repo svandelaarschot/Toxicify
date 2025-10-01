@@ -37,14 +37,18 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
+!define MUI_WELCOMEPAGE_TITLE "Welcome to Toxicify WoW Addon Setup"
+!define MUI_WELCOMEPAGE_TEXT "This wizard will guide you through the installation of Toxicify, a powerful World of Warcraft addon.$\r$\n$\r$\nToxicify enhances your WoW experience with:$\r$\n• Advanced player tracking and monitoring$\r$\n• Modern, customizable user interface$\r$\n• Group finder integration$\r$\n• Real-time player statistics$\r$\n• Easy configuration options$\r$\n$\r$\nClick Next to continue with the installation."
 !if /FileExists "LICENSE.txt"
     !insertmacro MUI_PAGE_LICENSE "LICENSE.txt"
 !endif
 !insertmacro MUI_PAGE_DIRECTORY
-!define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify will be installed to your World of Warcraft AddOns folder.$\r$\n$\r$\nIf you have multiple WoW installations, please select the correct one.$\r$\n$\r$\nThe installer has automatically detected the best location."
+!define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify is a powerful World of Warcraft addon that enhances your gameplay experience.$\r$\n$\r$\nFeatures:$\r$\n• Advanced player tracking and monitoring$\r$\n• Customizable UI with modern design$\r$\n• Group finder integration$\r$\n• Real-time player statistics$\r$\n• Easy-to-use configuration options$\r$\n$\r$\nThe installer will install Toxicify to your WoW AddOns folder. If you have multiple WoW installations, please select the correct one."
 !define MUI_DIRECTORYPAGE_VALIDATE ""
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
+!define MUI_FINISHPAGE_TITLE "Installation Complete"
+!define MUI_FINISHPAGE_TEXT "Toxicify has been successfully installed!$\r$\n$\r$\nTo use the addon:$\r$\n1. Launch World of Warcraft$\r$\n2. Go to AddOns menu in character selection$\r$\n3. Enable Toxicify$\r$\n4. Log in and enjoy the enhanced experience!$\r$\n$\r$\nFor support and updates, visit our website or contact the developer."
 
 ; No uninstaller pages needed
 
@@ -80,7 +84,7 @@ Section "Toxicify Addon" SecMain
     ; No uninstaller or registry entries needed
     
     ; Show success message
-    MessageBox MB_OK "Toxicify WoW Addon has been successfully installed!$\r$\n$\r$\nInstallation location: $INSTDIR$\r$\n$\r$\nThe addon will appear in your WoW AddOns list.$\r$\nTo uninstall, simply delete the addon folder from your WoW AddOns directory."
+    MessageBox MB_OK "Toxicify has been successfully installed!$\r$\n$\r$\nInstallation location: $INSTDIR$\r$\n$\r$\nTo use the addon:$\r$\n1. Launch World of Warcraft$\r$\n2. Go to AddOns menu in character selection$\r$\n3. Enable Toxicify$\r$\n4. Log in and enjoy the enhanced experience!$\r$\n$\r$\nTo uninstall, simply delete the addon folder from your WoW AddOns directory."
 SectionEnd
 
 ; No uninstaller section needed
