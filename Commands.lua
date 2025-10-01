@@ -95,6 +95,11 @@ function ns.Commands.Initialize()
             else
                 print("|cffff0000Toxicify:|r Context menu marking not available.")
             end
+        elseif cmd == "testwarning" then
+            -- Show warning popup for testing
+            local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
+            ns.Events.ShowToxicWarningPopup(testToxicPlayers)
+            print("|cff39FF14Toxicify:|r Test warning popup shown.")
         else
             print("|cff39FF14Toxicify Commands:|r")
             print("/toxic add <name-realm>        - Mark player as Toxic")
@@ -110,6 +115,7 @@ function ns.Commands.Initialize()
             print("/toxic partywarning            - Toggle party warning")
             print("/toxic luaerrors               - Toggle Lua errors (requires debug mode)")
             print("/toxic contextmenu              - Activate context menu marking")
+            print("/toxic testwarning              - Show test warning popup")
         end
     end
 end

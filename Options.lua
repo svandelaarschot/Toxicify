@@ -1,6 +1,36 @@
 local addonName, ns = ...
 ToxicifyDB = ToxicifyDB or {}
 
+-- Central function for initializing editboxes
+local function InitializeEditBox(editBox, value, debugName)
+    if not editBox then return end
+    
+    local currentValue = value or ""
+    if debugName then
+        print("|cff39FF14[Toxicify DEBUG]|r " .. debugName .. " value: " .. tostring(currentValue))
+    end
+    
+    -- Set the text and properties
+    editBox:SetText(tostring(currentValue))
+    editBox:SetTextColor(1, 1, 1)
+    editBox:SetFontObject("GameFontNormal")
+    editBox:Show()
+    editBox:Enable()
+    
+    -- Force the text to be visible
+    editBox:SetCursorPosition(0)
+    editBox:HighlightText(0, -1)
+    editBox:SetCursorPosition(0)
+end
+
+-- Central function for delayed editbox initialization
+local function InitializeEditBoxDelayed(editBox, value, debugName, delay)
+    delay = delay or 0.5
+    C_Timer.After(delay, function()
+        InitializeEditBox(editBox, value, debugName)
+    end)
+end
+
 ---------------------------------------------------
 -- General Settings Panel
 ---------------------------------------------------
@@ -39,9 +69,49 @@ partyWarningCheck:SetScript("OnClick", function(self)
     ns.Core.DebugPrint("PartyWarningEnabled set to: " .. tostring(ToxicifyDB.PartyWarningEnabled))
 end)
 
+-- Auto-Close Timer
+local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+autoCloseLabel:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -20)
+autoCloseLabel:SetText("Auto-Close Timer (seconds):")
+
+-- Auto-Close Timer description
+local autoCloseDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+autoCloseDesc:SetPoint("TOPLEFT", autoCloseLabel, "BOTTOMLEFT", 0, -5)
+autoCloseDesc:SetWidth(400)
+autoCloseDesc:SetJustifyH("LEFT")
+autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
+
+local autoCloseEditBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
+autoCloseEditBox:SetPoint("TOPLEFT", autoCloseDesc, "BOTTOMLEFT", 0, -5)
+autoCloseEditBox:SetSize(80, 20)
+autoCloseEditBox:SetAutoFocus(false)
+autoCloseEditBox:SetNumeric(true)
+autoCloseEditBox:SetMaxLetters(3)
+
+-- Initialize immediately after creation
+InitializeEditBox(autoCloseEditBox, ToxicifyDB.PopupTimerSeconds or 25, "Auto-Close timer")
+
+autoCloseEditBox:SetScript("OnTextChanged", function(self)
+    local value = tonumber(self:GetText())
+    if value and value > 0 and value <= 300 then
+        ToxicifyDB.PopupTimerSeconds = value
+        ns.Core.DebugPrint("Auto-Close timer set to: " .. value .. " seconds")
+        -- Update description with new value (using the local variable)
+        if autoCloseDesc then
+            autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
+        end
+    end
+end)
+autoCloseEditBox:SetScript("OnEnterPressed", function(self)
+    self:ClearFocus()
+end)
+autoCloseEditBox:SetScript("OnEscapePressed", function(self)
+    self:ClearFocus()
+end)
+
 -- Lua errors toggle (only visible when debug is enabled)
 local luaErrorsCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-luaErrorsCheck:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -10)
+luaErrorsCheck:SetPoint("TOPLEFT", autoCloseEditBox, "BOTTOMLEFT", 0, -10)
 luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
 luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
 luaErrorsCheck:SetScript("OnClick", function(self)
@@ -301,15 +371,7 @@ whisperBox:SetTextInsets(5, 5, 0, 0)
 
 -- Try to set text immediately after creation
 local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
-whisperBox:SetText(defaultMsg)
-whisperBox:SetTextColor(1, 1, 1) -- Force text color again
-whisperBox:SetFontObject("GameFontNormal") -- Force font again
-whisperBox:Show() -- Force show
-whisperBox:Enable() -- Force enable
-
--- Force text to be visible immediately
-whisperBox:SetCursorPosition(0)
-whisperBox:HighlightText(0, -1)
+InitializeEditBox(whisperBox, defaultMsg, "Whisper message")
 whisperBox:ClearFocus()
 
 -- Defaults
@@ -336,21 +398,17 @@ ignoreCheck:SetChecked(ToxicifyDB.IgnoreOnMark)
 -- Force set the default message
 local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
 local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
-whisperBox:SetText(currentMsg)
-whisperBox:SetTextColor(1, 1, 1) -- Force white text
-whisperBox:SetFontObject("GameFontNormal") -- Force font
-whisperBox:Show() -- Force show
-whisperBox:Enable() -- Force enable
+InitializeEditBox(whisperBox, currentMsg, "Whisper message (force)")
+
 
 -- Delayed initialization to ensure editbox is fully loaded
 C_Timer.After(0.5, function()
     local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
     local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
-    whisperBox:SetText(currentMsg)
-    whisperBox:SetTextColor(1, 1, 1)
-    whisperBox:SetFontObject("GameFontNormal")
-    whisperBox:Show() -- Force show
-    whisperBox:Enable() -- Always enable
+    InitializeEditBox(whisperBox, currentMsg, "Delayed whisper message")
+    
+    -- Also initialize Auto-Close timer with delay
+    InitializeEditBox(autoCloseEditBox, ToxicifyDB.PopupTimerSeconds or 25, "Delayed Auto-Close timer")
 end)
 
 whisperPanel:SetScript("OnShow", function()
@@ -361,16 +419,7 @@ whisperPanel:SetScript("OnShow", function()
     -- Force set the default message
     local defaultMsg = "U have been marked as Toxic player by - Toxicify Addon"
     local currentMsg = ToxicifyDB.WhisperMessage or defaultMsg
-    whisperBox:SetText(currentMsg)
-    whisperBox:SetTextColor(1, 1, 1) -- Force white text
-    whisperBox:SetFontObject("GameFontNormal") -- Force font
-    whisperBox:Show() -- Force show
-    whisperBox:Enable() -- Force enable
-    
-    -- Force text to be visible immediately
-    whisperBox:SetCursorPosition(0)
-    whisperBox:HighlightText(0, -1)
-    whisperBox:ClearFocus()
+    InitializeEditBox(whisperBox, currentMsg, "OnShow whisper message")
 end)
 
 whisperCheck:SetScript("OnClick", function(self)

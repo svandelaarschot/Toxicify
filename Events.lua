@@ -5,8 +5,20 @@ local addonName, ns = ...
 ns.Events = {}
 
 -- Update group members (party/raid/M+)
-function ns.Events.UpdateGroupMembers()
-    ns.Core.DebugPrint("UpdateGroupMembers called")
+function ns.Events.UpdateGroupMembers(event)
+    ns.Core.DebugPrint("UpdateGroupMembers called with event: " .. tostring(event))
+    
+    -- Only show warning for actual group roster updates, not for PLAYER_ENTERING_WORLD
+    if event == "PLAYER_ENTERING_WORLD" then
+        ns.Core.DebugPrint("Skipping warning check for PLAYER_ENTERING_WORLD event")
+        return
+    end
+    
+    -- Only show warning if we're actually in a group
+    if not IsInGroup() then
+        ns.Core.DebugPrint("Not in a group, skipping warning check")
+        return
+    end
     
     local toxicPlayers = {}
     local pumperPlayers = {}
@@ -67,7 +79,10 @@ function ns.Events.UpdateGroupMembers()
     if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
         -- Show popup warning (only once per session)
         if not _G.ToxicifyWarningShown then
-            ns.Events.ShowToxicWarningPopup(toxicPlayers)
+            -- Delay the popup to wait for loading screen to finish
+            C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
+                ns.Events.ShowToxicWarningPopup(toxicPlayers)
+            end)
             _G.ToxicifyWarningShown = true
         end
     else
@@ -170,8 +185,8 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     countdownBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
     countdownBg:SetVertexColor(0.3, 0.3, 0.3, 0.5)
     
-    -- Ensure PopupTimerSeconds is valid
-    local timerSeconds = ToxicifyDB.PopupTimerSeconds or 25
+    -- Use constants for timer, fallback to database setting
+    local timerSeconds = ns.Constants.WARNING_POPUP_TIMER()
     countdownBar:SetMinMaxValues(0, timerSeconds)
     countdownBar:SetValue(timerSeconds)
     
@@ -226,7 +241,9 @@ function ns.Events.Initialize()
     local rosterFrame = CreateFrame("Frame")
     rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
     rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    rosterFrame:SetScript("OnEvent", ns.Events.UpdateGroupMembers)
+    rosterFrame:SetScript("OnEvent", function(self, event, ...)
+        ns.Events.UpdateGroupMembers(event)
+    end)
     
     -- Tooltip integration
     if TooltipDataProcessor then

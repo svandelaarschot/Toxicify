@@ -99,7 +99,7 @@ function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
     end
 
     inputBox:SetScript("OnTextChanged", UpdateSuggestions)
-    inputBox:SetScript("OnEditFocusLost", function() C_Timer.After(0.2, function() suggestionBox:Hide() end) end)
+    inputBox:SetScript("OnEditFocusLost", function() C_Timer.After(ns.Constants.SUGGESTION_BOX_HIDE_DELAY, function() suggestionBox:Hide() end) end)
     
     return suggestionBox
 end

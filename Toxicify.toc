@@ -9,6 +9,7 @@
 # ## IconAtlas: poi-soulspiritghost
 
 Core.lua
+Constants.lua
 Player.lua
 Events.lua
 UI.lua
