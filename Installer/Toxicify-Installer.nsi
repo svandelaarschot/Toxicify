@@ -46,6 +46,7 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
 !define MUI_DIRECTORYPAGE_TEXT_TOP "Toxicify is a powerful World of Warcraft addon that enhances your gameplay experience.$\r$\n$\r$\nFeatures:$\r$\n• Advanced player tracking and monitoring$\r$\n• Customizable UI with modern design$\r$\n• Group finder integration$\r$\n• Real-time player statistics$\r$\n• Easy-to-use configuration options$\r$\n$\r$\nThe installer will create a 'Toxicify' folder in your WoW AddOns directory.$\r$\nIf you have multiple WoW installations, please select the correct AddOns folder."
 !define MUI_DIRECTORYPAGE_VALIDATE ""
 !define MUI_DIRECTORYPAGE_VERIFYONLEAVE ""
+!define MUI_DIRECTORYPAGE_TEXT_DESTINATION "Select the WoW AddOns directory where Toxicify will be installed:"
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 !define MUI_FINISHPAGE_TITLE "Installation Complete"
@@ -58,11 +59,25 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
 
 ; Installer Sections
 Section "Toxicify Addon" SecMain
-    ; Create the addon directory
-    CreateDirectory "$INSTDIR"
-    SetOutPath "$INSTDIR"
+    ; Create the addon directory with Toxicify subfolder
+    CreateDirectory "$INSTDIR\Toxicify"
+    SetOutPath "$INSTDIR\Toxicify"
     
-    ; Install only .lua and .toc files
+    ; Remove existing files first to avoid conflicts (with retry)
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Commands.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Constants.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Core.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Events.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\GroupFinder.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Minimap.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Options.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Player.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Toxicify.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\UI.lua"
+    Delete /REBOOTOK "$INSTDIR\Toxicify\Toxicify.toc"
+    
+    ; Install only .lua and .toc files (force overwrite with retry)
+    SetOverwrite on
     File "Commands.lua"
     File "Constants.lua"
     File "Core.lua"
@@ -95,46 +110,46 @@ Function DetectWoW
     ; Check common WoW installation paths
     ; Retail WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns"
         Return
     
     IfFileExists "$PROGRAMFILES64\World of Warcraft\_retail_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_retail_\Interface\AddOns"
         Return
     
     ; Classic WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_classic_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_\Interface\AddOns"
         Return
     
     IfFileExists "$PROGRAMFILES64\World of Warcraft\_classic_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_\Interface\AddOns"
         Return
     
     ; Classic Era WoW paths
     IfFileExists "$PROGRAMFILES\World of Warcraft\_classic_era_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_era_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_classic_era_\Interface\AddOns"
         Return
     
     IfFileExists "$PROGRAMFILES64\World of Warcraft\_classic_era_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_era_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "$PROGRAMFILES64\World of Warcraft\_classic_era_\Interface\AddOns"
         Return
     
     ; Check common alternative drive locations
     IfFileExists "D:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "D:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "D:\World of Warcraft\_retail_\Interface\AddOns"
         Return
     
     IfFileExists "E:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "E:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "E:\World of Warcraft\_retail_\Interface\AddOns"
         Return
     
     IfFileExists "F:\World of Warcraft\_retail_\Interface\AddOns" 0 +3
-        StrCpy $INSTDIR "F:\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+        StrCpy $INSTDIR "F:\World of Warcraft\_retail_\Interface\AddOns"
         Return
     
     ; If no WoW installation found, set a default path
-    StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns\Toxicify"
+    StrCpy $INSTDIR "$PROGRAMFILES\World of Warcraft\_retail_\Interface\AddOns"
     Return
 FunctionEnd
 
@@ -143,6 +158,8 @@ Function ValidateInstallDir
     ; Always allow installation - no validation needed
     Return
 FunctionEnd
+
+
 
 ; Initialize installer
 Function .onInit
