@@ -246,6 +246,3 @@ end
 
 -- Initialize on load
 ns.Core.Initialize()
-
-
--- Test comment 
