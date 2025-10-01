@@ -17,6 +17,16 @@ function ns.Core.DebugPrint(message)
     end
 end
 
+-- Test warning popup
+function ns.Core.TestWarningPopup()
+    local testPlayers = {"TestPlayer1", "TestPlayer2"}
+    if ns.Events and ns.Events.ShowToxicWarningPopup then
+        ns.Events.ShowToxicWarningPopup(testPlayers)
+    else
+        print("|cffff0000Toxicify:|r Events module not loaded!")
+    end
+end
+
 -- General footer function
 function ns.Core.GetFooterText()
     return "|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r"

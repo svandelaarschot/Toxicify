@@ -56,14 +56,26 @@ function ns.Events.UpdateGroupMembers(event)
     if ToxicifyDB.PartyWarningEnabled == nil then
         ToxicifyDB.PartyWarningEnabled = true
     end
-    if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
-        -- Show popup warning (only once per session)
-        if not _G.ToxicifyWarningShown then
-            -- Delay the popup to wait for loading screen to finish
-            C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
-                ns.Events.ShowToxicWarningPopup(toxicPlayers)
-            end)
-            _G.ToxicifyWarningShown = true
+    -- Debug: Always show warning popup for testing
+    if ToxicifyDB.PartyWarningEnabled then
+        if #toxicPlayers > 0 then
+            -- Show popup warning (only once per session)
+            if not _G.ToxicifyWarningShown then
+                -- Delay the popup to wait for loading screen to finish
+                C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
+                    ns.Events.ShowToxicWarningPopup(toxicPlayers)
+                end)
+                _G.ToxicifyWarningShown = true
+            end
+        else
+            -- Debug: Show empty warning for testing
+            print("|cff39FF14Toxicify DEBUG:|r No toxic players found, but showing empty warning for testing")
+            if not _G.ToxicifyWarningShown then
+                C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
+                    ns.Events.ShowToxicWarningPopup({})
+                end)
+                _G.ToxicifyWarningShown = true
+            end
         end
     end
 end

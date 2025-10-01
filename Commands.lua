@@ -36,6 +36,15 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Refresh()
                 _G.ToxicifyListFrame:Show()
             end
+        elseif cmd == "testwarning" or cmd == "testpopup" then
+            -- Test the warning popup
+            local testPlayers = {"TestPlayer1", "TestPlayer2"}
+            if ns.Events and ns.Events.ShowToxicWarningPopup then
+                ns.Events.ShowToxicWarningPopup(testPlayers)
+                print("|cff39FF14Toxicify:|r Test warning popup shown!")
+            else
+                print("|cffff0000Toxicify:|r Events module not loaded!")
+            end
         elseif cmd == "settings" or cmd == "config" then
             -- Sluit het huidige Toxicify dialoog als het open is
             if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then
