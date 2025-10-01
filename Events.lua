@@ -470,13 +470,20 @@ function ns.Events.Initialize()
         -- Define the context menu function
         function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             if not contextData then 
+                ns.Core.DebugPrint("No contextData provided")
                 return 
+            end
+
+            ns.Core.DebugPrint("Context menu triggered - inspecting contextData:")
+            for k, v in pairs(contextData) do
+                ns.Core.DebugPrint("  " .. tostring(k) .. " = " .. tostring(v))
             end
 
             local playerName = nil
             
             -- Handle Battle.net friends (no unit, but have accountInfo)
             if contextData.accountInfo and contextData.accountInfo.battleTag then
+                ns.Core.DebugPrint("Battle.net friend detected")
                 -- Try to get character name and realm from ALL possible fields
                 local charName = contextData.name or contextData.characterName or contextData.accountInfo.characterName
                 local realm = contextData.realm or contextData.characterRealm or contextData.accountInfo.characterRealm
@@ -498,21 +505,38 @@ function ns.Events.Initialize()
                 end
             -- Handle guild members (have name and server)
             elseif contextData.name and contextData.server then
+                ns.Core.DebugPrint("Guild member detected: " .. contextData.name .. "-" .. contextData.server)
                 playerName = contextData.name .. "-" .. contextData.server
+            -- Handle guild members with different field names
+            elseif contextData.name and (contextData.realm or contextData.server) then
+                local realm = contextData.realm or contextData.server or GetRealmName()
+                ns.Core.DebugPrint("Guild member detected (alt): " .. contextData.name .. "-" .. realm)
+                playerName = contextData.name .. "-" .. realm
             -- Handle regular players (have unit)
             elseif contextData.unit then
+                ns.Core.DebugPrint("Unit detected: " .. contextData.unit)
                 -- Only show for real players, not NPCs
                 if not UnitIsPlayer(contextData.unit) then 
+                    ns.Core.DebugPrint("Not a player unit, returning")
                     return 
                 end
                 
                 playerName = GetUnitName(contextData.unit, true)
                 if not playerName then 
+                    ns.Core.DebugPrint("No player name from unit, returning")
                     return 
                 end
             else
+                ns.Core.DebugPrint("No recognized context data, returning")
                 return 
             end
+            
+            if not playerName then
+                ns.Core.DebugPrint("No player name determined, returning")
+                return
+            end
+            
+            ns.Core.DebugPrint("Adding context menu for player: " .. playerName)
             
             local toxicSubmenu = rootDescription:CreateButton("Toxicify")
             toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
@@ -543,68 +567,65 @@ function ns.Events.RegisterContextMenus()
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         
-        -- Guild context menu
+        -- Guild context menu - try the most common working types first
         local guildMenuTypes = {
             "MENU_UNIT_COMMUNITIES_GUILD_MEMBER",
             "MENU_UNIT_COMMUNITIES_MEMBER",
-            "MENU_UNIT_GUILD",
             "MENU_UNIT_GUILD_MEMBER",
             "MENU_UNIT_GUILD_PLAYER",
-            "MENU_UNIT_GUILD_FRIEND"
+            "MENU_UNIT_GUILD"
         }
         
         for _, menuType in ipairs(guildMenuTypes) do
             Menu.ModifyMenu(menuType, function(_, rootDescription, contextData)
+                ns.Core.DebugPrint("Guild context menu triggered: " .. menuType)
                 ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             end)
         end
         
-        -- Also keep the old approach as a fallback
-        local function RegisterGuildContextMenu()
-            -- Hook into the guild roster frame when it's created
-            local function HookGuildFrame()
-                if GuildRosterFrame then
-                    -- Hook into the guild roster frame's context menu
-                    local originalGuildRosterFrame_OnClick = GuildRosterFrame:GetScript("OnClick")
-                    GuildRosterFrame:SetScript("OnClick", function(self, button)
-                        if button == "RightButton" then
-                            -- Try to get the guild member info
-                            local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(GetGuildRosterSelection())
+        -- Alternative approach - hook into guild roster directly like RaiderIO
+        local function HookGuildRoster()
+            if GuildRosterFrame then
+                -- Hook the right-click event on guild roster
+                local originalOnClick = GuildRosterFrame:GetScript("OnClick")
+                GuildRosterFrame:SetScript("OnClick", function(self, button)
+                    if button == "RightButton" then
+                        local selection = GetGuildRosterSelection()
+                        if selection and selection > 0 then
+                            local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(selection)
                             if name then
-                                -- Create a context menu for this guild member
+                                ns.Core.DebugPrint("Guild member right-clicked: " .. name)
+                                -- Create context menu data
                                 local contextData = {
                                     unit = nil,
                                     name = name,
-                                    realm = GetRealmName(),
+                                    server = GetRealmName(),
                                     accountInfo = nil
                                 }
-                                -- Show the context menu
+                                -- Show context menu
                                 ns.Events.AddToxicifyContextMenu(nil, nil, contextData)
                             end
                         end
-                        if originalGuildRosterFrame_OnClick then
-                            originalGuildRosterFrame_OnClick(self, button)
-                        end
-                    end)
-                end
+                    end
+                    if originalOnClick then
+                        originalOnClick(self, button)
+                    end
+                end)
+                ns.Core.DebugPrint("Guild roster frame hooked successfully")
+                return true
             end
-            
-            -- Try to hook immediately
-            HookGuildFrame()
-            
-            -- Also hook into the guild tab opening event
-            local function OnGuildTabOpened()
-                HookGuildFrame()
-            end
-            
-            -- Hook into guild tab events
-            if GuildFrame then
-                GuildFrame:HookScript("OnShow", OnGuildTabOpened)
-            end
+            return false
         end
         
-        -- Register the guild context menu
-        RegisterGuildContextMenu()
+        -- Try to hook immediately
+        if not HookGuildRoster() then
+            -- If not available, try when guild frame opens
+            if GuildFrame then
+                GuildFrame:HookScript("OnShow", function()
+                    C_Timer.After(0.5, HookGuildRoster)
+                end)
+            end
+        end
         
         -- Battle.net friends
         Menu.ModifyMenu("MENU_UNIT_BN_FRIEND", function(_, rootDescription, contextData)

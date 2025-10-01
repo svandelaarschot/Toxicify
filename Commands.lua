@@ -53,6 +53,24 @@ function ns.Commands.Initialize()
             else
                 print("|cffff0000Toxicify:|r Events module not loaded!")
             end
+        elseif cmd == "testguild" then
+            -- Test guild roster hook
+            if GuildRosterFrame then
+                print("|cff39FF14Toxicify:|r Guild roster frame found!")
+                local selection = GetGuildRosterSelection()
+                if selection and selection > 0 then
+                    local name = GetGuildRosterInfo(selection)
+                    if name then
+                        print("|cff39FF14Toxicify:|r Selected guild member: " .. name)
+                    else
+                        print("|cffff0000Toxicify:|r No guild member selected")
+                    end
+                else
+                    print("|cffff0000Toxicify:|r No guild member selected")
+                end
+            else
+                print("|cffff0000Toxicify:|r Guild roster frame not found")
+            end
         elseif cmd == "settings" or cmd == "config" then
             -- Sluit het huidige Toxicify dialoog als het open is
             if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then
