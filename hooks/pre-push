@@ -1,5 +1,5 @@
 #!/bin/sh
-# === Pre-push hook: Run Installer + Sync WoW Addon (with logging) ===
+# === Pre-push hook: Run Installer + Sync WoW Addon (with logging).. ===
 
 WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 INSTALLER_BAT="D:/Development/Toxicify/Installer/Build-Installer-Simple.bat"
