@@ -2,14 +2,14 @@
 # === Pre-push hook: Run Installer + Sync WoW Addon (with logging) ===
 
 WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
-WRAPPER_BAT="D:/Development/Toxicify/Installer/RunInstallerWrapper.bat"
+WRAPPER_BAT="D:\\Development\\Toxicify\\Installer\\RunInstallerWrapper.bat"
 LOG_FILE="prepush.log"
 
 echo "[HOOK] Pre-push started at $(date)" | tee "$LOG_FILE"
 
 # 1) Run installer wrapper via cmd.exe
 echo "[HOOK] Running installer wrapper: $WRAPPER_BAT" | tee -a "$LOG_FILE"
-cmd.exe /c "call \"$WRAPPER_BAT\"" >>"$LOG_FILE" 2>&1
+cmd.exe /c "\"$WRAPPER_BAT\"" >>"$LOG_FILE" 2>&1
 if [ $? -ne 0 ]; then
   echo "[HOOK] Installer failed, aborting push." | tee -a "$LOG_FILE"
   exit 1
