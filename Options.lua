@@ -56,11 +56,21 @@ hideCheck.Text:SetText("Hide toxic groups in Premade Groups")
 hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
 hideCheck:SetScript("OnClick", function(self)
     ToxicifyDB.HideInFinder = self:GetChecked()
+    
+    -- Update description
+    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
 end)
+
+-- Hide Toxic Groups description
+local hideDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+hideDesc:SetPoint("TOPLEFT", hideCheck, "BOTTOMLEFT", 0, -5)
+hideDesc:SetWidth(400)
+hideDesc:SetJustifyH("LEFT")
+hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (ToxicifyDB.HideInFinder and "Enabled" or "Disabled"))
 
 -- Party warning
 local partyWarningCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-partyWarningCheck:SetPoint("TOPLEFT", hideCheck, "BOTTOMLEFT", 0, -10)
+partyWarningCheck:SetPoint("TOPLEFT", hideDesc, "BOTTOMLEFT", 0, -15)
 partyWarningCheck.Text:SetText("Show warning when joining party with toxic/pumper players")
 partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
 partyWarningCheck:SetScript("OnClick", function(self)
@@ -69,7 +79,7 @@ partyWarningCheck:SetScript("OnClick", function(self)
     ns.Core.DebugPrint("PartyWarningEnabled set to: " .. tostring(ToxicifyDB.PartyWarningEnabled))
     
     -- Update description
-    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
+    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
 end)
 
 -- Party Warning description
@@ -77,11 +87,11 @@ local partyWarningDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFont
 partyWarningDesc:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -5)
 partyWarningDesc:SetWidth(400)
 partyWarningDesc:SetJustifyH("LEFT")
-partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (ToxicifyDB.PartyWarningEnabled and "Enabled" or "Disabled"))
+partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
 
 -- Auto-Close Timer
 local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -20)
+autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -15)
 autoCloseLabel:SetText("Auto-Close Timer (seconds):")
 
 -- Auto-Close Timer description
@@ -93,7 +103,7 @@ autoCloseDesc:SetText("How long the warning popup stays open before automaticall
 
 -- Target Frame Indicator
 local targetFrameCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-targetFrameCheck:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -20)
+targetFrameCheck:SetPoint("TOPLEFT", partyWarningDesc, "BOTTOMLEFT", 0, -15)
 targetFrameCheck.Text:SetText("Show Toxic/Pumper indicator above target frame")
 targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
 targetFrameCheck:SetScript("OnClick", function(self)
@@ -101,7 +111,7 @@ targetFrameCheck:SetScript("OnClick", function(self)
     ns.Core.DebugPrint("Target frame indicator " .. (self:GetChecked() and "enabled" or "disabled"))
     
     -- Update description
-    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
+    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players.")
     
     -- Update target frame immediately - force update even if no target change
     if ns.Events and ns.Events.UpdateTargetFrame then
@@ -123,7 +133,7 @@ local targetFrameDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontH
 targetFrameDesc:SetPoint("TOPLEFT", targetFrameCheck, "BOTTOMLEFT", 0, -5)
 targetFrameDesc:SetWidth(400)
 targetFrameDesc:SetJustifyH("LEFT")
-targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (ToxicifyDB.TargetFrameIndicatorEnabled and "Enabled" or "Disabled"))
+targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players")
 
 local autoCloseEditBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
 autoCloseEditBox:SetPoint("TOPLEFT", autoCloseDesc, "BOTTOMLEFT", 0, -5)
@@ -155,7 +165,7 @@ end)
 
 -- Lua errors toggle (only visible when debug is enabled)
 local luaErrorsCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-luaErrorsCheck:SetPoint("TOPLEFT", autoCloseEditBox, "BOTTOMLEFT", 0, -10)
+luaErrorsCheck:SetPoint("TOPLEFT", autoCloseEditBox, "BOTTOMLEFT", 0, -15)
 luaErrorsCheck.Text:SetText("Show Lua errors in chat (Debug mode only)")
 luaErrorsCheck:SetChecked(ToxicifyDB.LuaErrorsEnabled or false)
 luaErrorsCheck:SetScript("OnClick", function(self)
@@ -185,6 +195,10 @@ luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mo
 
 -- Panel OnShow
 generalPanel:SetScript("OnShow", function()
+    -- Initialize hide toxic groups checkbox and description
+    hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
+    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (ToxicifyDB.HideInFinder and "Enabled" or "Disabled"))
+    
     -- Initialize party warning checkbox and description
     partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
     partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (ToxicifyDB.PartyWarningEnabled and "Enabled" or "Disabled"))
