@@ -28,12 +28,12 @@ VIAddVersionKey "FileVersion" "${APP_VERSION}"
 ; Interface Settings
 !define MUI_ABORTWARNING
 
-; Set installer icon (only if logo.ico exists)
-!if /FileExists "logo.ico"
-    !define MUI_ICON "logo.ico"
-    !define MUI_UNICON "logo.ico"
-    Icon "logo.ico"
-!endif
+; Set installer icon (disabled for now)
+; !if /FileExists "logo.ico"
+;     !define MUI_ICON "logo.ico"
+;     !define MUI_UNICON "logo.ico"
+;     Icon "logo.ico"
+; !endif
 
 ; Pages
 !insertmacro MUI_PAGE_WELCOME
