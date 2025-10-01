@@ -297,8 +297,8 @@ function ns.UI.RefreshSharedList(content, filterText)
             UIDropDownMenu_SetText(drop, status == "toxic" and "Toxic" or "Pumper")
             UpdateVisual()
 
-            -- Auto-save on text change
-            nameBox:SetScript("OnTextChanged", function(self)
+            -- Auto-save on focus loss
+            nameBox:SetScript("OnEditFocusLost", function(self)
                 local newName = ns.Player.NormalizePlayerName(self:GetText())
                 if newName and newName ~= name then
                     local role = ToxicifyDB[name]
@@ -306,10 +306,13 @@ function ns.UI.RefreshSharedList(content, filterText)
                     ToxicifyDB[newName] = role
                     name = newName
                     
-                    -- Update list immediately after name change
+                    -- Update list after name change
                     ns.UI.RefreshSharedList(content, filterText)
                 end
-                -- Keep text visible with correct color
+            end)
+            
+            -- Keep text visible with correct color during typing
+            nameBox:SetScript("OnTextChanged", function(self)
                 self:SetFontObject("GameFontNormal")
                 if ToxicifyDB[name] == "toxic" then
                     self:SetTextColor(1, 0, 0) -- rood
