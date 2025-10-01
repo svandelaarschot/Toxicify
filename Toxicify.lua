@@ -14,7 +14,14 @@ function ns.Initialize()
     -- Initialize all modules
     ns.Core.Initialize()
     ns.Player.Initialize()
-    ns.Events.Initialize()
+    
+    -- Check if Events module exists before initializing
+    if ns.Events then
+        ns.Events.Initialize()
+    else
+        print("Toxicify: Events module not loaded!")
+    end
+    
     ns.UI.Initialize()
     ns.GroupFinder.Initialize()
     ns.Commands.Initialize()

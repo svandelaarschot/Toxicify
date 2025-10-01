@@ -479,6 +479,23 @@ function ns.Events.Initialize()
         Menu.ModifyMenu("MENU_UNIT_GUILD_PANEL", AddToxicifyContextMenu)
         Menu.ModifyMenu("MENU_UNIT_GUILD_FRAME", AddToxicifyContextMenu)
         
+        -- Test if these specific guild menu types work
+        local guildTestTypes = {
+            "MENU_UNIT_GUILD_MEMBER", "MENU_UNIT_GUILD_OFFICER", "MENU_UNIT_GUILD_LEADER",
+            "MENU_UNIT_GUILD_ONLINE", "MENU_UNIT_GUILD_OFFLINE", "MENU_UNIT_GUILD_RANK"
+        }
+        
+        for _, menuType in ipairs(guildTestTypes) do
+            local success, error = pcall(function()
+                Menu.ModifyMenu(menuType, AddToxicifyContextMenu)
+                ns.Core.DebugPrint("Successfully registered: " .. menuType)
+            end)
+            
+            if not success then
+                ns.Core.DebugPrint("Failed to register: " .. menuType .. " - " .. tostring(error))
+            end
+        end
+        
         -- Party members (specific slots)
         for i = 1, 4 do
             Menu.ModifyMenu("MENU_UNIT_PARTY" .. i, AddToxicifyContextMenu)

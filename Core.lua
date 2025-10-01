@@ -310,5 +310,28 @@ SlashCmdList["TOXICIFY_SIMPLE_TEST"] = function()
     end
 end
 
+-- Test guild context menu registration
+SLASH_TOXICIFY_GUILD_REGISTER1 = "/tguildregister"
+SlashCmdList["TOXICIFY_GUILD_REGISTER"] = function()
+    ns.Core.DebugPrint("Testing guild menu registration...")
+    
+    local guildMenuTypes = {
+        "MENU_UNIT_GUILD", "MENU_UNIT_GUILD_MEMBER", "MENU_UNIT_GUILD_OFFICER", 
+        "MENU_UNIT_GUILD_LEADER", "MENU_UNIT_GUILD_ONLINE", "MENU_UNIT_GUILD_OFFLINE", 
+        "MENU_UNIT_GUILD_RANK"
+    }
+    
+    for _, menuType in ipairs(guildMenuTypes) do
+        local success, error = pcall(function()
+            Menu.ModifyMenu(menuType, function() end)
+            ns.Core.DebugPrint(menuType .. " - Registration successful!")
+        end)
+        
+        if not success then
+            ns.Core.DebugPrint(menuType .. " - Registration failed: " .. tostring(error))
+        end
+    end
+end
+
 -- Initialize on load
 ns.Core.Initialize()
