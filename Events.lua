@@ -235,6 +235,50 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     frame.countdownTimer = countdownTimer
 end
 
+-- Target frame indicator for toxic/pumper players
+function ns.Events.UpdateTargetFrame()
+    if not _G.TargetFrame then return end
+    
+    -- Remove existing indicator
+    if _G.ToxicifyTargetIndicator then
+        _G.ToxicifyTargetIndicator:Hide()
+    end
+    
+    -- Check if target is a player
+    if not UnitIsPlayer("target") then return end
+    
+    local targetName = GetUnitName("target", true)
+    if not targetName then return end
+    
+    local isToxic = ns.Player.IsToxic(targetName)
+    local isPumper = ns.Player.IsPumper(targetName)
+    
+    if not isToxic and not isPumper then return end
+    
+    -- Create indicator frame
+    local indicator = _G.ToxicifyTargetIndicator or CreateFrame("Frame", "ToxicifyTargetIndicator", _G.TargetFrame)
+    indicator:SetSize(80, 20)
+    indicator:SetPoint("TOPLEFT", _G.TargetFrame, "TOPLEFT", 20, -5)
+    indicator:SetFrameStrata("HIGH")
+    indicator:SetFrameLevel(1000)
+    
+    -- Create text
+    if not indicator.text then
+        indicator.text = indicator:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        indicator.text:SetPoint("LEFT")
+        indicator.text:SetJustifyH("LEFT")
+    end
+    
+    -- Set text and color based on status
+    if isToxic then
+        indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000TOXIC|r")
+    elseif isPumper then
+        indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00PUMPER|r")
+    end
+    
+    indicator:Show()
+end
+
 -- Initialize event handlers
 function ns.Events.Initialize()
     -- Group roster updates
@@ -243,6 +287,14 @@ function ns.Events.Initialize()
     rosterFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     rosterFrame:SetScript("OnEvent", function(self, event, ...)
         ns.Events.UpdateGroupMembers(event)
+    end)
+    
+    -- Target frame updates
+    local targetFrame = CreateFrame("Frame")
+    targetFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    targetFrame:RegisterEvent("UNIT_TARGET")
+    targetFrame:SetScript("OnEvent", function(self, event, ...)
+        ns.Events.UpdateTargetFrame()
     end)
     
     -- Tooltip integration

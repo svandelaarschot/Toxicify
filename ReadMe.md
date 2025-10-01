@@ -14,6 +14,7 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 
 *   Mark players manually with `/toxic add Name-Realm` or via right-click context menus.
 *   Automatically highlight them with **icons** and **color-coded names** (red for Toxic, green for Pumper).
+*   **Target frame indicator** - See Toxic/Pumper status directly on the target frame.
 
 ### 🔎 Group Finder Integration
 
@@ -30,6 +31,13 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 ### 🧾 Tooltip Enhancements
 
 *   Hovering over a player shows a Toxic/Pumper icon and label in their tooltip.
+
+### 🎯 Target Frame Indicator
+
+*   **Target frame overlay** - Shows Toxic/Pumper status directly above the target frame.
+*   **Real-time updates** - Updates immediately when targeting a new player.
+*   **Visual indicators** - Red "TOXIC" with skull icon, green "PUMPER" with star icon.
+*   **Clean design** - Subtle overlay that doesn't interfere with the target frame.
 
 ### 💬 Whisper & Ignore Options
 
@@ -126,6 +134,7 @@ Access settings via `/toxic settings` or the Interface Options:
 *   **Share lists with guildmates** - Export your lists so your guild can avoid the same toxic players
 *   **Auto-ignore toxic players** - Set Toxicify to automatically add toxic players to your ignore list
 *   **Get warned about toxic groups** - Enable party warnings to know when toxic players join your group
+*   **Quick target identification** - See immediately if a targeted player is Toxic or Pumper without hovering
 
 ***
 
