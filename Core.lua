@@ -246,11 +246,3 @@ end
 
 -- Initialize on load
 ns.Core.Initialize()
-
--- Test comment added by Git hook test
-
--- Test comment added by Git hook test
-
--- Test comment for GitKraken hook test
-
--- Final test comment
