@@ -2,8 +2,10 @@
 REM Complete installer build with zip creation and cleanup
 echo Building Toxicify Installer with zip files...
 
-REM Create proper icon from logo
-if exist "logo.png" (
+REM Copy logo.ico if it exists
+if exist "logo.ico" (
+    echo Using existing logo.ico...
+) else if exist "logo.png" (
     echo Creating icon from logo...
     powershell -ExecutionPolicy Bypass -File create-icon.ps1
 )
