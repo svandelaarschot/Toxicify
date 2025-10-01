@@ -35,10 +35,7 @@ RequestExecutionLevel admin
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
-!insertmacro MUI_UNPAGE_WELCOME
-!insertmacro MUI_UNPAGE_CONFIRM
-!insertmacro MUI_UNPAGE_INSTFILES
-!insertmacro MUI_UNPAGE_FINISH
+; No uninstaller pages needed
 
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
@@ -67,69 +64,13 @@ Section "Toxicify Addon" SecMain
         File "logo.ico"
     !endif
     
-    ; Create uninstaller
-    WriteUninstaller "$INSTDIR\Uninstall.exe"
-    
-    ; Registry entries for Windows Programs
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayName" "${APP_NAME}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayVersion" "${APP_VERSION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "Publisher" "${APP_PUBLISHER}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "URLInfoAbout" "${APP_URL}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "InstallLocation" "$INSTDIR"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "UninstallString" "$INSTDIR\Uninstall.exe"
-    !if /FileExists "logo.ico"
-        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "DisplayIcon" "$INSTDIR\logo.ico"
-    !endif
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "Comments" "World of Warcraft addon for marking toxic and pumper players"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoModify" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "NoRepair" 1
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" "EstimatedSize" 100
-    
-    ; Create desktop shortcut (optional)
-    !if /FileExists "logo.ico"
-        CreateShortCut "$DESKTOP\Toxicify WoW Addon.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\logo.ico" 0
-    !else
-        CreateShortCut "$DESKTOP\Toxicify WoW Addon.lnk" "$INSTDIR\Uninstall.exe"
-    !endif
+    ; No uninstaller or registry entries needed
     
     ; Show success message
-    MessageBox MB_OK "Toxicify WoW Addon has been successfully installed!$\r$\n$\r$\nInstallation location: $INSTDIR$\r$\n$\r$\nThe addon will appear in your WoW AddOns list.$\r$\nYou can uninstall it from Windows Programs and Features."
+    MessageBox MB_OK "Toxicify WoW Addon has been successfully installed!$\r$\n$\r$\nInstallation location: $INSTDIR$\r$\n$\r$\nThe addon will appear in your WoW AddOns list.$\r$\nTo uninstall, simply delete the addon folder from your WoW AddOns directory."
 SectionEnd
 
-; Uninstaller Section
-Section "Uninstall"
-    ; Remove files
-    Delete "$INSTDIR\Commands.lua"
-    Delete "$INSTDIR\Constants.lua"
-    Delete "$INSTDIR\Core.lua"
-    Delete "$INSTDIR\Events.lua"
-    Delete "$INSTDIR\GroupFinder.lua"
-    Delete "$INSTDIR\Minimap.lua"
-    Delete "$INSTDIR\Options.lua"
-    Delete "$INSTDIR\Player.lua"
-    Delete "$INSTDIR\Toxicify.lua"
-    Delete "$INSTDIR\UI.lua"
-    Delete "$INSTDIR\Toxicify.toc"
-    !if /FileExists "logo.ico"
-        Delete "$INSTDIR\logo.ico"
-    !endif
-    Delete "$INSTDIR\Uninstall.exe"
-    
-    ; Remove desktop shortcut
-    Delete "$DESKTOP\Toxicify WoW Addon.lnk"
-    
-    ; Remove directories
-    RMDir "$INSTDIR\Interface\AddOns\Toxicify"
-    RMDir "$INSTDIR\Interface\AddOns"
-    RMDir "$INSTDIR\Interface"
-    RMDir "$INSTDIR"
-    
-    ; Remove registry entries
-    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}"
-    
-    ; Show completion message
-    MessageBox MB_OK "Toxicify WoW Addon has been successfully removed from your system.$\r$\n$\r$\nThe addon files have been deleted and it will no longer appear in your WoW AddOns list."
-SectionEnd
+; No uninstaller section needed
 
 ; Function to detect WoW installation
 Function DetectWoW
