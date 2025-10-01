@@ -6,17 +6,13 @@ ns.Events = {}
 
 -- Update group members (party/raid/M+)
 function ns.Events.UpdateGroupMembers(event)
-    ns.Core.DebugPrint("UpdateGroupMembers called with event: " .. tostring(event))
-    
     -- Only show warning for actual group roster updates, not for PLAYER_ENTERING_WORLD
     if event == "PLAYER_ENTERING_WORLD" then
-        ns.Core.DebugPrint("Skipping warning check for PLAYER_ENTERING_WORLD event")
         return
     end
     
     -- Only show warning if we're actually in a group
     if not IsInGroup() then
-        ns.Core.DebugPrint("Not in a group, skipping warning check")
         return
     end
     
@@ -25,13 +21,10 @@ function ns.Events.UpdateGroupMembers(event)
     
     -- Check yourself first
     local playerName = GetUnitName("player", true)
-    ns.Core.DebugPrint("Player name: " .. tostring(playerName))
     if playerName and ns.Player.IsToxic(playerName) then
-        ns.Core.DebugPrint("Player is toxic!")
         table.insert(toxicPlayers, playerName)
     end
     if playerName and ns.Player.IsPumper(playerName) then
-        ns.Core.DebugPrint("Player is pumper!")
         table.insert(pumperPlayers, playerName)
     end
     
@@ -61,21 +54,8 @@ function ns.Events.UpdateGroupMembers(event)
     
     -- Only set default if not already configured by user
     if ToxicifyDB.PartyWarningEnabled == nil then
-        ns.Core.DebugPrint("Setting default PartyWarningEnabled to true (was nil)")
         ToxicifyDB.PartyWarningEnabled = true
     end
-    
-    -- Show warning if toxic/pumper players found and warning is enabled
-    ns.Core.DebugPrint("PartyWarningEnabled: " .. tostring(ToxicifyDB.PartyWarningEnabled))
-    ns.Core.DebugPrint("ToxicifyDB table dump:")
-    for k, v in pairs(ToxicifyDB) do
-        if type(v) == "boolean" then
-            ns.Core.DebugPrint("  " .. tostring(k) .. " = " .. tostring(v))
-        end
-    end
-    ns.Core.DebugPrint("Toxic players count: " .. #toxicPlayers)
-    ns.Core.DebugPrint("Pumper players count: " .. #pumperPlayers)
-    
     if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
         -- Show popup warning (only once per session)
         if not _G.ToxicifyWarningShown then
@@ -85,8 +65,6 @@ function ns.Events.UpdateGroupMembers(event)
             end)
             _G.ToxicifyWarningShown = true
         end
-    else
-        ns.Core.DebugPrint("No warning shown - conditions not met")
     end
 end
 
@@ -204,7 +182,6 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     leaveBtn:SetScript("OnClick", function()
         if IsInGroup() then
             C_PartyInfo.LeaveParty()
-            ns.Core.DebugPrint("Left group due to toxic players detected")
         end
         if frame.countdownTimer then
             frame.countdownTimer:Cancel()
@@ -242,19 +219,16 @@ end
 -- Target frame indicator for toxic/pumper players
 function ns.Events.UpdateTargetFrame()
     if not _G.TargetFrame then 
-        ns.Core.DebugPrint("UpdateTargetFrame: TargetFrame not found")
         return 
     end
     
     -- Initialize setting if not exists (fallback)
     if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
         ToxicifyDB.TargetFrameIndicatorEnabled = true
-        ns.Core.DebugPrint("UpdateTargetFrame: Target frame indicator setting initialized to true")
     end
     
     -- Check if target frame indicator is enabled
     if not ToxicifyDB.TargetFrameIndicatorEnabled then
-        ns.Core.DebugPrint("UpdateTargetFrame: Target frame indicator disabled")
         -- Hide existing indicator if disabled
         if _G.ToxicifyTargetIndicator then
             _G.ToxicifyTargetIndicator:Hide()
@@ -269,25 +243,18 @@ function ns.Events.UpdateTargetFrame()
     
     -- Check if target is a player
     if not UnitIsPlayer("target") then 
-        ns.Core.DebugPrint("UpdateTargetFrame: Target is not a player")
         return 
     end
     
     local targetName = GetUnitName("target", true)
     if not targetName then 
-        ns.Core.DebugPrint("UpdateTargetFrame: No target name")
         return 
     end
-    
-    ns.Core.DebugPrint("UpdateTargetFrame: Checking target: " .. targetName)
     
     local isToxic = ns.Player.IsToxic(targetName)
     local isPumper = ns.Player.IsPumper(targetName)
     
-    ns.Core.DebugPrint("UpdateTargetFrame: isToxic=" .. tostring(isToxic) .. ", isPumper=" .. tostring(isPumper))
-    
     if not isToxic and not isPumper then 
-        ns.Core.DebugPrint("UpdateTargetFrame: Target is neither toxic nor pumper")
         return 
     end
     
@@ -308,14 +275,11 @@ function ns.Events.UpdateTargetFrame()
     -- Set text and color based on status
     if isToxic then
         indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000TOXIC|r")
-        ns.Core.DebugPrint("UpdateTargetFrame: Showing TOXIC indicator")
     elseif isPumper then
         indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00PUMPER|r")
-        ns.Core.DebugPrint("UpdateTargetFrame: Showing PUMPER indicator")
     end
     
     indicator:Show()
-    ns.Core.DebugPrint("UpdateTargetFrame: Indicator shown")
 end
 
 -- Initialize event handlers
@@ -323,7 +287,6 @@ function ns.Events.Initialize()
     -- Initialize target frame indicator setting
     if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
         ToxicifyDB.TargetFrameIndicatorEnabled = true
-        ns.Core.DebugPrint("Events.Initialize: Target frame indicator setting initialized to true")
     end
     
     -- Group roster updates
@@ -355,6 +318,22 @@ function ns.Events.Initialize()
                 end
             end
         end)
+        
+        -- Guild member tooltip integration
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.GuildMember, function(tooltip, data)
+            if data and data.memberInfo then
+                local name = data.memberInfo.name
+                local server = data.memberInfo.server
+                if name and server then
+                    local fullName = name .. "-" .. server
+                    if ns.Player.IsToxic(fullName) then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r ")
+                    elseif ns.Player.IsPumper(fullName) then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r ")
+                    end
+                end
+            end
+        end)
     end
     
     -- Context menu integration
@@ -363,36 +342,12 @@ function ns.Events.Initialize()
     -- Party members (specific slots)
     -- Raid members (specific slots)
     if Menu then
-        local function AddToxicifyContextMenu(_, rootDescription, contextData)
-            -- Debug context data
-            ns.Core.DebugPrint("Context Menu Debug:")
-            ns.Core.DebugPrint("- contextData: " .. (contextData and "exists" or "nil"))
-            if contextData then
-                ns.Core.DebugPrint("- unit: " .. (contextData.unit or "nil"))
-                ns.Core.DebugPrint("- name: " .. (contextData.name or "nil"))
-                ns.Core.DebugPrint("- which: " .. (contextData.which or "nil"))
-                ns.Core.DebugPrint("- characterName: " .. (contextData.characterName or "nil"))
-                ns.Core.DebugPrint("- characterRealm: " .. (contextData.characterRealm or "nil"))
-                ns.Core.DebugPrint("- realm: " .. (contextData.realm or "nil"))
-                ns.Core.DebugPrint("- accountInfo: " .. (contextData.accountInfo and "exists" or "nil"))
-                if contextData.accountInfo then
-                    ns.Core.DebugPrint("- accountInfo.battleTag: " .. (contextData.accountInfo.battleTag or "nil"))
-                    ns.Core.DebugPrint("- accountInfo.characterName: " .. (contextData.accountInfo.characterName or "nil"))
-                    ns.Core.DebugPrint("- accountInfo.characterRealm: " .. (contextData.accountInfo.characterRealm or "nil"))
-                end
-                
-                -- Print all available fields in contextData
-                ns.Core.DebugPrint("All contextData fields:")
-                for k, v in pairs(contextData) do
-                    ns.Core.DebugPrint("- " .. tostring(k) .. ": " .. tostring(v))
-                end
-            end
-            
+        -- Define the context menu function
+        function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             if not contextData then 
-                ns.Core.DebugPrint("- No contextData, returning")
                 return 
             end
-            
+
             local playerName = nil
             
             -- Handle Battle.net friends (no unit, but have accountInfo)
@@ -403,107 +358,150 @@ function ns.Events.Initialize()
                 
                 if charName and realm then
                     playerName = charName .. "-" .. realm
-                    ns.Core.DebugPrint("- Using Battle.net character: " .. playerName)
                 elseif charName then
                     playerName = charName
-                    ns.Core.DebugPrint("- Using Battle.net character name: " .. playerName)
                 else
                     -- Extract character name from Battle.net tag (remove #numbers)
                     local battleTag = contextData.accountInfo.battleTag
                     local charNameFromTag = battleTag:match("^([^#]+)")
                     if charNameFromTag then
                         playerName = charNameFromTag
-                        ns.Core.DebugPrint("- Using character name from Battle.net tag: " .. playerName)
                     else
                         -- Fallback to full Battle.net tag
                         playerName = battleTag
-                        ns.Core.DebugPrint("- Using full Battle.net tag: " .. playerName)
                     end
                 end
+            -- Handle guild members (have name and server)
+            elseif contextData.name and contextData.server then
+                playerName = contextData.name .. "-" .. contextData.server
             -- Handle regular players (have unit)
             elseif contextData.unit then
                 -- Only show for real players, not NPCs
                 if not UnitIsPlayer(contextData.unit) then 
-                        ns.Core.DebugPrint("- Not a player, returning")
                     return 
                 end
                 
                 playerName = GetUnitName(contextData.unit, true)
                 if not playerName then 
-                        ns.Core.DebugPrint("- No playerName, returning")
                     return 
                 end
-                    ns.Core.DebugPrint("- Using unit name: " .. playerName)
             else
-                    ns.Core.DebugPrint("- No unit or accountInfo, returning")
                 return 
             end
             
-            ns.Core.DebugPrint("- Adding menu for player: " .. playerName)
-
             local toxicSubmenu = rootDescription:CreateButton("Toxicify")
             toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
             toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.Player.MarkPumper(playerName) end)
             toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
         end
 
-        -- Core unit types
-        Menu.ModifyMenu("MENU_UNIT_SELF", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_PLAYER", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_TARGET", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_FRIEND", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD", AddToxicifyContextMenu)
+        -- Context menus will be registered after function definition
+    end
+end
 
-        -- Battle.net friends
-        Menu.ModifyMenu("MENU_UNIT_BN_FRIEND", AddToxicifyContextMenu)
+-- Register context menu for various unit types
+function ns.Events.RegisterContextMenus()
+        -- Core unit types
+        Menu.ModifyMenu("MENU_UNIT_SELF", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        Menu.ModifyMenu("MENU_UNIT_PLAYER", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        Menu.ModifyMenu("MENU_UNIT_TARGET", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        Menu.ModifyMenu("MENU_UNIT_FRIEND", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
         
-        -- Guild-specific menu types
-        Menu.ModifyMenu("MENU_UNIT_GUILD_MEMBER", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_OFFICER", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_LEADER", AddToxicifyContextMenu)
-        
-        -- Additional guild menu types that might exist
-        Menu.ModifyMenu("MENU_UNIT_GUILD_ONLINE", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_OFFLINE", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_RANK", AddToxicifyContextMenu)
-        
-        -- Try to add to all possible guild-related menu types
-        for i = 1, 100 do
-            Menu.ModifyMenu("MENU_UNIT_GUILD" .. i, AddToxicifyContextMenu)
-        end
-        
-        -- Additional guild menu types that might exist
-        Menu.ModifyMenu("MENU_UNIT_GUILD_ROSTER", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_LIST", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_PANEL", AddToxicifyContextMenu)
-        Menu.ModifyMenu("MENU_UNIT_GUILD_FRAME", AddToxicifyContextMenu)
-        
-        -- Test if these specific guild menu types work
-        local guildTestTypes = {
-            "MENU_UNIT_GUILD_MEMBER", "MENU_UNIT_GUILD_OFFICER", "MENU_UNIT_GUILD_LEADER",
-            "MENU_UNIT_GUILD_ONLINE", "MENU_UNIT_GUILD_OFFLINE", "MENU_UNIT_GUILD_RANK"
+        -- Guild context menu
+        local guildMenuTypes = {
+            "MENU_UNIT_COMMUNITIES_GUILD_MEMBER",
+            "MENU_UNIT_COMMUNITIES_MEMBER",
+            "MENU_UNIT_GUILD",
+            "MENU_UNIT_GUILD_MEMBER",
+            "MENU_UNIT_GUILD_PLAYER",
+            "MENU_UNIT_GUILD_FRIEND"
         }
         
-        for _, menuType in ipairs(guildTestTypes) do
-            local success, error = pcall(function()
-                Menu.ModifyMenu(menuType, AddToxicifyContextMenu)
-                ns.Core.DebugPrint("Successfully registered: " .. menuType)
+        for _, menuType in ipairs(guildMenuTypes) do
+            Menu.ModifyMenu(menuType, function(_, rootDescription, contextData)
+                ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             end)
+        end
+        
+        -- Also keep the old approach as a fallback
+        local function RegisterGuildContextMenu()
+            -- Hook into the guild roster frame when it's created
+            local function HookGuildFrame()
+                if GuildRosterFrame then
+                    -- Hook into the guild roster frame's context menu
+                    local originalGuildRosterFrame_OnClick = GuildRosterFrame:GetScript("OnClick")
+                    GuildRosterFrame:SetScript("OnClick", function(self, button)
+                        if button == "RightButton" then
+                            -- Try to get the guild member info
+                            local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(GetGuildRosterSelection())
+                            if name then
+                                -- Create a context menu for this guild member
+                                local contextData = {
+                                    unit = nil,
+                                    name = name,
+                                    realm = GetRealmName(),
+                                    accountInfo = nil
+                                }
+                                -- Show the context menu
+                                ns.Events.AddToxicifyContextMenu(nil, nil, contextData)
+                            end
+                        end
+                        if originalGuildRosterFrame_OnClick then
+                            originalGuildRosterFrame_OnClick(self, button)
+                        end
+                    end)
+                end
+            end
             
-            if not success then
-                ns.Core.DebugPrint("Failed to register: " .. menuType .. " - " .. tostring(error))
+            -- Try to hook immediately
+            HookGuildFrame()
+            
+            -- Also hook into the guild tab opening event
+            local function OnGuildTabOpened()
+                HookGuildFrame()
+            end
+            
+            -- Hook into guild tab events
+            if GuildFrame then
+                GuildFrame:HookScript("OnShow", OnGuildTabOpened)
             end
         end
         
+        -- Register the guild context menu
+        RegisterGuildContextMenu()
+        
+        -- Battle.net friends
+        Menu.ModifyMenu("MENU_UNIT_BN_FRIEND", function(_, rootDescription, contextData)
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        
         -- Party members (specific slots)
         for i = 1, 4 do
-            Menu.ModifyMenu("MENU_UNIT_PARTY" .. i, AddToxicifyContextMenu)
+            Menu.ModifyMenu("MENU_UNIT_PARTY" .. i, function(_, rootDescription, contextData)
+                ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+            end)
         end
         
         -- Raid members (specific slots)
         for i = 1, 40 do
-            Menu.ModifyMenu("MENU_UNIT_RAID" .. i, AddToxicifyContextMenu)
+            Menu.ModifyMenu("MENU_UNIT_RAID" .. i, function(_, rootDescription, contextData)
+                ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+            end)
         end
+        
     end
-end
+
+-- Register context menus after function definition
+ns.Events.RegisterContextMenus()
+

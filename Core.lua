@@ -134,12 +134,8 @@ local function InitializeDefaults()
         ToxicifyDB.DebugEnabled = false
     end
     -- Set default party warning setting
-    ns.Core.DebugPrint("PartyWarningEnabled before: " .. tostring(ToxicifyDB.PartyWarningEnabled))
     if ToxicifyDB.PartyWarningEnabled == nil then
         ToxicifyDB.PartyWarningEnabled = true
-        ns.Core.DebugPrint("Set PartyWarningEnabled to true (was nil)")
-    else
-        ns.Core.DebugPrint("PartyWarningEnabled already exists: " .. tostring(ToxicifyDB.PartyWarningEnabled))
     end
     
     if ToxicifyDB.LuaErrorsEnabled == nil then
@@ -180,7 +176,7 @@ function ns.Core.Initialize()
     end
     
     if ToxicifyDB.DebugEnabled then
-        print("|cff39FF14Toxicify:|r Debug mode is enabled.")
+        ns.Core.DebugPrint("Debug mode is enabled.")
     end
     
     -- Add context menu marking functionality
@@ -248,90 +244,5 @@ function ns.Core.ImportList(str)
 
     return true, count .. " entries imported"
 end
-
--- Debug command to test guild menu types
-SLASH_TOXICIFY_GUILD_TEST1 = "/toxicifyguildtest"
-SLASH_TOXICIFY_GUILD_TEST2 = "/tguildtest"
-SlashCmdList["TOXICIFY_GUILD_TEST"] = function()
-    ns.Core.DebugPrint("Testing guild menu types...")
-    
-    local guildMenuTypes = {
-        "MENU_UNIT_GUILD", "MENU_UNIT_GUILD_MEMBER", "MENU_UNIT_GUILD_OFFICER", 
-        "MENU_UNIT_GUILD_LEADER", "MENU_UNIT_GUILD_ONLINE", "MENU_UNIT_GUILD_OFFLINE", 
-        "MENU_UNIT_GUILD_RANK", "MENU_UNIT_GUILD_ROSTER", "MENU_UNIT_GUILD_LIST", 
-        "MENU_UNIT_GUILD_PANEL", "MENU_UNIT_GUILD_FRAME"
-    }
-    
-    -- Test numeric guild menu types
-    for i = 1, 10 do
-        table.insert(guildMenuTypes, "MENU_UNIT_GUILD" .. i)
-    end
-    
-    for _, menuType in ipairs(guildMenuTypes) do
-        local success, error = pcall(function()
-            -- Try to modify the menu to see if it exists
-            Menu.ModifyMenu(menuType, function() end)
-            ns.Core.DebugPrint(menuType .. " - Available (can modify)")
-        end)
-        
-        if not success then
-            ns.Core.DebugPrint(menuType .. " - Error: " .. tostring(error))
-        end
-    end
-end
-
--- Simple debug command for guild testing
-SLASH_TOXICIFY_DEBUG1 = "/toxicdebug"
-SlashCmdList["TOXICIFY_DEBUG"] = function()
-    ns.Core.DebugPrint("Toxicify Debug Commands:")
-    ns.Core.DebugPrint("/toxicifyguildtest - Test guild menu types")
-    ns.Core.DebugPrint("/tguildtest - Test guild menu types (short)")
-    ns.Core.DebugPrint("/toxic debug - Toggle debug mode")
-end
-
--- Simple test to see if guild menu types work
-SLASH_TOXICIFY_SIMPLE_TEST1 = "/tsimple"
-SlashCmdList["TOXICIFY_SIMPLE_TEST"] = function()
-    ns.Core.DebugPrint("Testing simple guild menu types...")
-    
-    local testMenuTypes = {
-        "MENU_UNIT_GUILD", "MENU_UNIT_PLAYER", "MENU_UNIT_TARGET"
-    }
-    
-    for _, menuType in ipairs(testMenuTypes) do
-        local success, error = pcall(function()
-            Menu.ModifyMenu(menuType, function() end)
-            ns.Core.DebugPrint(menuType .. " - Works!")
-        end)
-        
-        if not success then
-            ns.Core.DebugPrint(menuType .. " - Error: " .. tostring(error))
-        end
-    end
-end
-
--- Test guild context menu registration
-SLASH_TOXICIFY_GUILD_REGISTER1 = "/tguildregister"
-SlashCmdList["TOXICIFY_GUILD_REGISTER"] = function()
-    ns.Core.DebugPrint("Testing guild menu registration...")
-    
-    local guildMenuTypes = {
-        "MENU_UNIT_GUILD", "MENU_UNIT_GUILD_MEMBER", "MENU_UNIT_GUILD_OFFICER", 
-        "MENU_UNIT_GUILD_LEADER", "MENU_UNIT_GUILD_ONLINE", "MENU_UNIT_GUILD_OFFLINE", 
-        "MENU_UNIT_GUILD_RANK"
-    }
-    
-    for _, menuType in ipairs(guildMenuTypes) do
-        local success, error = pcall(function()
-            Menu.ModifyMenu(menuType, function() end)
-            ns.Core.DebugPrint(menuType .. " - Registration successful!")
-        end)
-        
-        if not success then
-            ns.Core.DebugPrint(menuType .. " - Registration failed: " .. tostring(error))
-        end
-    end
-end
-
 -- Initialize on load
 ns.Core.Initialize()
