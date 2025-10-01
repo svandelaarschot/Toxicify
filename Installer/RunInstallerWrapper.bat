@@ -1,7 +1,7 @@
 @echo off
-REM === RunInstallerWrapper.bat ===
-REM Strip alle Git hook arguments zodat ze niet bij je installer komen
+REM === Wrapper to prevent Git hook arguments from breaking installer ===
 
+REM Verwijder alle arguments (refs/heads/main etc)
 :clearArgs
 if "%~1"=="" goto start
 shift
