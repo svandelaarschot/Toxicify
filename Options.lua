@@ -58,7 +58,7 @@ hideCheck:SetScript("OnClick", function(self)
     ToxicifyDB.HideInFinder = self:GetChecked()
     
     -- Update description
-    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
+    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups.")
 end)
 
 -- Hide Toxic Groups description
@@ -66,7 +66,7 @@ local hideDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighligh
 hideDesc:SetPoint("TOPLEFT", hideCheck, "BOTTOMLEFT", 0, -5)
 hideDesc:SetWidth(400)
 hideDesc:SetJustifyH("LEFT")
-hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (ToxicifyDB.HideInFinder and "Enabled" or "Disabled"))
+hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups.")
 
 -- Party warning
 local partyWarningCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -173,7 +173,7 @@ luaErrorsCheck:SetScript("OnClick", function(self)
     ToxicifyDB.LuaErrorsEnabled = enabled
     
     -- Update description
-    luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (enabled and "Enabled" or "Disabled"))
+    luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled.")
     
     -- Set console scriptErrors based on toggle
     if enabled then
@@ -190,22 +190,22 @@ local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHig
 luaErrorsDesc:SetPoint("TOPLEFT", luaErrorsCheck, "BOTTOMLEFT", 0, -5)
 luaErrorsDesc:SetWidth(400)
 luaErrorsDesc:SetJustifyH("LEFT")
-luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (ToxicifyDB.LuaErrorsEnabled and "Enabled" or "Disabled"))
+luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled.")
 
 
 -- Panel OnShow
 generalPanel:SetScript("OnShow", function()
     -- Initialize hide toxic groups checkbox and description
     hideCheck:SetChecked(ToxicifyDB.HideInFinder or false)
-    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups. Current: " .. (ToxicifyDB.HideInFinder and "Enabled" or "Disabled"))
+    hideDesc:SetText("Filters out groups with toxic leaders in Premade Groups.")
     
     -- Initialize party warning checkbox and description
     partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
-    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (ToxicifyDB.PartyWarningEnabled and "Enabled" or "Disabled"))
+    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
     
     -- Initialize target frame indicator checkbox and description
     targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
-    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (ToxicifyDB.TargetFrameIndicatorEnabled and "Enabled" or "Disabled"))
+    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players.")
     
     -- Show/hide Lua errors toggle based on debug mode
     if ToxicifyDB.DebugEnabled then
@@ -215,7 +215,7 @@ generalPanel:SetScript("OnShow", function()
         luaErrorsCheck:SetChecked(scriptErrorsEnabled)
         ToxicifyDB.LuaErrorsEnabled = scriptErrorsEnabled
         -- Update description
-        luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (scriptErrorsEnabled and "Enabled" or "Disabled"))
+        luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled.")
     else
         luaErrorsCheck:Hide()
     end
@@ -563,50 +563,54 @@ local titleRoot = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarg
 titleRoot:SetPoint("TOPLEFT", 16, -16)
 titleRoot:SetText("|cff39FF14Toxicify|r")
 
-local descRoot = rootPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-descRoot:SetPoint("TOPLEFT", titleRoot, "BOTTOMLEFT", 0, -8)
-descRoot:SetWidth(600)
+-- Create scrollable frame for description
+local descScrollFrame = CreateFrame("ScrollFrame", nil, rootPanel, "UIPanelScrollFrameTemplate")
+descScrollFrame:SetPoint("TOPLEFT", titleRoot, "BOTTOMLEFT", 0, -8)
+descScrollFrame:SetPoint("BOTTOMRIGHT", rootPanel, "BOTTOMRIGHT", -21, 16)
+descScrollFrame:SetWidth(595)
+
+-- Create the scroll child frame
+local descScrollChild = CreateFrame("Frame", nil, descScrollFrame)
+descScrollChild:SetSize(575, 1) -- Height will be set by content
+descScrollFrame:SetScrollChild(descScrollChild)
+
+-- Create the text in the scroll child
+local descRoot = descScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+descRoot:SetPoint("TOPLEFT", descScrollChild, "TOPLEFT", 0, 0)
+descRoot:SetWidth(575)
 descRoot:SetJustifyH("LEFT")
 descRoot:SetText([[  
 Toxicify helps you mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r.  
 Once added, they will be clearly highlighted in Party/Raid frames and in the Group Finder.  
 
-Features:  
-- Add players with /toxic add <name-realm>  
-- Quickly mark via right-click context menus  
-- Color-coded names + raid icons in Group Finder and tooltips  
-- Options to auto-whisper and/or ignore toxic players  
-- Import and export your list to share with friends  
+|cff39FF14Features:|r
+• Mark players as Toxic or Pumper
+• Highlight toxic players in Party/Raid frames  
+• Filter toxic groups in Premade Groups
+• Warning popup when joining parties with toxic players
+• Target frame indicator for toxic/pumper players
+• Auto-close timer for warning popups (1-300 seconds)
+• Import/Export toxic player lists
+• Context menu integration for easy marking
 
-Quick Commands
-  
-|cffFFFFFFAdd as Toxic|r
-/toxic add <name-realm>
-
-|cffFFFFFFAdd as Pumper|r
-/toxic add pumper <name-realm>  
-
-|cffFFFFFFRemove player from list|r
-/toxic del <name-realm>         
-
-|cffFFFFFFShow all stored players|r
-/toxic list                     
-
-|cffFFFFFFOpen the Toxicify list window|r
-/toxic ui                       
-
-|cffFFFFFFPrint export string in chat|r
-/toxicexport                    
-
-|cffFFFFFFImport a shared list|r
-/toxicimport <string>           
-
+|cff39FF14Quick Commands:|r
+|cffFFFFFFAdd as Toxic|r: /toxic add <name-realm>
+|cffFFFFFFAdd as Pumper|r: /toxic addpumper <name-realm>  
+|cffFFFFFFRemove player|r: /toxic del <name-realm>
+|cffFFFFFFShow all players|r: /toxic list
+|cffFFFFFFOpen settings|r: /toxic settings
+|cffFFFFFFExport list|r: /toxicexport
+|cffFFFFFFImport list|r: /toxicimport <string>
 
 Enjoy keeping your runs clean and smooth!  
 
 |cffaaaaaaKind Regards,|r  
 |cff39FF14Alvarín-Silvermoon|r  
 ]])
+
+-- Update scroll child height based on text content
+local textHeight = descRoot:GetStringHeight()
+descScrollChild:SetHeight(textHeight)
 
 -- Root panel OnShow event
 rootPanel:SetScript("OnShow", function()

@@ -111,13 +111,13 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 Access settings via `/toxic settings` or the Interface Options:
 
 ### General Settings
+*   **Hide Toxic Groups** - Filter out groups with toxic leaders in Premade Groups
+*   **Party Warning** - Show warning popup when joining parties with toxic players
+*   **Target Frame Indicator** - Show toxic/pumper status above the target frame when targeting players
+*   **Auto-Close Timer** - Set how long the warning popup stays open (1-300 seconds, default: 25)
 *   **Whisper Message** - Customize the message sent to toxic players
 *   **Whisper on Mark** - Automatically whisper when marking someone as toxic
 *   **Ignore on Mark** - Add toxic players to your ignore list
-*   **Hide Toxic Groups** - Filter out groups with toxic leaders in Group Finder
-*   **Party Warning** - Enable/disable automatic warnings when toxic players join
-*   **Target Frame Indicator** - Show toxic/pumper status above the target frame when targeting players
-*   **Auto-Close Timer** - Set how long the warning popup stays open (1-300 seconds, default: 25)
 
 ### Debug Settings
 *   **Debug Mode** - Show detailed debug information in chat
