@@ -372,10 +372,10 @@ function ns.Events.Initialize()
             local playerName = GetUnitName(contextData.unit, true)
             if not playerName then return end
 
-            local toxicSubmenu = rootDescription:CreateSubmenu("Toxicify")
-            toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
-            toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.Player.MarkPumper(playerName) end)
-            toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
+            rootDescription:CreateDivider()
+            rootDescription:CreateButton("Mark as Toxic", function() ns.Player.MarkToxic(playerName) end)
+            rootDescription:CreateButton("Mark as Pumper", function() ns.Player.MarkPumper(playerName) end)
+            rootDescription:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
         end
 
         -- Core unit types
