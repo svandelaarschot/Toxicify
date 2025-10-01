@@ -143,32 +143,8 @@ FunctionEnd
 
 ; Function to validate installation directory
 Function ValidateInstallDir
-    ; Check if the directory looks like a WoW AddOns folder
-    StrCpy $R0 "$INSTDIR"
-    
-    ; If it contains "AddOns" in the path, it's likely correct
-    StrCpy $R1 "$INSTDIR" "" -7
-    StrCmp $R1 "\AddOns" PathValid CheckToxicify
-    
-    CheckToxicify:
-        ; Check if it's the Toxicify subfolder (which is correct)
-        StrCpy $R1 "$INSTDIR" "" -8
-        StrCmp $R1 "\Toxicify" PathValid PathInvalid
-    
-    PathValid:
-        Return
-        
-    PathInvalid:
-        ; Check if it's the default Program Files path
-        StrCmp $INSTDIR "$PROGRAMFILES\${APP_NAME}" DefaultPath ManualPath
-        
-    DefaultPath:
-        ; This is the fallback path, which is OK
-        Return
-        
-    ManualPath:
-        ; Ask user if this is correct
-        MessageBox MB_YESNO "The selected directory doesn't appear to be a WoW AddOns folder.$\r$\n$\r$\nSelected: $INSTDIR$\r$\n$\r$\nIs this correct?" IDYES PathValid IDNO PathInvalid
+    ; Always allow installation - we'll create the directory if needed
+    Return
 FunctionEnd
 
 ; Initialize installer
