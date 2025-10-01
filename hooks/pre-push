@@ -9,7 +9,7 @@ echo "[HOOK] Pre-push started at $(date)" | tee "$LOG_FILE"
 
 # 1) Run installer wrapper via cmd.exe
 echo "[HOOK] Running installer wrapper: $WRAPPER_BAT" | tee -a "$LOG_FILE"
-cmd.exe /c "$WRAPPER_BAT" >>"$LOG_FILE" 2>&1
+cmd.exe /c "call \"$WRAPPER_BAT\"" >>"$LOG_FILE" 2>&1
 if [ $? -ne 0 ]; then
   echo "[HOOK] Installer failed, aborting push." | tee -a "$LOG_FILE"
   exit 1
@@ -17,9 +17,9 @@ fi
 
 # 2) Copy addon files
 echo "[HOOK] Copying addon files to WoW folder..." | tee -a "$LOG_FILE"
-cmd.exe /c "copy \"*.lua\" \"$WOW_PATH\\\" " >>"$LOG_FILE" 2>&1
-cmd.exe /c "copy \"*.toc\" \"$WOW_PATH\\\" " >>"$LOG_FILE" 2>&1
-cmd.exe /c "copy \"Assets\\logo.png\" \"$WOW_PATH\\\" " >>"$LOG_FILE" 2>&1
+cmd.exe /c "copy \"*.lua\" \"$WOW_PATH\\\"" >>"$LOG_FILE" 2>&1
+cmd.exe /c "copy \"*.toc\" \"$WOW_PATH\\\"" >>"$LOG_FILE" 2>&1
+cmd.exe /c "copy \"Assets\\logo.png\" \"$WOW_PATH\\\"" >>"$LOG_FILE" 2>&1
 
 echo "[HOOK] Pre-push finished successfully." | tee -a "$LOG_FILE"
 exit 0
