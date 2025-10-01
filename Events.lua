@@ -237,7 +237,26 @@ end
 
 -- Target frame indicator for toxic/pumper players
 function ns.Events.UpdateTargetFrame()
-    if not _G.TargetFrame then return end
+    if not _G.TargetFrame then 
+        ns.Core.DebugPrint("UpdateTargetFrame: TargetFrame not found")
+        return 
+    end
+    
+    -- Initialize setting if not exists (fallback)
+    if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
+        ToxicifyDB.TargetFrameIndicatorEnabled = true
+        ns.Core.DebugPrint("UpdateTargetFrame: Target frame indicator setting initialized to true")
+    end
+    
+    -- Check if target frame indicator is enabled
+    if not ToxicifyDB.TargetFrameIndicatorEnabled then
+        ns.Core.DebugPrint("UpdateTargetFrame: Target frame indicator disabled")
+        -- Hide existing indicator if disabled
+        if _G.ToxicifyTargetIndicator then
+            _G.ToxicifyTargetIndicator:Hide()
+        end
+        return
+    end
     
     -- Remove existing indicator
     if _G.ToxicifyTargetIndicator then
@@ -245,15 +264,28 @@ function ns.Events.UpdateTargetFrame()
     end
     
     -- Check if target is a player
-    if not UnitIsPlayer("target") then return end
+    if not UnitIsPlayer("target") then 
+        ns.Core.DebugPrint("UpdateTargetFrame: Target is not a player")
+        return 
+    end
     
     local targetName = GetUnitName("target", true)
-    if not targetName then return end
+    if not targetName then 
+        ns.Core.DebugPrint("UpdateTargetFrame: No target name")
+        return 
+    end
+    
+    ns.Core.DebugPrint("UpdateTargetFrame: Checking target: " .. targetName)
     
     local isToxic = ns.Player.IsToxic(targetName)
     local isPumper = ns.Player.IsPumper(targetName)
     
-    if not isToxic and not isPumper then return end
+    ns.Core.DebugPrint("UpdateTargetFrame: isToxic=" .. tostring(isToxic) .. ", isPumper=" .. tostring(isPumper))
+    
+    if not isToxic and not isPumper then 
+        ns.Core.DebugPrint("UpdateTargetFrame: Target is neither toxic nor pumper")
+        return 
+    end
     
     -- Create indicator frame
     local indicator = _G.ToxicifyTargetIndicator or CreateFrame("Frame", "ToxicifyTargetIndicator", _G.TargetFrame)
@@ -272,15 +304,24 @@ function ns.Events.UpdateTargetFrame()
     -- Set text and color based on status
     if isToxic then
         indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000TOXIC|r")
+        ns.Core.DebugPrint("UpdateTargetFrame: Showing TOXIC indicator")
     elseif isPumper then
         indicator.text:SetText("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00PUMPER|r")
+        ns.Core.DebugPrint("UpdateTargetFrame: Showing PUMPER indicator")
     end
     
     indicator:Show()
+    ns.Core.DebugPrint("UpdateTargetFrame: Indicator shown")
 end
 
 -- Initialize event handlers
 function ns.Events.Initialize()
+    -- Initialize target frame indicator setting
+    if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
+        ToxicifyDB.TargetFrameIndicatorEnabled = true
+        ns.Core.DebugPrint("Events.Initialize: Target frame indicator setting initialized to true")
+    end
+    
     -- Group roster updates
     local rosterFrame = CreateFrame("Frame")
     rosterFrame:RegisterEvent("GROUP_ROSTER_UPDATE")

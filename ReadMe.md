@@ -116,6 +116,7 @@ Access settings via `/toxic settings` or the Interface Options:
 *   **Ignore on Mark** - Add toxic players to your ignore list
 *   **Hide Toxic Groups** - Filter out groups with toxic leaders in Group Finder
 *   **Party Warning** - Enable/disable automatic warnings when toxic players join
+*   **Target Frame Indicator** - Show toxic/pumper status above the target frame when targeting players
 *   **Auto-Close Timer** - Set how long the warning popup stays open (1-300 seconds, default: 25)
 
 ### Debug Settings

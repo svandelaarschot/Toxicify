@@ -114,8 +114,8 @@ function ns.Commands.Initialize()
             print("/toxic debug                   - Toggle debug mode (shows in main chat)")
             print("/toxic partywarning            - Toggle party warning")
             print("/toxic luaerrors               - Toggle Lua errors (requires debug mode)")
-            print("/toxic contextmenu              - Activate context menu marking")
-            print("/toxic testwarning              - Show test warning popup")
+            print("/toxic contextmenu             - Activate context menu marking")
+            print("/toxic testwarning             - Show test warning popup")
         end
     end
 end

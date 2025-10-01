@@ -141,6 +141,11 @@ local function InitializeDefaults()
         ToxicifyDB.LuaErrorsEnabled = false
     end
     
+    -- Target frame indicator setting
+    if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
+        ToxicifyDB.TargetFrameIndicatorEnabled = true
+    end
+    
     -- Popup timer setting
     if ToxicifyDB.PopupTimerSeconds == nil then
         ToxicifyDB.PopupTimerSeconds = 25

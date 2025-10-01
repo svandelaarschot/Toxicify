@@ -67,11 +67,21 @@ partyWarningCheck:SetScript("OnClick", function(self)
     ns.Core.DebugPrint("Party warning checkbox clicked, new value: " .. tostring(self:GetChecked()))
     ToxicifyDB.PartyWarningEnabled = self:GetChecked()
     ns.Core.DebugPrint("PartyWarningEnabled set to: " .. tostring(ToxicifyDB.PartyWarningEnabled))
+    
+    -- Update description
+    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
 end)
+
+-- Party Warning description
+local partyWarningDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+partyWarningDesc:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -5)
+partyWarningDesc:SetWidth(400)
+partyWarningDesc:SetJustifyH("LEFT")
+partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (ToxicifyDB.PartyWarningEnabled and "Enabled" or "Disabled"))
 
 -- Auto-Close Timer
 local autoCloseLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-autoCloseLabel:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -20)
+autoCloseLabel:SetPoint("TOPLEFT", targetFrameDesc, "BOTTOMLEFT", 0, -20)
 autoCloseLabel:SetText("Auto-Close Timer (seconds):")
 
 -- Auto-Close Timer description
@@ -80,6 +90,40 @@ autoCloseDesc:SetPoint("TOPLEFT", autoCloseLabel, "BOTTOMLEFT", 0, -5)
 autoCloseDesc:SetWidth(400)
 autoCloseDesc:SetJustifyH("LEFT")
 autoCloseDesc:SetText("How long the warning popup stays open before automatically closing. Range: 1-300 seconds")
+
+-- Target Frame Indicator
+local targetFrameCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
+targetFrameCheck:SetPoint("TOPLEFT", partyWarningCheck, "BOTTOMLEFT", 0, -20)
+targetFrameCheck.Text:SetText("Show Toxic/Pumper indicator above target frame")
+targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
+targetFrameCheck:SetScript("OnClick", function(self)
+    ToxicifyDB.TargetFrameIndicatorEnabled = self:GetChecked()
+    ns.Core.DebugPrint("Target frame indicator " .. (self:GetChecked() and "enabled" or "disabled"))
+    
+    -- Update description
+    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (self:GetChecked() and "Enabled" or "Disabled"))
+    
+    -- Update target frame immediately - force update even if no target change
+    if ns.Events and ns.Events.UpdateTargetFrame then
+        -- Force a target frame update by calling it directly
+        ns.Events.UpdateTargetFrame()
+        
+        -- Also trigger a PLAYER_TARGET_CHANGED event to ensure immediate reaction
+        if _G.TargetFrame and UnitExists("target") then
+            -- Force refresh the target frame indicator
+            C_Timer.After(0.1, function()
+                ns.Events.UpdateTargetFrame()
+            end)
+        end
+    end
+end)
+
+-- Target Frame Indicator description
+local targetFrameDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+targetFrameDesc:SetPoint("TOPLEFT", targetFrameCheck, "BOTTOMLEFT", 0, -5)
+targetFrameDesc:SetWidth(400)
+targetFrameDesc:SetJustifyH("LEFT")
+targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (ToxicifyDB.TargetFrameIndicatorEnabled and "Enabled" or "Disabled"))
 
 local autoCloseEditBox = CreateFrame("EditBox", nil, generalPanel, "InputBoxTemplate")
 autoCloseEditBox:SetPoint("TOPLEFT", autoCloseDesc, "BOTTOMLEFT", 0, -5)
@@ -118,6 +162,9 @@ luaErrorsCheck:SetScript("OnClick", function(self)
     local enabled = self:GetChecked()
     ToxicifyDB.LuaErrorsEnabled = enabled
     
+    -- Update description
+    luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (enabled and "Enabled" or "Disabled"))
+    
     -- Set console scriptErrors based on toggle
     if enabled then
         SetCVar("scriptErrors", "1")
@@ -128,9 +175,24 @@ luaErrorsCheck:SetScript("OnClick", function(self)
     end
 end)
 
+-- Lua Errors description
+local luaErrorsDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+luaErrorsDesc:SetPoint("TOPLEFT", luaErrorsCheck, "BOTTOMLEFT", 0, -5)
+luaErrorsDesc:SetWidth(400)
+luaErrorsDesc:SetJustifyH("LEFT")
+luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (ToxicifyDB.LuaErrorsEnabled and "Enabled" or "Disabled"))
+
 
 -- Panel OnShow
 generalPanel:SetScript("OnShow", function()
+    -- Initialize party warning checkbox and description
+    partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
+    partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players. Current: " .. (ToxicifyDB.PartyWarningEnabled and "Enabled" or "Disabled"))
+    
+    -- Initialize target frame indicator checkbox and description
+    targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
+    targetFrameDesc:SetText("Shows a small indicator above the target frame when targeting toxic or pumper players. Current: " .. (ToxicifyDB.TargetFrameIndicatorEnabled and "Enabled" or "Disabled"))
+    
     -- Show/hide Lua errors toggle based on debug mode
     if ToxicifyDB.DebugEnabled then
         luaErrorsCheck:Show()
@@ -138,6 +200,8 @@ generalPanel:SetScript("OnShow", function()
         local scriptErrorsEnabled = GetCVar("scriptErrors") == "1"
         luaErrorsCheck:SetChecked(scriptErrorsEnabled)
         ToxicifyDB.LuaErrorsEnabled = scriptErrorsEnabled
+        -- Update description
+        luaErrorsDesc:SetText("Shows Lua errors in chat for debugging. Requires debug mode to be enabled. Current: " .. (scriptErrorsEnabled and "Enabled" or "Disabled"))
     else
         luaErrorsCheck:Hide()
     end
