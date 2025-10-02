@@ -166,6 +166,7 @@ function ns.Player.GetAllPlayers()
     return players
 end
 
+
 -- Clear all players
 function ns.Player.ClearAllPlayers()
     for k in pairs(ToxicifyDB) do

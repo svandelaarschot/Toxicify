@@ -1024,7 +1024,7 @@ function ns.Events.Initialize()
                     ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
                 end)
                 rootDescription:CreateButton("Remove Mark", function() 
-                    ns.Player.RemoveMark(playerName)
+                    ns.Player.UnmarkToxic(playerName)
                     ns.Core.DebugPrint("Removed mark from " .. playerName .. " via context menu")
                 end)
                 return
@@ -1048,7 +1048,7 @@ function ns.Events.Initialize()
             end
             
             local removeButton = toxicSubmenu:CreateButton("|TInterface\\Buttons\\UI-GroupLoot-Pass-Up:16:16|t Remove Mark", function() 
-                ns.Player.RemoveMark(playerName)
+                ns.Player.UnmarkToxic(playerName)
                 ns.Core.DebugPrint("Removed mark from " .. playerName .. " via context menu")
             end)
             if removeButton and removeButton.SetTooltip then
