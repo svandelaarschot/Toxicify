@@ -47,6 +47,15 @@ function ns.Commands.Initialize()
             if ns.Events and ns.Events.ShowGuildToast then
                 ns.Events.ShowGuildToast("TestPlayer", "toxic")
             end
+        
+        elseif cmd == "guildtoast" then
+            if ToxicifyDB.GuildToastEnabled then
+                ToxicifyDB.GuildToastEnabled = false
+                ns.Core.Print("Guild toast notifications disabled")
+            else
+                ToxicifyDB.GuildToastEnabled = true
+                ns.Core.Print("Guild toast notifications enabled")
+            end
         elseif cmd == "testguild" then
             -- Test guild roster hook
             if GuildRosterFrame then
@@ -151,8 +160,6 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic partywarning            - Toggle party warning", true)
             ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
             ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
-            ns.Core.DebugPrint("/toxic testwarning             - Show test warning popup", true)
-            ns.Core.DebugPrint("/toxic testframes              - Test target/party frame detection", true)
         end
     end
 end

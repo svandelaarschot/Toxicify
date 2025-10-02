@@ -69,7 +69,7 @@ function ns.Events.UpdateGroupMembers(event)
                             ns.Core.DebugPrint("Frame has .name property")
                             if frame.name.SetText then
                                 ns.Core.DebugPrint("Setting pumper text for: " .. name)
-                                frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                        frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                             else
                                 ns.Core.DebugPrint("Frame.name exists but no SetText method")
                             end
@@ -477,6 +477,10 @@ function ns.Events.Initialize()
     guildFrame:SetScript("OnEvent", function(self, event, ...)
         if event == "GUILD_ROSTER_UPDATE" then
             ns.Events.CheckGuildMemberOnline()
+            -- Also update guild roster display
+            C_Timer.After(0.5, function()
+                ns.Events.UpdateGuildRosterDisplay()
+            end)
         elseif event == "CHAT_MSG_SYSTEM" then
             local message = ...
             -- Check for guild member online messages
@@ -624,11 +628,23 @@ function ns.Events.Initialize()
                 return
             end
             
-            ns.Core.DebugPrint("Creating Toxicify submenu...")
+            ns.Core.DebugPrint("Creating custom Toxicify submenu...")
             
-            -- Create submenu for better organization
+            -- Create custom submenu with full control
             local success, toxicSubmenu = pcall(function()
-                return rootDescription:CreateButton("Toxicify")
+                local button = rootDescription:CreateButton("Toxicify")
+                
+                -- Try to set custom properties for better visibility
+                if button.SetTooltip then
+                    button:SetTooltip("Toxicify Player Management")
+                end
+                
+                -- Set custom icon if possible
+                if button.SetTexture then
+                    button:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+                end
+                
+                return button
             end)
             
             if not success or not toxicSubmenu then
@@ -642,27 +658,39 @@ function ns.Events.Initialize()
                     ns.Player.MarkPumper(playerName)
                     ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
                 end)
-                rootDescription:CreateButton("Remove from Toxicify", function() 
-                    ns.Player.UnmarkToxic(playerName)
-                    ns.Core.DebugPrint("Removed " .. playerName .. " from Toxicify list via context menu")
+                rootDescription:CreateButton("Remove Mark", function() 
+                    ns.Player.RemoveMark(playerName)
+                    ns.Core.DebugPrint("Removed mark from " .. playerName .. " via context menu")
                 end)
-            else
-                ns.Core.DebugPrint("Submenu created, adding buttons...")
-                toxicSubmenu:CreateButton("Mark as Toxic", function() 
-                    ns.Player.MarkToxic(playerName)
-                    ns.Core.DebugPrint("Marked " .. playerName .. " as Toxic via context menu")
-                end)
-                toxicSubmenu:CreateButton("Mark as Pumper", function() 
-                    ns.Player.MarkPumper(playerName)
-                    ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
-                end)
-                toxicSubmenu:CreateButton("Remove from List", function() 
-                    ns.Player.UnmarkToxic(playerName)
-                    ns.Core.DebugPrint("Removed " .. playerName .. " from Toxicify list via context menu")
-                end)
+                return
             end
             
-            ns.Core.DebugPrint("Context menu buttons created successfully")
+            -- Add custom buttons to submenu with icons and tooltips
+            local toxicButton = toxicSubmenu:CreateButton("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t Mark as Toxic", function() 
+                ns.Player.MarkToxic(playerName)
+                ns.Core.DebugPrint("Marked " .. playerName .. " as Toxic via context menu")
+            end)
+            if toxicButton and toxicButton.SetTooltip then
+                toxicButton:SetTooltip("Mark this player as toxic")
+            end
+            
+            local pumperButton = toxicSubmenu:CreateButton("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t Mark as Pumper", function() 
+                ns.Player.MarkPumper(playerName)
+                ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
+            end)
+            if pumperButton and pumperButton.SetTooltip then
+                pumperButton:SetTooltip("Mark this player as pumper")
+            end
+            
+            local removeButton = toxicSubmenu:CreateButton("|TInterface\\Buttons\\UI-GroupLoot-Pass-Up:16:16|t Remove Mark", function() 
+                ns.Player.RemoveMark(playerName)
+                ns.Core.DebugPrint("Removed mark from " .. playerName .. " via context menu")
+            end)
+            if removeButton and removeButton.SetTooltip then
+                removeButton:SetTooltip("Remove any marks from this player")
+            end
+            
+            ns.Core.DebugPrint("Toxicify submenu created successfully")
         end
 
         -- Context menus will be registered after function definition
@@ -787,18 +815,172 @@ function ns.Events.RegisterContextMenus()
         
     end
 
+-- Update guild roster display with toxic/pumper icons
+function ns.Events.UpdateGuildRosterDisplay()
+    if not GuildFrame then
+        ns.Core.DebugPrint("Guild frame not available")
+        return
+    end
+    
+    if not GuildFrame:IsShown() then
+        ns.Core.DebugPrint("Guild frame not shown - will update when opened")
+        return
+    end
+    
+    ns.Core.DebugPrint("Updating guild roster display...")
+    
+    -- Wait for guild roster to be populated
+    C_Timer.After(0.1, function()
+        local numGuildMembers = GetNumGuildMembers()
+        ns.Core.DebugPrint("Number of guild members: " .. numGuildMembers)
+        
+        if numGuildMembers == 0 then
+            return
+        end
+        
+        -- Try different guild frame structures
+        local foundButtons = 0
+        
+        -- Check for modern guild roster structure
+        if GuildRosterContainer and GuildRosterContainer.listScroll then
+            ns.Core.DebugPrint("Found modern guild roster container")
+            local scrollFrame = GuildRosterContainer.listScroll
+            if scrollFrame.buttons then
+                for i, button in ipairs(scrollFrame.buttons) do
+                    if button and button.guildIndex then
+                        foundButtons = foundButtons + 1
+                        local guildIndex = button.guildIndex
+                        local name = GetGuildRosterInfo(guildIndex)
+                        if name then
+                            local fullName = name .. "-" .. GetRealmName()
+                            local isToxic = ns.Player.IsToxic(fullName)
+                            local isPumper = ns.Player.IsPumper(fullName)
+                            
+                            if isToxic or isPumper then
+                                ns.Core.DebugPrint("Found marked guild member: " .. name)
+                                -- Try to find name text in button
+                                if button.Name then
+                                    local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
+                                    local color = isToxic and "|cffff0000" or "|cff00ff00"
+                                    button.Name:SetText(icon .. " " .. color .. name .. "|r")
+                                    ns.Core.DebugPrint("Updated modern guild roster: " .. name)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Fallback: Try classic guild frame structure
+        if foundButtons == 0 then
+            ns.Core.DebugPrint("Trying classic guild frame structure...")
+            for i = 1, 20 do -- Check first 20 visible buttons
+                local buttonName = "GuildFrameButton" .. i
+                local button = _G[buttonName]
+                
+                if button then
+                    foundButtons = foundButtons + 1
+                    ns.Core.DebugPrint("Found button: " .. buttonName)
+                    
+                    -- Try different name field variations
+                    local nameText = _G[buttonName .. "Name"] or button.Name or button.name
+                    if nameText then
+                        ns.Core.DebugPrint("Found name text element for button " .. i)
+                    else
+                        ns.Core.DebugPrint("No name text found for button " .. i)
+                    end
+                else
+                    break -- No more buttons
+                end
+            end
+        end
+        
+        ns.Core.DebugPrint("Total buttons found: " .. foundButtons)
+        
+        -- Manual test: Try to update Agatio if he's in the list
+        for i = 1, numGuildMembers do
+            local name = GetGuildRosterInfo(i)
+            if name and name == "Agatio" then
+                ns.Core.DebugPrint("Found Agatio in guild roster at index " .. i)
+                local fullName = "Agatio-Bloodscalp"
+                local isPumper = ns.Player.IsPumper(fullName)
+                ns.Core.DebugPrint("Agatio is pumper: " .. tostring(isPumper))
+                break
+            end
+        end
+    end)
+end
+
+-- Hook guild frame to update display when opened
+local function InstallGuildHooks()
+    if GuildFrame then
+        -- Hook when guild frame is shown
+        GuildFrame:HookScript("OnShow", function()
+            ns.Core.DebugPrint("Guild frame opened, updating roster display...")
+            C_Timer.After(1, function()
+                ns.Events.UpdateGuildRosterDisplay()
+            end)
+        end)
+        
+        -- Hook guild roster updates
+        if GuildRosterFrame then
+            GuildRosterFrame:HookScript("OnShow", function()
+                ns.Core.DebugPrint("Guild roster frame shown, updating display...")
+                C_Timer.After(0.5, function()
+                    ns.Events.UpdateGuildRosterDisplay()
+                end)
+            end)
+        end
+        
+        ns.Core.DebugPrint("Guild frame hooks installed")
+        return true
+    else
+        ns.Core.DebugPrint("Guild frame not available for hooking")
+        return false
+    end
+end
+
+-- Try to install hooks immediately
+C_Timer.After(3, function()
+    if not InstallGuildHooks() then
+        -- If guild frame not available, try when guild addon loads
+        local guildLoader = CreateFrame("Frame")
+        guildLoader:RegisterEvent("ADDON_LOADED")
+        guildLoader:SetScript("OnEvent", function(self, event, addonName)
+            if addonName == "Blizzard_GuildUI" or addonName == "Blizzard_Communities" then
+                ns.Core.DebugPrint("Guild addon loaded: " .. addonName)
+                C_Timer.After(1, function()
+                    if InstallGuildHooks() then
+                        guildLoader:UnregisterEvent("ADDON_LOADED")
+                    end
+                end)
+            end
+        end)
+        ns.Core.DebugPrint("Waiting for guild addon to load...")
+    end
+end)
+
 -- Register context menus after addon is fully loaded
 ns.Core.DebugPrint("Events.lua loaded completely, scheduling context menu registration...")
 
--- Use a timer to register context menus after everything is loaded
-C_Timer.After(2, function()
-    ns.Core.DebugPrint("Attempting to register context menus...")
-    if Menu then
-        ns.Core.DebugPrint("Menu API available, registering context menus")
-        ns.Events.RegisterContextMenus()
-    else
-        ns.Core.DebugPrint("Menu API not available - context menus will not work")
-    end
-    ns.Core.DebugPrint("Context menu registration complete")
-end)
+-- Register context menus immediately for higher priority
+ns.Core.DebugPrint("Attempting to register context menus...")
+if Menu then
+    ns.Core.DebugPrint("Menu API available, registering context menus")
+    ns.Events.RegisterContextMenus()
+else
+    -- Use a timer if Menu API not available yet
+    C_Timer.After(1, function()
+        ns.Core.DebugPrint("Attempting to register context menus (delayed)...")
+        if Menu then
+            ns.Core.DebugPrint("Menu API available, registering context menus")
+            ns.Events.RegisterContextMenus()
+        else
+            ns.Core.DebugPrint("Menu API not available - context menus will not work")
+        end
+        ns.Core.DebugPrint("Context menu registration complete")
+    end)
+end
+ns.Core.DebugPrint("Context menu registration complete")
 
