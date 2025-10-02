@@ -17,35 +17,6 @@ function ns.Core.DebugPrint(message, forcePrint)
     end
 end
 
--- Test function to debug import/export
-function ns.Core.TestImportExport()
-    print("|cff39FF14Toxicify:|r Testing import/export functionality...")
-    
-    -- Add a test player
-    ToxicifyDB["TestPlayer-TestRealm"] = "toxic"
-    print("Added test player: TestPlayer-TestRealm as toxic")
-    
-    -- Export
-    local exportData = ns.Core.ExportList()
-    print("Export data: " .. exportData)
-    
-    -- Clear the test player
-    ToxicifyDB["TestPlayer-TestRealm"] = nil
-    print("Cleared test player")
-    
-    -- Import back
-    local ok, result = ns.Core.ImportList(exportData)
-    if ok then
-        print("Import successful: " .. result)
-        if ToxicifyDB["TestPlayer-TestRealm"] then
-            print("Test player restored: " .. ToxicifyDB["TestPlayer-TestRealm"])
-        else
-            print("ERROR: Test player not restored!")
-        end
-    else
-        print("Import failed: " .. result)
-    end
-end
 
 -- Test warning popup
 function ns.Core.TestWarningPopup()
@@ -299,41 +270,38 @@ end
 -- Import functionality with Base64 decoding
 function ns.Core.ImportList(str)
     if not str or str == "" then 
-        ns.Core.DebugPrint("Import failed: No data provided")
         return false, "No data provided" 
     end
 
     -- Clean up the input string
     str = str:gsub("^%s+", ""):gsub("%s+$", "") -- trim whitespace
-    ns.Core.DebugPrint("Import attempt with data: " .. str:sub(1, 50) .. "...")
+    ns.Core.DebugPrint("Importing data: " .. str:sub(1, 30) .. "...")
 
     -- Handle both old and new formats
     local encoded = str:match("^TX:(.+)$")
     if encoded then
-        ns.Core.DebugPrint("Detected new TX: format")
+        ns.Core.DebugPrint("Using new secure format")
         -- New Base64 format
         local success, decoded = pcall(base64decode, encoded)
         if not success or not decoded or decoded == "" then 
-            ns.Core.DebugPrint("Base64 decode failed")
-            return false, "Invalid Base64 encoding" 
+            return false, "Invalid encoding - data may be corrupted" 
         end
         
-        ns.Core.DebugPrint("Decoded data: " .. decoded)
         local version, payload, checksum = decoded:match("^(TOXICIFYv2)|(.+)|(%d+)$")
         if not version then 
-            ns.Core.DebugPrint("Version parsing failed")
             return false, "Invalid data format" 
         end
 
+        -- Verify data integrity
         local calc = 0
         for i = 1, #payload do
             calc = calc + string.byte(payload, i)
         end
         if tostring(calc) ~= checksum then
-            ns.Core.DebugPrint("Checksum mismatch: " .. calc .. " vs " .. checksum)
             return false, "Data corruption detected"
         end
 
+        -- Import players
         local count = 0
         for entry in string.gmatch(payload, "([^;]+)") do
             local name, status = entry:match("([^:]+):([^:]+)")
@@ -344,14 +312,12 @@ function ns.Core.ImportList(str)
             end
         end
 
-        ns.Core.DebugPrint("Import completed: " .. count .. " players")
         return true, count .. " players imported successfully"
     else
-        ns.Core.DebugPrint("Checking legacy format")
+        ns.Core.DebugPrint("Using legacy format")
         -- Legacy format support
         local version, payload, checksum = str:match("^(TOXICIFYv1)|(.+)|(%d+)$")
         if not version then 
-            ns.Core.DebugPrint("No valid format detected")
             return false, "Invalid format - not a Toxicify export string" 
         end
 
@@ -360,8 +326,7 @@ function ns.Core.ImportList(str)
             calc = calc + string.byte(payload, i)
         end
         if tostring(calc) ~= checksum then
-            ns.Core.DebugPrint("Legacy checksum mismatch")
-            return false, "Checksum mismatch"
+            return false, "Data verification failed"
         end
 
         local count = 0
@@ -370,12 +335,11 @@ function ns.Core.ImportList(str)
             if name and status then
                 ToxicifyDB[name] = status
                 count = count + 1
-                ns.Core.DebugPrint("Imported (legacy): " .. name .. " as " .. status)
+                ns.Core.DebugPrint("Imported: " .. name .. " as " .. status)
             end
         end
 
-        ns.Core.DebugPrint("Legacy import completed: " .. count .. " players")
-        return true, count .. " entries imported (legacy format)"
+        return true, count .. " players imported (legacy format)"
     end
 end
 

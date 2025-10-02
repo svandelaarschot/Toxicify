@@ -355,10 +355,10 @@ function ns.UI.AddContextMenuMarking()
 end
 
 -- Show Import/Export popup
-function ns.UI.ShowIOPopup(mode, data)
+function ns.UI.ShowIOPopup(mode)
     if not _G.ToxicifyIOFrame then
         local f = CreateFrame("Frame", "ToxicifyIOFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-        f:SetSize(500, 300)
+        f:SetSize(550, 350)
         f:SetPoint("CENTER")
         f:SetBackdrop({
             bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -369,36 +369,42 @@ function ns.UI.ShowIOPopup(mode, data)
         f:SetFrameStrata("DIALOG")
         f:Hide()
 
-        -- Titel
+        -- Title
         f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
         f.title:SetPoint("TOP", 0, -15)
 
+        -- Description
+        f.description = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        f.description:SetPoint("TOPLEFT", 20, -45)
+        f.description:SetWidth(500)
+        f.description:SetJustifyH("LEFT")
+
         -- EditBox + Scroll
         f.scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-        f.scroll:SetPoint("TOPLEFT", 20, -50)
-        f.scroll:SetPoint("BOTTOMRIGHT", -40, 50)
+        f.scroll:SetPoint("TOPLEFT", 20, -80)
+        f.scroll:SetPoint("BOTTOMRIGHT", -40, 60)
 
         f.editBox = CreateFrame("EditBox", nil, f.scroll)
         f.editBox:SetMultiLine(true)
         f.editBox:SetFontObject("ChatFontNormal")
-        f.editBox:SetWidth(420)
+        f.editBox:SetWidth(480)
         f.editBox:SetAutoFocus(false)
         f.scroll:SetScrollChild(f.editBox)
 
         -- Buttons
         f.closeBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-        f.closeBtn:SetSize(100, 22)
-        f.closeBtn:SetPoint("BOTTOMRIGHT", -20, 15)
+        f.closeBtn:SetSize(100, 25)
+        f.closeBtn:SetPoint("BOTTOMRIGHT", -20, 20)
         f.closeBtn:SetText("Close")
         f.closeBtn:SetScript("OnClick", function() f:Hide() end)
 
         f.actionBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-        f.actionBtn:SetSize(100, 22)
+        f.actionBtn:SetSize(120, 25)
         f.actionBtn:SetPoint("RIGHT", f.closeBtn, "LEFT", -10, 0)
 
         -- Footer
         local footer = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        footer:SetPoint("BOTTOMLEFT", 20, 20)
+        footer:SetPoint("BOTTOMLEFT", 20, 25)
         footer:SetText(ns.Core.GetFooterText())
 
         _G.ToxicifyIOFrame = f
@@ -406,24 +412,26 @@ function ns.UI.ShowIOPopup(mode, data)
 
     local f = _G.ToxicifyIOFrame
     f:Show()
-    f.editBox:SetText("")
 
     if mode == "export" then
         f.title:SetText("|cff39FF14Toxicify|r - Export List")
+        f.description:SetText("Your list has been exported and copied to clipboard. Share this with friends!")
+        
         local exportData = ns.Core.ExportList()
         f.editBox:SetText(exportData)
-        f.actionBtn:SetText("Copy & Close")
+        f.actionBtn:SetText("Copy Again")
         
         -- Auto-copy to clipboard on show
         local autocopied = ns.Core.CopyToClipboard(exportData)
         if autocopied then
-            print("|cff39FF14Toxicify:|r ✓ List automatically copied to clipboard! Ready to share.")
+            print("|cff39FF14Toxicify:|r ✓ List exported and copied to clipboard!")
+        else
+            print("|cff39FF14Toxicify:|r List exported. Please copy manually.")
         end
         
         f.actionBtn:SetScript("OnClick", function()
             if ns.Core.CopyToClipboard(exportData) then
-                print("|cff39FF14Toxicify:|r ✓ List copied to clipboard!")
-                f:Hide()
+                print("|cff39FF14Toxicify:|r ✓ Copied to clipboard again!")
             else
                 f.editBox:HighlightText()
                 print("|cff39FF14Toxicify:|r Please copy the text manually with CTRL+C.")
@@ -432,39 +440,34 @@ function ns.UI.ShowIOPopup(mode, data)
         
     elseif mode == "import" then
         f.title:SetText("|cff39FF14Toxicify|r - Import List")
+        f.description:SetText("Paste a friend's export string below, or it will be automatically loaded from clipboard.")
         f.actionBtn:SetText("Import")
         
         -- Try to auto-paste from clipboard
         local clipboardData = ns.Core.GetFromClipboard()
         if clipboardData and clipboardData ~= "" and (clipboardData:match("^TX:") or clipboardData:match("^TOXICIFYv")) then
             f.editBox:SetText(clipboardData)
-            print("|cff39FF14Toxicify:|r ✓ Data automatically loaded from clipboard!")
+            print("|cff39FF14Toxicify:|r ✓ Import data found in clipboard!")
         else
             f.editBox:SetText("")
-            print("|cff39FF14Toxicify:|r Paste your import data below or it will be loaded from clipboard.")
+            print("|cff39FF14Toxicify:|r No import data found in clipboard. Paste it below.")
         end
         
         f.actionBtn:SetScript("OnClick", function()
             local text = f.editBox:GetText()
-            print("|cff39FF14Toxicify:|r Import button clicked")
             
             if text == "" then
-                -- Try to get from clipboard if editbox is empty
                 text = ns.Core.GetFromClipboard()
                 if text and text ~= "" then
                     f.editBox:SetText(text)
-                    print("|cff39FF14Toxicify:|r Data loaded from clipboard.")
-                else
-                    print("|cff39FF14Toxicify:|r No data in clipboard.")
                 end
             end
             
             if text == "" then
-                print("|cffff0000Toxicify:|r No data to import. Please paste data or copy it to clipboard first.")
+                print("|cffff0000Toxicify:|r No data to import. Please paste an export string first.")
                 return
             end
             
-            print("|cff39FF14Toxicify:|r Attempting to import data...")
             local ok, result = ns.Core.ImportList(text)
             if ok then
                 print("|cff39FF14Toxicify:|r ✓ " .. result)
@@ -474,7 +477,6 @@ function ns.UI.ShowIOPopup(mode, data)
                 f:Hide()
             else
                 print("|cffff0000Toxicify:|r Import failed: " .. result)
-                print("|cff39FF14Toxicify:|r Try using /toxic debug to enable debug mode for more details.")
             end
         end)
     end

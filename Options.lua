@@ -242,30 +242,6 @@ generalPanel:SetScript("OnShow", function()
     end
 end)
 
----------------------------------------------------
--- Import / Export (elegant buttons)
----------------------------------------------------
-local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-ioLabel:SetPoint("TOPLEFT", luaErrorsDesc, "BOTTOMLEFT", 0, -30)
-ioLabel:SetText("Import / Export List:")
-
--- Export button
-local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(120, 30)
-exportBtn:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -10)
-exportBtn:SetText("Export List")
-exportBtn:SetScript("OnClick", function()
-    ns.UI.ShowIOPopup("export")
-end)
-
--- Import button
-local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(120, 30)
-importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
-importBtn:SetText("Import List")
-importBtn:SetScript("OnClick", function()
-    ns.UI.ShowIOPopup("import")
-end)
 
 -- Footer for General Panel
 local footer = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -388,25 +364,56 @@ local ioDesc = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 ioDesc:SetPoint("TOPLEFT", ioTitle, "BOTTOMLEFT", 0, -8)
 ioDesc:SetWidth(500)
 ioDesc:SetJustifyH("LEFT")
-ioDesc:SetText("Import or export your toxic/pumper player list. Data is encoded for security and automatically handled via clipboard.")
+ioDesc:SetText("Share your toxic/pumper player lists with friends or backup your data. All data is securely encoded and automatically copied to/from clipboard.")
 
--- Export button
+-- How it works section
+local howItWorksTitle = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+howItWorksTitle:SetPoint("TOPLEFT", ioDesc, "BOTTOMLEFT", 0, -20)
+howItWorksTitle:SetText("|cff39FF14How it works:|r")
+
+local howItWorksText = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+howItWorksText:SetPoint("TOPLEFT", howItWorksTitle, "BOTTOMLEFT", 0, -5)
+howItWorksText:SetWidth(500)
+howItWorksText:SetJustifyH("LEFT")
+howItWorksText:SetText("• Export: Creates a secure, encoded string that's automatically copied to your clipboard\n• Import: Automatically detects and loads data from your clipboard\n• Share: Simply paste the exported string to friends - they can import it instantly")
+
+-- Export section
+local exportTitle = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+exportTitle:SetPoint("TOPLEFT", howItWorksText, "BOTTOMLEFT", 0, -25)
+exportTitle:SetText("|cff39FF14Export Your List:|r")
+
 local exportBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(150, 40)
-exportBtn:SetPoint("TOPLEFT", ioDesc, "BOTTOMLEFT", 50, -30)
-exportBtn:SetText("Export List")
+exportBtn:SetSize(200, 35)
+exportBtn:SetPoint("TOPLEFT", exportTitle, "BOTTOMLEFT", 0, -10)
+exportBtn:SetText("Export & Copy to Clipboard")
 exportBtn:SetScript("OnClick", function()
     ns.UI.ShowIOPopup("export")
 end)
 
--- Import button
+local exportDesc = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+exportDesc:SetPoint("TOPLEFT", exportBtn, "BOTTOMLEFT", 0, -5)
+exportDesc:SetWidth(400)
+exportDesc:SetJustifyH("LEFT")
+exportDesc:SetText("Creates a secure export string and copies it to clipboard. Share this with friends!")
+
+-- Import section
+local importTitle = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+importTitle:SetPoint("TOPLEFT", exportDesc, "BOTTOMLEFT", 0, -25)
+importTitle:SetText("|cff39FF14Import a Shared List:|r")
+
 local importBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(150, 40)
-importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 50, 0)
-importBtn:SetText("Import List")
+importBtn:SetSize(200, 35)
+importBtn:SetPoint("TOPLEFT", importTitle, "BOTTOMLEFT", 0, -10)
+importBtn:SetText("Import from Clipboard")
 importBtn:SetScript("OnClick", function()
     ns.UI.ShowIOPopup("import")
 end)
+
+local importDesc = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+importDesc:SetPoint("TOPLEFT", importBtn, "BOTTOMLEFT", 0, -5)
+importDesc:SetWidth(400)
+importDesc:SetJustifyH("LEFT")
+importDesc:SetText("Automatically loads and imports data from clipboard. Paste a friend's export string first!")
 
 -- Footer for IO Panel
 local ioFooter = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
