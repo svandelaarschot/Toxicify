@@ -376,6 +376,12 @@ function ns.UI.ShowIOPopup(mode)
             insets = { left = 8, right = 8, top = 8, bottom = 8 }
         })
         f:SetFrameStrata("DIALOG")
+        f:SetFrameLevel(100)
+        f:EnableMouse(true)  -- Capture mouse events
+        f:SetMovable(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", f.StopMovingOrSizing)
         f:Hide()
 
         -- Title

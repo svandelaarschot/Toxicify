@@ -242,6 +242,11 @@ generalPanel:SetScript("OnShow", function()
     end
 end)
 
+-- Footer for General Panel
+local generalFooter = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+generalFooter:SetPoint("BOTTOMLEFT", 20, 20)
+generalFooter:SetText(ns.Core.GetFooterText())
+
 
 
 ---------------------------------------------------
