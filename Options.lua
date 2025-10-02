@@ -246,7 +246,7 @@ end)
 -- Import / Export (strakke layout + textarea)
 ---------------------------------------------------
 local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-ioLabel:SetPoint("TOPLEFT", scrollFrame, "BOTTOMLEFT", 0, -30)
+ioLabel:SetPoint("TOPLEFT", luaErrorsDesc, "BOTTOMLEFT", 0, -30)
 ioLabel:SetText("Import / Export List:")
 
 -- ScrollFrame + Multiline EditBox
@@ -715,6 +715,9 @@ if Settings and Settings.RegisterAddOnCategory then
     Settings.RegisterCanvasLayoutSubcategory(root, whisperPanel, whisperPanel.name)
 
     Settings.RegisterAddOnCategory(root)
+    
+    -- Store reference globally for easy access from commands
+    _G.ToxicifySettingsCategory = root
 else
     -- Classic
     InterfaceOptions_AddCategory(rootPanel)

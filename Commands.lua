@@ -63,9 +63,22 @@ function ns.Commands.Initialize()
             
             -- Open de juiste settings en ga direct naar Toxicify tab
             if Settings and Settings.OpenToCategory then
-                -- Retail (Dragonflight+) - probeer eerst de nieuwe interface
-                Settings.OpenToCategory("Toxicify")
-                ns.Core.DebugPrint("Opening settings...", true)
+                -- Retail (Dragonflight+) - gebruik de opgeslagen category referentie
+                if _G.ToxicifySettingsCategory then
+                    Settings.OpenToCategory(_G.ToxicifySettingsCategory:GetID())
+                    ns.Core.DebugPrint("Opening Toxicify settings...", true)
+                else
+                    -- Fallback: probeer de category op te halen
+                    local category = Settings.GetCategory("Toxicify")
+                    if category then
+                        Settings.OpenToCategory(category:GetID())
+                        ns.Core.DebugPrint("Opening Toxicify settings (found category)...", true)
+                    else
+                        -- Laatste fallback: probeer de oude methode
+                        Settings.OpenToCategory("Toxicify")
+                        ns.Core.DebugPrint("Opening settings (fallback)...", true)
+                    end
+                end
             elseif InterfaceOptionsFrame_OpenToCategory then
                 -- Classic/older versions - double call fixes Blizzard bug
                 InterfaceOptionsFrame_OpenToCategory("Toxicify")
@@ -75,8 +88,15 @@ function ns.Commands.Initialize()
                 ns.Core.DebugPrint("Opening settings...", true)
             else
                 -- Fallback: open interface options
-                InterfaceOptionsFrame:Show()
-                ns.Core.DebugPrint("Please navigate to the Toxicify section in Interface Options.")
+                if SettingsPanel then
+                    SettingsPanel:Show()
+                    ns.Core.DebugPrint("Please navigate to the Toxicify section in Settings.")
+                elseif InterfaceOptionsFrame then
+                    InterfaceOptionsFrame:Show()
+                    ns.Core.DebugPrint("Please navigate to the Toxicify section in Interface Options.")
+                else
+                    ns.Core.DebugPrint("Could not open settings. Please use the Game Menu > Options > AddOns.")
+                end
             end
         elseif cmd == "debug" then
             if ToxicifyDB.DebugEnabled then
