@@ -243,83 +243,28 @@ generalPanel:SetScript("OnShow", function()
 end)
 
 ---------------------------------------------------
--- Import / Export (strakke layout + textarea)
+-- Import / Export (elegant buttons)
 ---------------------------------------------------
 local ioLabel = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 ioLabel:SetPoint("TOPLEFT", luaErrorsDesc, "BOTTOMLEFT", 0, -30)
 ioLabel:SetText("Import / Export List:")
 
--- ScrollFrame + Multiline EditBox
-local ioScroll = CreateFrame("ScrollFrame", "ToxicifyIOScroll", generalPanel, "UIPanelScrollFrameTemplate")
-ioScroll:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -10)
-ioScroll:SetSize(500, 100)
-
-local ioBox = CreateFrame("EditBox", "ToxicifyIOBox", ioScroll)
-ioBox:SetMultiLine(true)
-ioBox:SetSize(480, 100)
-ioBox:SetAutoFocus(false)
-ioBox:SetFontObject(ChatFontNormal)
-ioBox:SetMaxLetters(4000)
-ioBox:SetTextInsets(5, 5, 5, 5)
-ioBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-ioScroll:SetScrollChild(ioBox)
-
 -- Export button
 local exportBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(120, 24)
-exportBtn:SetPoint("TOPLEFT", ioScroll, "BOTTOMLEFT", 0, -8)
-exportBtn:SetText("Export & Copy")
+exportBtn:SetSize(120, 30)
+exportBtn:SetPoint("TOPLEFT", ioLabel, "BOTTOMLEFT", 0, -10)
+exportBtn:SetText("Export List")
 exportBtn:SetScript("OnClick", function()
-    local export = ns.Core.ExportList()
-    ioBox:SetText(export)
-    
-    if ns.Core.CopyToClipboard(export) then
-        print("|cff39FF14Toxicify:|r List exported and copied to clipboard! Share it with others.")
-    else
-        ioBox:HighlightText()
-        print("|cff39FF14Toxicify:|r List exported to box. Please copy manually with CTRL+C.")
-    end
+    ns.UI.ShowIOPopup("export")
 end)
 
 -- Import button
 local importBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(120, 24)
+importBtn:SetSize(120, 30)
 importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
-importBtn:SetText("Paste & Import")
+importBtn:SetText("Import List")
 importBtn:SetScript("OnClick", function()
-    local text = ioBox:GetText()
-    
-    -- If box is empty, try to get from clipboard
-    if text == "" then
-        text = ns.Core.GetFromClipboard()
-        if text and text ~= "" then
-            ioBox:SetText(text)
-            print("|cff39FF14Toxicify:|r Data pasted from clipboard.")
-        end
-    end
-    
-    local ok, result = ns.Core.ImportList(text)
-    if ok then
-        print("|cff39FF14Toxicify:|r " .. result)
-        RefreshList()
-    else
-        print("|cffff0000Toxicify:|r Import failed: " .. result)
-    end
-end)
-
--- Auto-paste button
-local pasteBtn = CreateFrame("Button", nil, generalPanel, "UIPanelButtonTemplate")
-pasteBtn:SetSize(80, 24)
-pasteBtn:SetPoint("LEFT", importBtn, "RIGHT", 10, 0)
-pasteBtn:SetText("Paste")
-pasteBtn:SetScript("OnClick", function()
-    local clipboardData = ns.Core.GetFromClipboard()
-    if clipboardData and clipboardData ~= "" then
-        ioBox:SetText(clipboardData)
-        print("|cff39FF14Toxicify:|r Data pasted from clipboard.")
-    else
-        print("|cffff0000Toxicify:|r No data found in clipboard.")
-    end
+    ns.UI.ShowIOPopup("import")
 end)
 
 -- Footer for General Panel
@@ -443,62 +388,22 @@ local ioDesc = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 ioDesc:SetPoint("TOPLEFT", ioTitle, "BOTTOMLEFT", 0, -8)
 ioDesc:SetWidth(500)
 ioDesc:SetJustifyH("LEFT")
-ioDesc:SetText("Import or export your toxic/pumper player list. Data is encoded for security and automatically copied to/from clipboard.")
+ioDesc:SetText("Import or export your toxic/pumper player list. Data is encoded for security and automatically handled via clipboard.")
 
--- Quick Export button
-local quickExportBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-quickExportBtn:SetSize(150, 30)
-quickExportBtn:SetPoint("TOPLEFT", ioDesc, "BOTTOMLEFT", 0, -20)
-quickExportBtn:SetText("Quick Export")
-quickExportBtn:SetScript("OnClick", function()
-    local export = ns.Core.ExportList()
-    if ns.Core.CopyToClipboard(export) then
-        print("|cff39FF14Toxicify:|r List exported and copied to clipboard! Share it with others.")
-    else
-        print("|cffff0000Toxicify:|r Could not copy to clipboard. Use the detailed export option.")
-        ns.UI.ShowIOPopup("export")
-    end
-end)
-
--- Quick Import button
-local quickImportBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-quickImportBtn:SetSize(150, 30)
-quickImportBtn:SetPoint("LEFT", quickExportBtn, "RIGHT", 20, 0)
-quickImportBtn:SetText("Quick Import")
-quickImportBtn:SetScript("OnClick", function()
-    local clipboardData = ns.Core.GetFromClipboard()
-    if clipboardData and clipboardData ~= "" then
-        local ok, result = ns.Core.ImportList(clipboardData)
-        if ok then
-            print("|cff39FF14Toxicify:|r " .. result)
-        else
-            print("|cffff0000Toxicify:|r Import failed: " .. result .. ". Use the detailed import option.")
-            ns.UI.ShowIOPopup("import")
-        end
-    else
-        print("|cffff0000Toxicify:|r No data found in clipboard. Use the detailed import option.")
-        ns.UI.ShowIOPopup("import")
-    end
-end)
-
--- Detailed options
-local detailLabel = ioPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-detailLabel:SetPoint("TOPLEFT", quickExportBtn, "BOTTOMLEFT", 0, -20)
-detailLabel:SetText("Detailed Options:")
-
--- Import/Export buttons
+-- Export button
 local exportBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-exportBtn:SetSize(120, 22)
-exportBtn:SetPoint("TOPLEFT", detailLabel, "BOTTOMLEFT", 0, -10)
-exportBtn:SetText("Detailed Export")
+exportBtn:SetSize(150, 40)
+exportBtn:SetPoint("TOPLEFT", ioDesc, "BOTTOMLEFT", 50, -30)
+exportBtn:SetText("Export List")
 exportBtn:SetScript("OnClick", function()
     ns.UI.ShowIOPopup("export")
 end)
 
+-- Import button
 local importBtn = CreateFrame("Button", nil, ioPanel, "UIPanelButtonTemplate")
-importBtn:SetSize(120, 22)
-importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 10, 0)
-importBtn:SetText("Detailed Import")
+importBtn:SetSize(150, 40)
+importBtn:SetPoint("LEFT", exportBtn, "RIGHT", 50, 0)
+importBtn:SetText("Import List")
 importBtn:SetScript("OnClick", function()
     ns.UI.ShowIOPopup("import")
 end)
