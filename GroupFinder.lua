@@ -18,11 +18,48 @@ local function CreateGroupFinderButton()
     toggleBtn:SetSize(80, 22)
     toggleBtn:SetText("Toxicify")
 
-    -- Plaats hem netjes naast Filter
-    if _G.LFGListFrameSearchPanelFilterButton then
-        toggleBtn:SetPoint("LEFT", _G.LFGListFrameSearchPanelFilterButton, "RIGHT", 5, 0)
+    -- Detect PGF (PremadeGroupsFilter) addon and position accordingly
+    local pgfDetected = false
+    local anchorFrame = nil
+    local xOffset = 5
+    
+    -- Check for PGF UI elements
+    if _G.PremadeGroupsFilterMiniPanel then
+        -- PGF main panel detected
+        pgfDetected = true
+        anchorFrame = _G.PremadeGroupsFilterMiniPanel
+        ns.Core.DebugPrint("PGF detected: Positioning next to PremadeGroupsFilterMiniPanel")
+    elseif _G.LFGListFrame and _G.LFGListFrame.SearchPanel and _G.LFGListFrame.SearchPanel.PGFPanel then
+        -- Alternative PGF panel location
+        pgfDetected = true
+        anchorFrame = _G.LFGListFrame.SearchPanel.PGFPanel
+        ns.Core.DebugPrint("PGF detected: Positioning next to PGF panel")
+    elseif _G.LFGListFrame and _G.LFGListFrame.SearchPanel then
+        -- Check for any PGF-related frames as children
+        for i = 1, _G.LFGListFrame.SearchPanel:GetNumChildren() do
+            local child = select(i, _G.LFGListFrame.SearchPanel:GetChildren())
+            if child and child:GetName() and string.find(child:GetName():lower(), "pgf") then
+                pgfDetected = true
+                anchorFrame = child
+                ns.Core.DebugPrint("PGF detected: Found PGF child frame: " .. child:GetName())
+                break
+            end
+        end
+    end
+    
+    -- Position the button
+    if pgfDetected and anchorFrame then
+        -- Position next to PGF elements
+        toggleBtn:SetPoint("LEFT", anchorFrame, "RIGHT", xOffset, 0)
+        ns.Core.DebugPrint("Toxicify button positioned next to PGF addon")
+    elseif _G.LFGListFrameSearchPanelFilterButton then
+        -- Standard Blizzard filter button
+        toggleBtn:SetPoint("LEFT", _G.LFGListFrameSearchPanelFilterButton, "RIGHT", xOffset, 0)
+        ns.Core.DebugPrint("Toxicify button positioned next to Blizzard filter button")
     else
+        -- Fallback position
         toggleBtn:SetPoint("LEFT", LFGListFrame.SearchPanel.RefreshButton, "RIGHT", -110, 0)
+        ns.Core.DebugPrint("Toxicify button positioned at fallback location")
     end
 
     toggleBtn:SetScript("OnClick", function()
