@@ -445,12 +445,20 @@ function ns.UI.ShowIOPopup(mode)
         
         -- Try to auto-paste from clipboard
         local clipboardData = ns.Core.GetFromClipboard()
-        if clipboardData and clipboardData ~= "" and (clipboardData:match("^TX:") or clipboardData:match("^TOXICIFYv")) then
-            f.editBox:SetText(clipboardData)
-            print("|cff39FF14Toxicify:|r ✓ Import data found in clipboard!")
+        print("|cff39FF14Toxicify:|r Checking clipboard for import data...")
+        
+        if clipboardData and clipboardData ~= "" then
+            print("|cff39FF14Toxicify:|r Found data in clipboard: " .. clipboardData:sub(1, 50) .. "...")
+            if clipboardData:match("^TX:") or clipboardData:match("^TOXICIFYv") then
+                f.editBox:SetText(clipboardData)
+                print("|cff39FF14Toxicify:|r ✓ Valid import data found and loaded!")
+            else
+                f.editBox:SetText(clipboardData)
+                print("|cff39FF14Toxicify:|r Data found but format unknown - loaded anyway for manual check.")
+            end
         else
             f.editBox:SetText("")
-            print("|cff39FF14Toxicify:|r No import data found in clipboard. Paste it below.")
+            print("|cff39FF14Toxicify:|r No data found in clipboard. Paste import string below.")
         end
         
         f.actionBtn:SetScript("OnClick", function()

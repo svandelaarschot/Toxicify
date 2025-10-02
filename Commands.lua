@@ -142,6 +142,22 @@ function ns.Commands.Initialize()
             local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
             ns.Events.ShowToxicWarningPopup(testToxicPlayers)
             ns.Core.DebugPrint("Test warning popup shown.", true)
+        elseif cmd == "testclipboard" then
+            -- Test clipboard functionality
+            print("|cff39FF14Toxicify:|r Testing clipboard functionality...")
+            local testData = "TX:VGVzdERhdGE="
+            print("Copying test data: " .. testData)
+            if ns.Core.CopyToClipboard(testData) then
+                print("✓ Copy successful")
+                local retrieved = ns.Core.GetFromClipboard()
+                if retrieved == testData then
+                    print("✓ Clipboard test passed!")
+                else
+                    print("✗ Retrieved data doesn't match: " .. (retrieved or "nil"))
+                end
+            else
+                print("✗ Copy failed")
+            end
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
@@ -158,6 +174,7 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
             ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
             ns.Core.DebugPrint("/toxic testwarning             - Show test warning popup", true)
+            ns.Core.DebugPrint("/toxic testclipboard           - Test clipboard functionality", true)
         end
     end
 end

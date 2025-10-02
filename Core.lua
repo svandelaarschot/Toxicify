@@ -348,16 +348,21 @@ function ns.Core.CopyToClipboard(text)
     -- Try to copy to clipboard if available
     if C_System and C_System.SetClipboard then
         C_System.SetClipboard(text)
+        ns.Core.DebugPrint("Copied to clipboard: " .. text:sub(1, 30) .. "...")
         return true
     end
+    ns.Core.DebugPrint("Clipboard copy failed - C_System.SetClipboard not available")
     return false
 end
 
 function ns.Core.GetFromClipboard()
     -- Try to get from clipboard if available
     if C_System and C_System.GetClipboard then
-        return C_System.GetClipboard()
+        local clipboardData = C_System.GetClipboard()
+        ns.Core.DebugPrint("Retrieved from clipboard: " .. (clipboardData and clipboardData:sub(1, 30) or "nil") .. "...")
+        return clipboardData
     end
+    ns.Core.DebugPrint("Clipboard read failed - C_System.GetClipboard not available")
     return ""
 end
 -- Initialize on load

@@ -243,10 +243,6 @@ generalPanel:SetScript("OnShow", function()
 end)
 
 
--- Footer for General Panel
-local footer = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-footer:SetPoint("BOTTOMLEFT", 20, 20)
-footer:SetText(ns.Core.GetFooterText())
 
 ---------------------------------------------------
 -- Toxic & Pumper List Management Panel
