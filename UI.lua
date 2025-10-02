@@ -179,16 +179,25 @@ function ns.UI.CreateToxicifyUI()
         f:Hide()
         
         -- Open de juiste settings
-        if Settings and Settings.OpenToCategory then
-            -- Retail (Dragonflight+)
-            Settings.OpenToCategory("Toxicify")
+        if Settings and Settings.GetCategory and Settings.OpenToCategory then
+            -- Retail (Dragonflight+) - use the stored global reference
+            local category = _G.ToxicifySettingsCategory or Settings.GetCategory("Toxicify")
+            if category then
+                Settings.OpenToCategory(category:GetID())
+                ns.Core.DebugPrint("Opening Toxicify settings panel (Retail)")
+            else
+                ns.Core.DebugPrint("Settings category not found")
+                InterfaceOptionsFrame:Show()
+            end
         elseif InterfaceOptionsFrame_OpenToCategory then
             -- Classic/older versions
             InterfaceOptionsFrame_OpenToCategory("Toxicify")
             InterfaceOptionsFrame_OpenToCategory("Toxicify") -- double call fixes Blizzard bug
+            ns.Core.DebugPrint("Opening Toxicify settings panel (Classic)")
         else
             -- Fallback: open interface options
             InterfaceOptionsFrame:Show()
+            ns.Core.DebugPrint("Fallback: Opening interface options")
         end
     end)
 
