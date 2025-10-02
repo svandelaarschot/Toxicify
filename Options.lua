@@ -642,33 +642,25 @@ local descRoot = descScrollChild:CreateFontString(nil, "OVERLAY", "GameFontHighl
 descRoot:SetPoint("TOPLEFT", descScrollChild, "TOPLEFT", 0, 0)
 descRoot:SetWidth(575)
 descRoot:SetJustifyH("LEFT")
-descRoot:SetText([[  
-Toxicify helps you mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r.  
-Once added, they will be clearly highlighted in Party/Raid frames and in the Group Finder.  
+descRoot:SetText([[
+|cff39FF14Toxicify|r - Mark players as |cffff0000Toxic|r or |cff00ff00Pumper|r
 
-|cff39FF14Features:|r
-• Mark players as Toxic or Pumper
-• Highlight toxic players in Party/Raid frames  
-• Filter toxic groups in Premade Groups
+|cff39FF14Core Features:|r
+• Highlight toxic/pumper players in Party/Raid frames
 • Warning popup when joining parties with toxic players
-• Target frame indicator for toxic/pumper players
-• Auto-close timer for warning popups (1-300 seconds)
-• Import/Export toxic player lists
-• Context menu integration for easy marking
+• Filter toxic groups in Group Finder
+• Import/Export player lists
 
-|cff39FF14Quick Commands:|r
-|cffFFFFFFAdd as Toxic|r: /toxic add <name-realm>
-|cffFFFFFFAdd as Pumper|r: /toxic addpumper <name-realm>  
-|cffFFFFFFRemove player|r: /toxic del <name-realm>
-|cffFFFFFFShow all players|r: /toxic list
-|cffFFFFFFOpen settings|r: /toxic settings
-|cffFFFFFFExport list|r: /toxicexport
-|cffFFFFFFImport list|r: /toxicimport <string>
+|cff39FF14Essential Commands:|r
+|cffFFFFFF/toxic add <name>|r - Mark as Toxic
+|cffFFFFFF/toxic addpumper <name>|r - Mark as Pumper
+|cffFFFFFF/toxic del <name>|r - Remove player
+|cffFFFFFF/toxic ui|r - Open player list
+|cffFFFFFF/toxic settings|r - Open settings
 
-Enjoy keeping your runs clean and smooth!  
+Keep your runs clean and enjoyable!
 
-|cffaaaaaaKind Regards,|r  
-|cff39FF14Alvarín-Silvermoon|r  
+|cff39FF14Alvarín-Silvermoon|r
 ]])
 
 -- Update scroll child height based on text content
