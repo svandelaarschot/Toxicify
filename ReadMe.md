@@ -56,18 +56,22 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 
 ### 🔄 Import & Export
 
-*   Share your lists with friends using a secure **export string with checksum validation**.
-*   Import shared lists easily in-game.
+*   **Secure data encoding** - Export strings are Base64 encoded for security and compatibility
+*   **Automatic clipboard handling** - Export automatically copies to clipboard, import auto-detects clipboard data
+*   **Legacy format support** - Supports both new secure format and older export formats
+*   **One-click sharing** - Simply paste export strings with CTRL+V for instant import
+*   **Checksum validation** - Built-in data integrity checking prevents corruption
 
 ### 🖥️ Custom UI Window
 
-*   Manage your Toxic & Pumper lists with a dedicated UI.
-*   Includes:  
-    *   Search bar with real-time filtering.
-    *   Auto-completion from your group, guild, and friends.
-    *   Dropdown to change between Toxic and Pumper status.
-    *   **Remove All** button.
-    *   **ReloadUI** button for quick resets.
+*   **Enlarged interface** - Bigger window (650px height) with much more list space for better overview
+*   **Optimized layout** - Wider input fields and better button alignment for improved usability
+*   Manage your Toxic & Pumper lists with a dedicated UI including:  
+    *   **Enhanced search bar** - Real-time filtering with larger, more visible text
+    *   **Smart auto-completion** - Suggestions from your group, guild, and friends
+    *   **Status dropdown** - Easy switching between Toxic and Pumper status
+    *   **Remove All** button with confirmation
+    *   **ReloadUI** button for quick addon resets
 
 ### ⚙️ Quality of Life
 
@@ -87,8 +91,8 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 *   `/toxic list` → Show current list
 
 ### Import/Export
-*   `/toxic export` → Export your list
-*   `/toxic import <string>` → Import a shared list
+*   `/toxic export` → Export your list (automatically copies to clipboard)
+*   `/toxic import` → Import from clipboard (auto-detects and imports)
 
 ### UI & Settings
 *   `/toxic ui` → Open the Toxicify list window
@@ -102,13 +106,12 @@ Once added, players are clearly highlighted in your party/raid frames, tooltips,
 ### Debug & Advanced
 *   `/toxic debug` → Toggle debug mode (shows in main chat)
 *   `/toxic luaerrors` → Toggle Lua errors (requires debug mode)
-*   `/toxic contextmenu` → Activate context menu marking
 
 ***
 
 ## ⚙️ Settings
 
-Access settings via `/toxic settings` or the Interface Options:
+Access settings via `/toxic settings` or the Interface Options. The settings panel includes an **enlarged Toxic List** (350px height) for better management:
 
 ### General Settings
 *   **Hide Toxic Groups** - Filter out groups with toxic leaders in Premade Groups
@@ -160,7 +163,9 @@ Enable debug mode with `/toxic debug` to see detailed information about:
 ### Common Issues
 *   **Warning not showing** - Check if party warnings are enabled with `/toxic partywarning`
 *   **Players not highlighting** - Make sure they're marked correctly with `/toxic list`
-*   **Import not working** - Check the export string format and try again
+*   **Import not working** - Use `/toxic testclipboard` to test clipboard functionality
+*   **Clipboard not working** - Some WoW versions don't support clipboard API, use manual copy/paste with CTRL+C/CTRL+V
+*   **Changes not visible** - Use `/reload` to reload the addon after updates
 
 ### Support
 *   Use `/toxic debug` to enable debug mode for troubleshooting
