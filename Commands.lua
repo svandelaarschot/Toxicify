@@ -101,12 +101,13 @@ function ns.Commands.Initialize()
         elseif cmd == "debug" then
             if ToxicifyDB.DebugEnabled then
                 ToxicifyDB.DebugEnabled = false
-                ns.Core.DebugPrint("Lua errors toggle is now hidden in settings")
+                ns.Core.DebugPrint("Debug mode disabled! Debug messages are now hidden.", true)
+                ns.Core.DebugPrint("Lua errors toggle is now hidden in settings.", true)
             else
                 ToxicifyDB.DebugEnabled = true
-                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
-                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.")
-                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.")
+                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.", true)
+                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.", true)
+                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.", true)
             end
         elseif cmd == "partywarning" then
             if ToxicifyDB.PartyWarningEnabled then
@@ -135,36 +136,6 @@ function ns.Commands.Initialize()
             local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
             ns.Events.ShowToxicWarningPopup(testToxicPlayers)
             ns.Core.DebugPrint("Test warning popup shown.", true)
-        elseif cmd == "testframes" then
-            -- Test frame detection and highlighting
-            ns.Core.DebugPrint("Testing frame detection...", true)
-            ns.Core.DebugPrint("Target frame indicator enabled: " .. tostring(ToxicifyDB.TargetFrameIndicatorEnabled), true)
-            
-            -- Force update target frame
-            if ns.Events and ns.Events.UpdateTargetFrame then
-                ns.Events.UpdateTargetFrame()
-                ns.Core.DebugPrint("Target frame update triggered", true)
-            end
-            
-            -- Force update group members
-            if ns.Events and ns.Events.UpdateGroupMembers then
-                ns.Events.UpdateGroupMembers("MANUAL_TEST")
-                ns.Core.DebugPrint("Group members update triggered", true)
-            end
-            
-            -- Test unit frame detection
-            if IsInGroup() then
-                for i = 1, GetNumGroupMembers() do
-                    local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
-                    if UnitExists(unit) then
-                        local name = GetUnitName(unit, true)
-                        local frame = ns.UI.GetUnitFrame(unit)
-                        ns.Core.DebugPrint("Unit " .. unit .. " (" .. (name or "unknown") .. "): frame " .. (frame and "found" or "NOT FOUND"), true)
-                    end
-                end
-            else
-                ns.Core.DebugPrint("Not in group - cannot test party/raid frames", true)
-            end
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)

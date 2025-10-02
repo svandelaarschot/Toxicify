@@ -435,7 +435,7 @@ function ns.Events.Initialize()
     
     -- Initialize guild toast notification setting
     if ToxicifyDB.GuildToastEnabled == nil then
-        ToxicifyDB.GuildToastEnabled = true
+        ToxicifyDB.GuildToastEnabled = false
     end
     
     -- Group roster updates
