@@ -424,17 +424,17 @@ function ns.UI.ShowIOPopup(mode)
         -- Auto-copy to clipboard on show
         local autocopied = ns.Core.CopyToClipboard(exportData)
         if autocopied then
-            print("|cff39FF14Toxicify:|r ✓ List exported and copied to clipboard!")
+            ns.Core.DebugPrint("List exported and copied to clipboard!")
         else
-            print("|cff39FF14Toxicify:|r List exported. Please copy manually.")
+            ns.Core.DebugPrint("List exported. Please copy manually.")
         end
         
         f.actionBtn:SetScript("OnClick", function()
             if ns.Core.CopyToClipboard(exportData) then
-                print("|cff39FF14Toxicify:|r ✓ Copied to clipboard again!")
+                ns.Core.DebugPrint("Copied to clipboard again!")
             else
                 f.editBox:HighlightText()
-                print("|cff39FF14Toxicify:|r Please copy the text manually with CTRL+C.")
+                ns.Core.DebugPrint("Please copy the text manually with CTRL+C.")
             end
         end)
         
@@ -445,20 +445,20 @@ function ns.UI.ShowIOPopup(mode)
         
         -- Try to auto-paste from clipboard
         local clipboardData = ns.Core.GetFromClipboard()
-        print("|cff39FF14Toxicify:|r Checking clipboard for import data...")
+        ns.Core.DebugPrint("Checking clipboard for import data...")
         
         if clipboardData and clipboardData ~= "" then
-            print("|cff39FF14Toxicify:|r Found data in clipboard: " .. clipboardData:sub(1, 50) .. "...")
+            ns.Core.DebugPrint("Found data in clipboard: " .. clipboardData:sub(1, 50) .. "...")
             if clipboardData:match("^TX:") or clipboardData:match("^TOXICIFYv") then
                 f.editBox:SetText(clipboardData)
-                print("|cff39FF14Toxicify:|r ✓ Valid import data found and loaded!")
+                ns.Core.DebugPrint("✓ Valid import data found and loaded!")
             else
                 f.editBox:SetText(clipboardData)
-                print("|cff39FF14Toxicify:|r Data found but format unknown - loaded anyway for manual check.")
+                ns.Core.DebugPrint("Data found but format unknown - loaded anyway for manual check.")
             end
         else
             f.editBox:SetText("")
-            print("|cff39FF14Toxicify:|r No data found in clipboard. Paste import string below.")
+            ns.Core.DebugPrint("No data found in clipboard. Paste import string below.")
         end
         
         f.actionBtn:SetScript("OnClick", function()
@@ -472,19 +472,19 @@ function ns.UI.ShowIOPopup(mode)
             end
             
             if text == "" then
-                print("|cffff0000Toxicify:|r No data to import. Please paste an export string first.")
+                ns.Core.DebugPrint("No data to import. Please paste an export string first.")
                 return
             end
             
             local ok, result = ns.Core.ImportList(text)
             if ok then
-                print("|cff39FF14Toxicify:|r ✓ " .. result)
+                ns.Core.DebugPrint("✓ " .. result)
                 if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
                     _G.ToxicifyListFrame:Refresh()
                 end
                 f:Hide()
             else
-                print("|cffff0000Toxicify:|r Import failed: " .. result)
+                ns.Core.DebugPrint("Import failed: " .. result)
             end
         end)
     end

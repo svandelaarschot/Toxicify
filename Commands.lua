@@ -144,19 +144,19 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("Test warning popup shown.", true)
         elseif cmd == "testclipboard" then
             -- Test clipboard functionality
-            print("|cff39FF14Toxicify:|r Testing clipboard functionality...")
+            ns.Core.DebugPrint("Testing clipboard functionality...", true)
             local testData = "TX:VGVzdERhdGE="
-            print("Copying test data: " .. testData)
+            ns.Core.DebugPrint("Copying test data: " .. testData, true)
             if ns.Core.CopyToClipboard(testData) then
-                print("✓ Copy successful")
+                ns.Core.DebugPrint("✓ Copy successful", true)
                 local retrieved = ns.Core.GetFromClipboard()
                 if retrieved == testData then
-                    print("✓ Clipboard test passed!")
+                    ns.Core.DebugPrint("✓ Clipboard test passed!", true)
                 else
-                    print("✗ Retrieved data doesn't match: " .. (retrieved or "nil"))
+                    ns.Core.DebugPrint("✗ Retrieved data doesn't match: " .. (retrieved or "nil"), true)
                 end
             else
-                print("✗ Copy failed")
+                ns.Core.DebugPrint("✗ Copy failed", true)
             end
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
