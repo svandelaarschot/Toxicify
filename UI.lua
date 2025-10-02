@@ -29,7 +29,7 @@ function ns.UI.CreateToxicifyUI()
     if _G.ToxicifyListFrame then return end
 
     local f = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    f:SetSize(620, 500)
+    f:SetSize(620, 650)
     f:SetPoint("CENTER")
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -69,26 +69,26 @@ function ns.UI.CreateToxicifyUI()
 
     -- Add box
     local addBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    addBox:SetSize(200, 22)
+    addBox:SetSize(220, 22)
     addBox:SetPoint("LEFT", playerLabel, "RIGHT", 10, 0)
     addBox:SetAutoFocus(false)
 
     -- Add Toxic button
     local addToxicBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    addToxicBtn:SetSize(80, 22)
-    addToxicBtn:SetPoint("LEFT", addBox, "RIGHT", 10, 0)
+    addToxicBtn:SetSize(85, 22)
+    addToxicBtn:SetPoint("LEFT", addBox, "RIGHT", 8, 0)
     addToxicBtn:SetText("Add Toxic")
 
     -- Add Pumper button
     local addPumperBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    addPumperBtn:SetSize(80, 22)
-    addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 10, 0)
+    addPumperBtn:SetSize(85, 22)
+    addPumperBtn:SetPoint("LEFT", addToxicBtn, "RIGHT", 8, 0)
     addPumperBtn:SetText("Add Pumper")
 
     -- Remove all
     local clearBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    clearBtn:SetSize(100, 22)
-    clearBtn:SetPoint("LEFT", addPumperBtn, "RIGHT", 10, 0)
+    clearBtn:SetSize(90, 22)
+    clearBtn:SetPoint("LEFT", addPumperBtn, "RIGHT", 8, 0)
     clearBtn:SetText("Remove All")
 
     -- Auto-completion using shared functionality
@@ -112,7 +112,7 @@ function ns.UI.CreateToxicifyUI()
     searchLabel:SetText("Search:")
 
     local searchBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    searchBox:SetSize(220, 22)
+    searchBox:SetSize(250, 22)
     searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 10, 0)
     searchBox:SetAutoFocus(false)
     searchBox:SetScript("OnTextChanged", function(self) f:Refresh() end)
@@ -120,10 +120,10 @@ function ns.UI.CreateToxicifyUI()
     -- List
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -10)
-    scroll:SetPoint("BOTTOMRIGHT", -30, 50)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 80)
 
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(460, 300)
+    content:SetSize(460, 500)
     scroll:SetScrollChild(content)
 
     local function Refresh()
@@ -475,14 +475,14 @@ function ns.UI.ShowIOPopup(mode)
             local text = self:GetText()
             if text and text ~= "" and (text:match("^TX:") or text:match("^TOXICIFYv")) then
                 ns.Core.DebugPrint("Auto-importing pasted data...")
-                f.description:SetText("🔄 Importing...")
+                f.description:SetText("Importing...")
                 
                 -- Small delay to ensure text is fully pasted
                 C_Timer.After(0.1, function()
                     local ok, result = ns.Core.ImportList(text)
                     if ok then
                         ns.Core.DebugPrint("✓ " .. result)
-                        f.description:SetText("✅ " .. result .. " - Closing in 3 seconds...")
+                        f.description:SetText("SUCCESS: " .. result .. " - Closing in 3 seconds...")
                         if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
                             _G.ToxicifyListFrame:Refresh()
                         end
@@ -490,11 +490,11 @@ function ns.UI.ShowIOPopup(mode)
                         C_Timer.After(3, function() f:Hide() end)
                     else
                         ns.Core.DebugPrint("Import failed: " .. result)
-                        f.description:SetText("❌ Import failed: " .. result)
+                        f.description:SetText("ERROR: Import failed: " .. result)
                     end
                 end)
             elseif text and text ~= "" then
-                f.description:SetText("⚠️ Invalid format. Please paste a valid Toxicify export string.")
+                f.description:SetText("WARNING: Invalid format. Please paste a valid Toxicify export string.")
             else
                 f.description:SetText("Paste your friend's export string below with CTRL+V - it will import automatically!")
             end
