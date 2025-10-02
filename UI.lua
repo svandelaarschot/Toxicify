@@ -410,22 +410,52 @@ function ns.UI.ShowIOPopup(mode, data)
 
     if mode == "export" then
         f.title:SetText("|cff39FF14Toxicify|r - Export List")
-        f.editBox:SetText(ns.Core.ExportList())
-        f.actionBtn:SetText("Copy")
+        local exportData = ns.Core.ExportList()
+        f.editBox:SetText(exportData)
+        f.actionBtn:SetText("Copy to Clipboard")
         f.actionBtn:SetScript("OnClick", function()
-            f.editBox:HighlightText()
-            print("|cff39FF14Toxicify:|r Copy the string with CTRL+C.")
+            if ns.Core.CopyToClipboard(exportData) then
+                print("|cff39FF14Toxicify:|r List copied to clipboard! Share it with others.")
+                f:Hide()
+            else
+                f.editBox:HighlightText()
+                print("|cff39FF14Toxicify:|r Please copy the text manually with CTRL+C.")
+            end
         end)
+        
+        -- Auto-copy to clipboard on show
+        if ns.Core.CopyToClipboard(exportData) then
+            print("|cff39FF14Toxicify:|r List automatically copied to clipboard!")
+        end
+        
     elseif mode == "import" then
         f.title:SetText("|cff39FF14Toxicify|r - Import List")
-        f.actionBtn:SetText("Import")
+        f.actionBtn:SetText("Import from Clipboard")
+        
+        -- Try to auto-paste from clipboard
+        local clipboardData = ns.Core.GetFromClipboard()
+        if clipboardData and clipboardData ~= "" and clipboardData:match("^TX:") then
+            f.editBox:SetText(clipboardData)
+            print("|cff39FF14Toxicify:|r Data found in clipboard and loaded!")
+        end
+        
         f.actionBtn:SetScript("OnClick", function()
-            local ok, result = ns.Core.ImportList(f.editBox:GetText())
+            local text = f.editBox:GetText()
+            if text == "" then
+                -- Try to get from clipboard if editbox is empty
+                text = ns.Core.GetFromClipboard()
+                if text and text ~= "" then
+                    f.editBox:SetText(text)
+                end
+            end
+            
+            local ok, result = ns.Core.ImportList(text)
             if ok then
-                print("|cff39FF14Toxicify:|r Import success: " .. result)
+                print("|cff39FF14Toxicify:|r " .. result)
                 if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
                     _G.ToxicifyListFrame:Refresh()
                 end
+                f:Hide()
             else
                 print("|cffff0000Toxicify:|r Import failed: " .. result)
             end

@@ -210,7 +210,40 @@ function ns.Core.GetDatabaseValue(key, defaultValue)
     return ToxicifyDB[key] or defaultValue
 end
 
--- Export functionality
+-- Base64 encoding table
+local base64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+-- Base64 encode function
+local function base64encode(data)
+    return ((data:gsub('.', function(x) 
+        local r,b='',x:byte()
+        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+        if (#x < 6) then return '' end
+        local c=0
+        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+        return base64chars:sub(c+1,c+1)
+    end)..({ '', '==', '=' })[#data%3+1])
+end
+
+-- Base64 decode function
+local function base64decode(data)
+    data = string.gsub(data, '[^'..base64chars..'=]', '')
+    return (data:gsub('.', function(x)
+        if (x == '=') then return '' end
+        local r,f='',(base64chars:find(x)-1)
+        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if (#x ~= 8) then return '' end
+        local c=0
+        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
+end
+
+-- Export functionality with Base64 encoding
 function ns.Core.ExportList()
     local data = {}
     for name, status in pairs(ToxicifyDB) do
@@ -220,39 +253,93 @@ function ns.Core.ExportList()
     end
     local payload = table.concat(data, ";")
 
+    -- Calculate checksum
     local checksum = 0
     for i = 1, #payload do
         checksum = checksum + string.byte(payload, i)
     end
 
-    return "TOXICIFYv1|" .. payload .. "|" .. checksum
+    -- Create the data string and encode it
+    local dataString = "TOXICIFYv2|" .. payload .. "|" .. checksum
+    local encoded = base64encode(dataString)
+    
+    return "TX:" .. encoded
 end
 
--- Import functionality
+-- Import functionality with Base64 decoding
 function ns.Core.ImportList(str)
-    if not str or str == "" then return false, "No data" end
+    if not str or str == "" then return false, "No data provided" end
 
-    local version, payload, checksum = str:match("^(TOXICIFYv1)|(.+)|(%d+)$")
-    if not version then return false, "Invalid format" end
+    -- Handle both old and new formats
+    local encoded = str:match("^TX:(.+)$")
+    if encoded then
+        -- New Base64 format
+        local decoded = base64decode(encoded)
+        if not decoded then return false, "Invalid encoding" end
+        
+        local version, payload, checksum = decoded:match("^(TOXICIFYv2)|(.+)|(%d+)$")
+        if not version then return false, "Invalid format" end
 
-    local calc = 0
-    for i = 1, #payload do
-        calc = calc + string.byte(payload, i)
-    end
-    if tostring(calc) ~= checksum then
-        return false, "Checksum mismatch"
-    end
-
-    local count = 0
-    for entry in string.gmatch(payload, "([^;]+)") do
-        local name, status = entry:match("([^:]+):([^:]+)")
-        if name and status then
-            ToxicifyDB[name] = status
-            count = count + 1
+        local calc = 0
+        for i = 1, #payload do
+            calc = calc + string.byte(payload, i)
         end
-    end
+        if tostring(calc) ~= checksum then
+            return false, "Data corruption detected"
+        end
 
-    return true, count .. " entries imported"
+        local count = 0
+        for entry in string.gmatch(payload, "([^;]+)") do
+            local name, status = entry:match("([^:]+):([^:]+)")
+            if name and status and (status == "toxic" or status == "pumper") then
+                ToxicifyDB[name] = status
+                count = count + 1
+            end
+        end
+
+        return true, count .. " players imported successfully"
+    else
+        -- Legacy format support
+        local version, payload, checksum = str:match("^(TOXICIFYv1)|(.+)|(%d+)$")
+        if not version then return false, "Invalid format" end
+
+        local calc = 0
+        for i = 1, #payload do
+            calc = calc + string.byte(payload, i)
+        end
+        if tostring(calc) ~= checksum then
+            return false, "Checksum mismatch"
+        end
+
+        local count = 0
+        for entry in string.gmatch(payload, "([^;]+)") do
+            local name, status = entry:match("([^:]+):([^:]+)")
+            if name and status then
+                ToxicifyDB[name] = status
+                count = count + 1
+            end
+        end
+
+        return true, count .. " entries imported (legacy format)"
+    end
+end
+
+-- Clipboard functionality
+function ns.Core.CopyToClipboard(text)
+    -- Try to copy to clipboard if available
+    if C_System and C_System.SetClipboard then
+        C_System.SetClipboard(text)
+        return true
+    end
+    return false
+end
+
+function ns.Core.GetFromClipboard()
+    -- Try to get from clipboard if available
+    if C_System and C_System.GetClipboard then
+        return C_System.GetClipboard()
+    end
+    return ""
 end
 -- Initialize on load
 ns.Core.Initialize()
