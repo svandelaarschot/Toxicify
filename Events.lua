@@ -4,6 +4,40 @@ local addonName, ns = ...
 -- Events namespace
 ns.Events = {}
 
+-- Function to initialize warning cache in database
+local function InitializeWarningCache()
+    if not ToxicifyDB.WarningCache then
+        ToxicifyDB.WarningCache = {
+            toxic = {},
+            pumper = {}
+        }
+    end
+end
+
+-- Function to clear warning cache (useful for new groups)
+function ns.Events.ClearWarningCache()
+    if not ToxicifyDB.WarningCache then
+        InitializeWarningCache()
+    end
+    ToxicifyDB.WarningCache.toxic = {}
+    ToxicifyDB.WarningCache.pumper = {}
+    ns.Core.DebugPrint("Warning cache cleared")
+end
+
+-- Track if we were in a group to detect when we leave
+local wasInGroup = false
+
+-- Function to handle group leave events
+local function OnGroupLeft()
+    if wasInGroup and not IsInGroup() then
+        ns.Core.DebugPrint("Left group - clearing warning cache for next group")
+        ns.Events.ClearWarningCache()
+        wasInGroup = false
+    elseif IsInGroup() then
+        wasInGroup = true
+    end
+end
+
 -- Update group members (party/raid/M+)
 function ns.Events.UpdateGroupMembers(event)
     -- Only show warning for actual group roster updates, not for PLAYER_ENTERING_WORLD
@@ -104,13 +138,27 @@ function ns.Events.UpdateGroupMembers(event)
         ToxicifyDB.PartyWarningEnabled = true
     end
     if ToxicifyDB.PartyWarningEnabled and #toxicPlayers > 0 then
-        -- Show popup warning (only once per session)
-        if not _G.ToxicifyWarningShown then
+        -- Initialize warning cache if needed
+        InitializeWarningCache()
+        
+        -- Filter out players we've already warned about this session
+        local newToxicPlayers = {}
+        for _, playerName in ipairs(toxicPlayers) do
+            if not ToxicifyDB.WarningCache.toxic[playerName] then
+                table.insert(newToxicPlayers, playerName)
+                ToxicifyDB.WarningCache.toxic[playerName] = true
+                ns.Core.DebugPrint("Added to toxic warning cache: " .. playerName)
+            else
+                ns.Core.DebugPrint("Skipping toxic warning for " .. playerName .. " (already shown this session)")
+            end
+        end
+        
+        -- Show popup warning only for new players
+        if #newToxicPlayers > 0 then
             -- Delay the popup to wait for loading screen to finish
             C_Timer.After(ns.Constants.WARNING_POPUP_DELAY, function()
-                ns.Events.ShowToxicWarningPopup(toxicPlayers)
+                ns.Events.ShowToxicWarningPopup(newToxicPlayers)
             end)
-            _G.ToxicifyWarningShown = true
         end
     end
 end
@@ -246,14 +294,14 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     
     -- Countdown timer
     local timeLeft = timerSeconds
-    local countdownTimer = C_Timer.NewTicker(1, function()
+    ns.countdownTimer = C_Timer.NewTicker(1, function()
         timeLeft = timeLeft - 1
         countdownBar:SetValue(timeLeft)
         countdownText:SetText("Auto-close in " .. timeLeft .. " seconds")
 
         if timeLeft <= 0 then
-            if countdownTimer then
-                countdownTimer:Cancel()
+        if ns.countdownTimer then
+            ns.countdownTimer:Cancel()
             end
             frame:Hide()
         end
@@ -448,6 +496,12 @@ function ns.Events.Initialize()
     rosterFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     rosterFrame:SetScript("OnEvent", function(self, event, ...)
         ns.Core.DebugPrint("Event fired: " .. event)
+        
+        -- Check for group leave on roster updates
+        if event == "GROUP_ROSTER_UPDATE" then
+            OnGroupLeft()
+        end
+        
         if event == "CHALLENGE_MODE_START" then
             ns.Core.DebugPrint("Mythic+ key activated - no warning popup")
             -- No warning popup when M+ key is activated
@@ -501,31 +555,342 @@ function ns.Events.Initialize()
         ns.Events.UpdateTargetFrame()
     end)
     
+    -- Simple GameTooltip hook with better duplicate prevention
+    local tooltipCache = {}
+    
+    local function OnTooltipSetUnit(tooltip)
+        if not tooltip or not tooltip:IsShown() then return end
+        
+        -- Get the first line of the tooltip (usually the player name)
+        local name = _G[tooltip:GetName() .. "TextLeft1"]
+        if name then
+            local nameText = name:GetText()
+            if nameText then
+                -- Skip non-player tooltips
+                if nameText:find("Tab") or nameText:find("Channel") or nameText:find("General") or nameText:find("Loot") or nameText:find("Log") then
+                    return
+                end
+                
+                -- Create unique key for this tooltip
+                local tooltipKey = nameText .. ":" .. GetTime()
+                
+                -- Skip if we already processed this tooltip recently
+                if tooltipCache[nameText] and (GetTime() - tooltipCache[nameText]) < 1 then
+                    return
+                end
+                tooltipCache[nameText] = GetTime()
+                
+                ns.Core.DebugPrint("GameTooltip name: " .. nameText)
+                
+                -- Try multiple name formats
+                local nameVariations = {
+                    nameText,
+                    nameText .. "-" .. GetRealmName(),
+                    nameText .. "-" .. GetNormalizedRealmName()
+                }
+                
+                for _, testName in ipairs(nameVariations) do
+                    if ns.Player.IsToxic(testName) then
+                        tooltip:AddLine(" ")  -- Add some spacing
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+                        ns.Core.DebugPrint("Added toxic tooltip for: " .. testName)
+                        return
+                    elseif ns.Player.IsPumper(testName) then
+                        tooltip:AddLine(" ")  -- Add some spacing
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+                        ns.Core.DebugPrint("Added pumper tooltip for: " .. testName)
+                        return
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Hook GameTooltip with better duplicate prevention
+    GameTooltip:HookScript("OnShow", function(self)
+        OnTooltipSetUnit(self)
+    end)
+    
+    -- Chat message filtering with throttling to prevent spam
+    local chatFilterCache = {}
+    
+    local function AddChatIcons(self, event, message, sender, ...)
+        if not sender or not message then return false end
+        
+        -- Create unique key for this message to prevent duplicate processing
+        local messageKey = event .. ":" .. sender .. ":" .. message
+        local currentTime = GetTime()
+        
+        -- Skip if we processed this exact message recently (within 0.1 seconds)
+        if chatFilterCache[messageKey] and (currentTime - chatFilterCache[messageKey]) < 0.1 then
+            return false
+        end
+        chatFilterCache[messageKey] = currentTime
+        
+        ns.Core.DebugPrint("=== CHAT FILTER DEBUG ===")
+        ns.Core.DebugPrint("Event: " .. event)
+        ns.Core.DebugPrint("Sender: '" .. sender .. "'")
+        ns.Core.DebugPrint("Message: '" .. message .. "'")
+        
+        -- Clean sender name (remove realm if present)
+        local cleanSender = sender:match("([^-]+)") or sender
+        ns.Core.DebugPrint("Clean sender: '" .. cleanSender .. "'")
+        
+        -- Check if this player is marked
+        local nameVariations = {
+            sender,
+            cleanSender,
+            sender .. "-" .. GetRealmName(),
+            cleanSender .. "-" .. GetRealmName(),
+            sender .. "-" .. GetNormalizedRealmName(),
+            cleanSender .. "-" .. GetNormalizedRealmName()
+        }
+        
+        ns.Core.DebugPrint("Testing name variations:")
+        for i, testName in ipairs(nameVariations) do
+            local isToxic = ns.Player.IsToxic(testName)
+            local isPumper = ns.Player.IsPumper(testName)
+            ns.Core.DebugPrint("  " .. i .. ": '" .. testName .. "' - Toxic: " .. tostring(isToxic) .. ", Pumper: " .. tostring(isPumper))
+            
+            if isToxic then
+                local icon = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t"
+                ns.Core.DebugPrint("*** FOUND TOXIC PLAYER: " .. testName .. " ***")
+                
+                -- Try to modify the player name in the message
+                local newMessage = message
+                
+                -- Look for [Level:Name] pattern and add icon before name
+                if message:find("%[%d+:" .. cleanSender .. "%]") then
+                    newMessage = message:gsub("(%[%d+:)(" .. cleanSender:gsub("%-", "%%-") .. ")(%])", "%1" .. icon .. " %2%3")
+                    ns.Core.DebugPrint("Modified level pattern: '" .. newMessage .. "'")
+                elseif message:find(cleanSender) then
+                    -- For simple name occurrences, add icon before the name
+                    newMessage = message:gsub("(" .. cleanSender:gsub("%-", "%%-") .. ")", icon .. " %1")
+                    ns.Core.DebugPrint("Modified simple pattern: '" .. newMessage .. "'")
+                end
+                
+                ns.Core.DebugPrint("FINAL RESULT:")
+                ns.Core.DebugPrint("  Original: '" .. message .. "'")
+                ns.Core.DebugPrint("  Modified: '" .. newMessage .. "'")
+                return false, newMessage, sender, ...
+                
+            elseif isPumper then
+                local icon = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
+                ns.Core.DebugPrint("*** FOUND PUMPER PLAYER: " .. testName .. " ***")
+                
+                -- Try to modify the player name in the message
+                local newMessage = message
+                
+                -- Look for [Level:Name] pattern and add icon before name
+                if message:find("%[%d+:" .. cleanSender .. "%]") then
+                    newMessage = message:gsub("(%[%d+:)(" .. cleanSender:gsub("%-", "%%-") .. ")(%])", "%1" .. icon .. " %2%3")
+                    ns.Core.DebugPrint("Modified level pattern: '" .. newMessage .. "'")
+                elseif message:find(cleanSender) then
+                    -- For simple name occurrences, add icon before the name
+                    newMessage = message:gsub("(" .. cleanSender:gsub("%-", "%%-") .. ")", icon .. " %1")
+                    ns.Core.DebugPrint("Modified simple pattern: '" .. newMessage .. "'")
+                end
+                
+                ns.Core.DebugPrint("FINAL RESULT:")
+                ns.Core.DebugPrint("  Original: '" .. message .. "'")
+                ns.Core.DebugPrint("  Modified: '" .. newMessage .. "'")
+                return false, newMessage, sender, ...
+            end
+        end
+        
+        ns.Core.DebugPrint("No match found for this player")
+        return false
+    end
+    
+    -- Register chat filters for all relevant chat types
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_GUILD", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER_INFORM", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_PARTY", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_PARTY_LEADER", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_RAID", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_RAID_LEADER", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_RAID_WARNING", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_INSTANCE_CHAT", AddChatIcons)
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_INSTANCE_CHAT_LEADER", AddChatIcons)
+    
+    ns.Core.DebugPrint("Basic chat filters registered - testing phase")
+    
     -- Tooltip integration
     if TooltipDataProcessor then
+        -- Debug all tooltip types to see which one is used for guild members
+        local function DebugTooltipType(tooltipType, typeName)
+            TooltipDataProcessor.AddTooltipPostCall(tooltipType, function(tooltip, data)
+                ns.Core.DebugPrint("Tooltip type triggered: " .. typeName)
+                if data then
+                    ns.Core.DebugPrint("  Data available: " .. tostring(data ~= nil))
+                    if data.memberInfo then
+                        ns.Core.DebugPrint("  Has memberInfo: " .. (data.memberInfo.name or "no name"))
+                    end
+                end
+            end)
+        end
+        
+        -- Hook all possible tooltip types
+        if Enum.TooltipDataType.Unit then
+            DebugTooltipType(Enum.TooltipDataType.Unit, "Unit")
+        end
+        if Enum.TooltipDataType.GuildMember then
+            DebugTooltipType(Enum.TooltipDataType.GuildMember, "GuildMember")
+        end
+        if Enum.TooltipDataType.CommunitiesMember then
+            DebugTooltipType(Enum.TooltipDataType.CommunitiesMember, "CommunitiesMember")
+        end
+        if Enum.TooltipDataType.Communities then
+            DebugTooltipType(Enum.TooltipDataType.Communities, "Communities")
+        end
+        if Enum.TooltipDataType.ClubMember then
+            DebugTooltipType(Enum.TooltipDataType.ClubMember, "ClubMember")
+        end
+        
+        -- Enhanced Unit tooltip (also handles guild members)
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
             local unit = select(2, tooltip:GetUnit())
+            local name = nil
+            
             if unit then
-                local name = GetUnitName(unit, true)
-                if ns.Player.IsToxic(name) then
-                    tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r ")
-                elseif ns.Player.IsPumper(name) then
-                    tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r ")
+                name = GetUnitName(unit, true)
+                ns.Core.DebugPrint("Unit tooltip - unit name: " .. (name or "nil"))
+            end
+            
+            -- If no unit name, try to get name from tooltip text (for guild members)
+            if not name then
+                local tooltipName = tooltip:GetName()
+                if tooltipName then
+                    -- Try to extract name from tooltip lines
+                    for i = 1, tooltip:NumLines() do
+                        local line = _G[tooltipName .. "TextLeft" .. i]
+                        if line then
+                            local text = line:GetText()
+                            if text and not text:find("|c") and not text:find("Level") and not text:find("Guild") then
+                                -- This might be the player name
+                                name = text
+                                ns.Core.DebugPrint("Extracted name from tooltip: " .. name)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if name then
+                -- Try multiple name formats for guild members
+                local nameVariations = {
+                    name,
+                    name .. "-" .. GetRealmName(),
+                    name .. "-" .. GetNormalizedRealmName()
+                }
+                
+                for _, testName in ipairs(nameVariations) do
+                    ns.Core.DebugPrint("Testing name: " .. testName)
+                    if ns.Player.IsToxic(testName) then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+                        ns.Core.DebugPrint("Added toxic tooltip for: " .. testName)
+                        return
+                    elseif ns.Player.IsPumper(testName) then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+                        ns.Core.DebugPrint("Added pumper tooltip for: " .. testName)
+                        return
+                    end
+                end
+                ns.Core.DebugPrint("No match found for any variation of: " .. name)
+            else
+                ns.Core.DebugPrint("Could not extract name from tooltip")
+            end
+        end)
+        
+        -- Guild member tooltip integration (multiple types)
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.GuildMember, function(tooltip, data)
+            ns.Core.DebugPrint("GuildMember tooltip triggered")
+        end)
+        
+        -- Also try Communities member tooltip
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.CommunitiesMember, function(tooltip, data)
+            ns.Core.DebugPrint("CommunitiesMember tooltip triggered")
+            if data and data.memberInfo then
+                local name = data.memberInfo.name
+                if name then
+                    -- Try multiple server name approaches
+                    local server = data.memberInfo.server or GetRealmName() or GetNormalizedRealmName()
+                    local fullName = name .. "-" .. server
+                    
+                    -- Also try without server for same-realm players
+                    local nameOnly = name .. "-" .. GetRealmName()
+                    
+                    -- Try normalized realm name
+                    local normalizedName = name .. "-" .. GetNormalizedRealmName()
+                    
+                    -- Try just the name (for same server)
+                    local justName = name
+                    
+                    ns.Core.DebugPrint("Communities tooltip check: " .. name)
+                    ns.Core.DebugPrint("  Trying: " .. fullName)
+                    ns.Core.DebugPrint("  Trying: " .. nameOnly)
+                    ns.Core.DebugPrint("  Trying: " .. normalizedName)
+                    ns.Core.DebugPrint("  Trying: " .. justName)
+                    
+                    -- Check all possible name variations
+                    local isToxic = ns.Player.IsToxic(fullName) or ns.Player.IsToxic(nameOnly) or 
+                                   ns.Player.IsToxic(normalizedName) or ns.Player.IsToxic(justName)
+                    local isPumper = ns.Player.IsPumper(fullName) or ns.Player.IsPumper(nameOnly) or 
+                                    ns.Player.IsPumper(normalizedName) or ns.Player.IsPumper(justName)
+                    
+                    if isToxic then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+                        ns.Core.DebugPrint("Added toxic tooltip for: " .. name)
+                    elseif isPumper then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+                        ns.Core.DebugPrint("Added pumper tooltip for: " .. name)
+                    else
+                        ns.Core.DebugPrint("No match found for: " .. name)
+                    end
                 end
             end
         end)
         
-        -- Guild member tooltip integration
+        -- Original GuildMember tooltip (keeping for compatibility)
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.GuildMember, function(tooltip, data)
             if data and data.memberInfo then
                 local name = data.memberInfo.name
-                local server = data.memberInfo.server
-                if name and server then
+                if name then
+                    -- Try multiple server name approaches
+                    local server = data.memberInfo.server or GetRealmName() or GetNormalizedRealmName()
                     local fullName = name .. "-" .. server
-                    if ns.Player.IsToxic(fullName) then
-                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r ")
-                    elseif ns.Player.IsPumper(fullName) then
-                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r ")
+                    
+                    -- Also try without server for same-realm players
+                    local nameOnly = name .. "-" .. GetRealmName()
+                    
+                    -- Try normalized realm name
+                    local normalizedName = name .. "-" .. GetNormalizedRealmName()
+                    
+                    -- Try just the name (for same server)
+                    local justName = name
+                    
+                    ns.Core.DebugPrint("Guild tooltip check: " .. name)
+                    ns.Core.DebugPrint("  Trying: " .. fullName)
+                    ns.Core.DebugPrint("  Trying: " .. nameOnly)
+                    ns.Core.DebugPrint("  Trying: " .. normalizedName)
+                    ns.Core.DebugPrint("  Trying: " .. justName)
+                    
+                    -- Check all possible name variations
+                    local isToxic = ns.Player.IsToxic(fullName) or ns.Player.IsToxic(nameOnly) or 
+                                   ns.Player.IsToxic(normalizedName) or ns.Player.IsToxic(justName)
+                    local isPumper = ns.Player.IsPumper(fullName) or ns.Player.IsPumper(nameOnly) or 
+                                    ns.Player.IsPumper(normalizedName) or ns.Player.IsPumper(justName)
+                    
+                    if isToxic then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
+                        ns.Core.DebugPrint("Added toxic tooltip for: " .. name)
+                    elseif isPumper then
+                        tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
+                        ns.Core.DebugPrint("Added pumper tooltip for: " .. name)
+                    else
+                        ns.Core.DebugPrint("No match found for: " .. name)
                     end
                 end
             end
@@ -817,13 +1182,13 @@ function ns.Events.RegisterContextMenus()
 
 -- Update guild roster display with toxic/pumper icons
 function ns.Events.UpdateGuildRosterDisplay()
-    if not GuildFrame then
-        ns.Core.DebugPrint("Guild frame not available")
-        return
-    end
-    
-    if not GuildFrame:IsShown() then
-        ns.Core.DebugPrint("Guild frame not shown - will update when opened")
+    -- Check for modern Communities frame first
+    if _G.CommunitiesFrame and _G.CommunitiesFrame:IsShown() then
+        ns.Core.DebugPrint("Communities frame is open, updating guild roster...")
+    elseif _G.GuildFrame and _G.GuildFrame:IsShown() then
+        ns.Core.DebugPrint("Guild frame is open, updating guild roster...")
+    else
+        ns.Core.DebugPrint("No guild/communities frame is open")
         return
     end
     
@@ -841,10 +1206,170 @@ function ns.Events.UpdateGuildRosterDisplay()
         -- Try different guild frame structures
         local foundButtons = 0
         
-        -- Check for modern guild roster structure
-        if GuildRosterContainer and GuildRosterContainer.listScroll then
+        -- Check for Communities guild roster structure
+        local rosterFrame = nil
+        if _G.CommunitiesFrame and _G.CommunitiesFrame.MemberList then
+            ns.Core.DebugPrint("Found Communities member list")
+            rosterFrame = _G.CommunitiesFrame.MemberList
+        elseif _G.GuildRosterContainer and _G.GuildRosterContainer.listScroll then
             ns.Core.DebugPrint("Found modern guild roster container")
-            local scrollFrame = GuildRosterContainer.listScroll
+            rosterFrame = _G.GuildRosterContainer.listScroll
+        end
+        
+        if rosterFrame then
+            local scrollFrame = rosterFrame
+            
+            -- Debug the Communities frame structure
+            ns.Core.DebugPrint("Examining Communities member list structure...")
+            if scrollFrame.buttons then
+                ns.Core.DebugPrint("Found buttons array with " .. #scrollFrame.buttons .. " buttons")
+            elseif scrollFrame.ListScrollFrame and scrollFrame.ListScrollFrame.buttons then
+                ns.Core.DebugPrint("Found ListScrollFrame.buttons")
+                scrollFrame = scrollFrame.ListScrollFrame
+            elseif scrollFrame.ScrollBox then
+                ns.Core.DebugPrint("Found ScrollBox (modern UI)")
+                -- Modern scroll box system
+                if scrollFrame.ScrollBox.GetFrames then
+                    local frames = scrollFrame.ScrollBox:GetFrames()
+                    ns.Core.DebugPrint("ScrollBox has " .. #frames .. " frames")
+                    
+                    -- First, clean up any existing icon text to prevent duplicates
+                    for i, button in ipairs(frames) do
+                        if button.memberInfo and button.memberInfo.name then
+                            local regions = {button:GetRegions()}
+                            for j, region in ipairs(regions) do
+                                if region and region.GetText and region.SetText then
+                                    local text = region:GetText()
+                                    if text and text:find("|T") then
+                                        -- Remove existing icons from text
+                                        local cleanText = text:gsub("|T[^|]*|t ", "")
+                                        region:SetText(cleanText)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    -- Then add icons for the correct players
+                    for i, button in ipairs(frames) do
+                        foundButtons = foundButtons + 1
+                        -- Try to find member info in the button
+                        if button.memberInfo then
+                            local memberInfo = button.memberInfo
+                            if memberInfo.name then
+                                local fullName = memberInfo.name .. "-" .. GetRealmName()
+                                local isToxic = ns.Player.IsToxic(fullName)
+                                local isPumper = ns.Player.IsPumper(fullName)
+                                
+                                if isToxic or isPumper then
+                                    -- Find and modify the name text directly
+                                    local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
+                                    local nameUpdated = false
+                                    
+                                    -- Try to find text regions that contain the player name
+                                    local regions = {button:GetRegions()}
+                                    for i, region in ipairs(regions) do
+                                        if region and region.GetText and region.SetText then
+                                            local text = region:GetText()
+                                            if text and text:find(memberInfo.name) and not text:find("|T") then
+                                                -- Add icon to the name
+                                                local newText = icon .. " " .. text
+                                                region:SetText(newText)
+                                                nameUpdated = true
+                                                ns.Core.DebugPrint("Updated name text for: " .. memberInfo.name)
+                                                break
+                                            end
+                                        end
+                                    end
+                                    
+                                    -- If we can't find the text region, try memberInfo directly
+                                    if not nameUpdated and memberInfo.SetName then
+                                        memberInfo:SetName(icon .. " " .. memberInfo.name)
+                                        nameUpdated = true
+                                        ns.Core.DebugPrint("Updated memberInfo name for: " .. memberInfo.name)
+                                    end
+                                    
+                                    if nameUpdated then
+                                        ns.Core.DebugPrint("Successfully added icon to name: " .. memberInfo.name)
+                                    else
+                                        ns.Core.DebugPrint("Could not update name for: " .. memberInfo.name)
+                                    end
+                                end
+                                
+                                -- Old approach (keeping for fallback)
+                                if false then -- Disabled for now
+                                    ns.Core.DebugPrint("Found marked Communities member: " .. memberInfo.name)
+                                    local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
+                                    
+                                    -- Debug button structure
+                                    ns.Core.DebugPrint("Debugging button structure for: " .. memberInfo.name)
+                                    if button.Name then
+                                        ns.Core.DebugPrint("  Has button.Name")
+                                        if button.Name.SetText then
+                                            ns.Core.DebugPrint("  button.Name has SetText")
+                                            local text = button.Name:GetText()
+                                            ns.Core.DebugPrint("  Current text: " .. (text or "nil"))
+                                        end
+                                    end
+                                    
+                                    -- Try different common name fields
+                                    local nameFields = {"Name", "nameText", "NameText", "memberName", "MemberName"}
+                                    local nameUpdated = false
+                                    
+                                    for _, fieldName in ipairs(nameFields) do
+                                        if button[fieldName] and button[fieldName].SetText then
+                                            local originalText = button[fieldName]:GetText() or memberInfo.name
+                                            if originalText and not originalText:find("|T") then
+                                                button[fieldName]:SetText(icon .. " " .. originalText)
+                                                nameUpdated = true
+                                                ns.Core.DebugPrint("Updated via " .. fieldName .. ": " .. memberInfo.name)
+                                                break
+                                            end
+                                        end
+                                    end
+                                    
+                                    -- If still not updated, try regions
+                                    if not nameUpdated then
+                                        local regions = {button:GetRegions()}
+                                        ns.Core.DebugPrint("  Found " .. #regions .. " regions")
+                                        for i, region in ipairs(regions) do
+                                            if region then
+                                                if region.GetText then
+                                                    local text = region:GetText()
+                                                    if text and text ~= "" then
+                                                        ns.Core.DebugPrint("  Region " .. i .. " text: '" .. text .. "'")
+                                                        -- Try exact match or partial match
+                                                        if (text == memberInfo.name or text:find(memberInfo.name)) and not text:find("|T") then
+                                                            if region.SetText then
+                                                                region:SetText(icon .. " " .. text)
+                                                                nameUpdated = true
+                                                                ns.Core.DebugPrint("Updated via region " .. i .. ": " .. memberInfo.name)
+                                                                break
+                                                            end
+                                                        end
+                                                    else
+                                                        ns.Core.DebugPrint("  Region " .. i .. " has no text or empty text")
+                                                    end
+                                                else
+                                                    ns.Core.DebugPrint("  Region " .. i .. " has no GetText method")
+                                                end
+                                            end
+                                        end
+                                    end
+                                    
+                                    if not nameUpdated then
+                                        ns.Core.DebugPrint("Could not update name display for: " .. memberInfo.name)
+                                    end
+                                end -- End of disabled old approach
+                            end
+                        end
+                    end
+                end
+            else
+                ns.Core.DebugPrint("Unknown Communities frame structure")
+            end
+            
+            -- Original button processing for older systems
             if scrollFrame.buttons then
                 for i, button in ipairs(scrollFrame.buttons) do
                     if button and button.guildIndex then
@@ -858,12 +1383,42 @@ function ns.Events.UpdateGuildRosterDisplay()
                             
                             if isToxic or isPumper then
                                 ns.Core.DebugPrint("Found marked guild member: " .. name)
-                                -- Try to find name text in button
-                                if button.Name then
+                                
+                                -- Try multiple ways to find and update the name
+                                local nameUpdated = false
+                                
+                                -- Method 1: Direct Name field
+                                if button.Name and button.Name.SetText then
                                     local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
-                                    local color = isToxic and "|cffff0000" or "|cff00ff00"
-                                    button.Name:SetText(icon .. " " .. color .. name .. "|r")
-                                    ns.Core.DebugPrint("Updated modern guild roster: " .. name)
+                                    local originalText = button.Name:GetText() or name
+                                    -- Only add icon if not already present
+                                    if not originalText:find("|T") then
+                                        button.Name:SetText(icon .. " " .. originalText)
+                                        nameUpdated = true
+                                        ns.Core.DebugPrint("Updated Name field for: " .. name)
+                                    end
+                                end
+                                
+                                -- Method 2: Try to find text elements in button
+                                if not nameUpdated then
+                                    for _, region in ipairs({button:GetRegions()}) do
+                                        if region and region.GetText and region.SetText then
+                                            local text = region:GetText()
+                                            if text and text:find(name) then
+                                                local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
+                                                if not text:find("|T") then
+                                                    region:SetText(icon .. " " .. text)
+                                                    nameUpdated = true
+                                                    ns.Core.DebugPrint("Updated text region for: " .. name)
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                                
+                                if not nameUpdated then
+                                    ns.Core.DebugPrint("Could not find text element to update for: " .. name)
                                 end
                             end
                         end
@@ -914,9 +1469,21 @@ end
 
 -- Hook guild frame to update display when opened
 local function InstallGuildHooks()
-    if GuildFrame then
+    -- Hook Communities frame (modern guild system)
+    if _G.CommunitiesFrame then
+        _G.CommunitiesFrame:HookScript("OnShow", function()
+            ns.Core.DebugPrint("Communities frame opened, updating roster display...")
+            C_Timer.After(1, function()
+                ns.Events.UpdateGuildRosterDisplay()
+            end)
+        end)
+        ns.Core.DebugPrint("Communities frame hooks installed")
+    end
+    
+    -- Also hook old guild frame for compatibility
+    if _G.GuildFrame then
         -- Hook when guild frame is shown
-        GuildFrame:HookScript("OnShow", function()
+        _G.GuildFrame:HookScript("OnShow", function()
             ns.Core.DebugPrint("Guild frame opened, updating roster display...")
             C_Timer.After(1, function()
                 ns.Events.UpdateGuildRosterDisplay()
@@ -924,13 +1491,47 @@ local function InstallGuildHooks()
         end)
         
         -- Hook guild roster updates
-        if GuildRosterFrame then
-            GuildRosterFrame:HookScript("OnShow", function()
+        if _G.GuildRosterFrame then
+            _G.GuildRosterFrame:HookScript("OnShow", function()
                 ns.Core.DebugPrint("Guild roster frame shown, updating display...")
                 C_Timer.After(0.5, function()
                     ns.Events.UpdateGuildRosterDisplay()
                 end)
             end)
+        end
+        
+        -- Hook guild roster container updates (modern UI)
+        if _G.GuildRosterContainer then
+            -- Try to hook the update function
+            if _G.GuildRosterContainer.Update then
+                local originalUpdate = _G.GuildRosterContainer.Update
+                _G.GuildRosterContainer.Update = function(self, ...)
+                    local result = originalUpdate(self, ...)
+                    -- Update our icons after the roster updates
+                    C_Timer.After(0.1, function()
+                        ns.Events.UpdateGuildRosterDisplay()
+                    end)
+                    return result
+                end
+                ns.Core.DebugPrint("Hooked GuildRosterContainer.Update")
+            end
+            
+            -- Also hook scroll events
+            if _G.CommunitiesFrame and _G.CommunitiesFrame.MemberList and _G.CommunitiesFrame.MemberList.ScrollBox then
+                local scrollBox = _G.CommunitiesFrame.MemberList.ScrollBox
+                if scrollBox.SetScrollPercentage then
+                    local originalSetScrollPercentage = scrollBox.SetScrollPercentage
+                    scrollBox.SetScrollPercentage = function(self, ...)
+                        local result = originalSetScrollPercentage(self, ...)
+                        -- Update icons after scrolling
+                        C_Timer.After(0.05, function()
+                            ns.Events.UpdateGuildRosterDisplay()
+                        end)
+                        return result
+                    end
+                    ns.Core.DebugPrint("Hooked ScrollBox scroll events")
+                end
+            end
         end
         
         ns.Core.DebugPrint("Guild frame hooks installed")
@@ -968,7 +1569,7 @@ ns.Core.DebugPrint("Events.lua loaded completely, scheduling context menu regist
 ns.Core.DebugPrint("Attempting to register context menus...")
 if Menu then
     ns.Core.DebugPrint("Menu API available, registering context menus")
-    ns.Events.RegisterContextMenus()
+ns.Events.RegisterContextMenus()
 else
     -- Use a timer if Menu API not available yet
     C_Timer.After(1, function()

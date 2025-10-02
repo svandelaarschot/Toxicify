@@ -196,10 +196,10 @@ luaErrorsCheck:SetScript("OnClick", function(self)
     -- Set console scriptErrors based on toggle
     if enabled then
         SetCVar("scriptErrors", "1")
-        print("|cff39FF14[Toxicify Debug]:|r Lua errors enabled - /console scriptErrors set to 1")
+        ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
     else
         SetCVar("scriptErrors", "0")
-        print("|cff39FF14[Toxicify Debug]:|r Lua errors disabled - /console scriptErrors set to 0")
+        ns.Core.DebugPrint("Lua errors disabled - /console scriptErrors set to 0", true)
     end
 end)
 luaErrorsDesc:SetPoint("TOPLEFT", luaErrorsCheck, "BOTTOMLEFT", 0, -5)
