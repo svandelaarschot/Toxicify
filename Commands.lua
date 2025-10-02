@@ -104,9 +104,9 @@ function ns.Commands.Initialize()
                 ns.Core.DebugPrint("Lua errors toggle is now hidden in settings")
             else
                 ToxicifyDB.DebugEnabled = true
-                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.", true)
-                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.", true)
-                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.", true)
+                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.")
+                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.")
+                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.")
             end
         elseif cmd == "partywarning" then
             if ToxicifyDB.PartyWarningEnabled then
@@ -130,34 +130,11 @@ function ns.Commands.Initialize()
                 SetCVar("scriptErrors", "1")
                 ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
             end
-        elseif cmd == "contextmenu" then
-            if ns.UI and ns.UI.AddContextMenuMarking then
-                ns.UI.AddContextMenuMarking()
-                ns.Core.DebugPrint("Context menu marking activated.", true)
-            else
-                ns.Core.DebugPrint("Context menu marking not available.", true)
-            end
         elseif cmd == "testwarning" then
             -- Show warning popup for testing
             local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
             ns.Events.ShowToxicWarningPopup(testToxicPlayers)
             ns.Core.DebugPrint("Test warning popup shown.", true)
-        elseif cmd == "testclipboard" then
-            -- Test clipboard functionality
-            ns.Core.DebugPrint("Testing clipboard functionality...", true)
-            local testData = "TX:VGVzdERhdGE="
-            ns.Core.DebugPrint("Copying test data: " .. testData, true)
-            if ns.Core.CopyToClipboard(testData) then
-                ns.Core.DebugPrint("✓ Copy successful", true)
-                local retrieved = ns.Core.GetFromClipboard()
-                if retrieved == testData then
-                    ns.Core.DebugPrint("✓ Clipboard test passed!", true)
-                else
-                    ns.Core.DebugPrint("✗ Retrieved data doesn't match: " .. (retrieved or "nil"), true)
-                end
-            else
-                ns.Core.DebugPrint("✗ Copy failed", true)
-            end
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)

@@ -291,10 +291,10 @@ addPumperBtn:SetText("Add Pumper")
 -- ScrollFrame for list
 local scrollFrame = CreateFrame("ScrollFrame", nil, listPanel, "UIPanelScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", inputLabel, "BOTTOMLEFT", 0, -20)
-scrollFrame:SetSize(500, 200)
+scrollFrame:SetSize(500, 350)
 
 local content = CreateFrame("Frame", nil, scrollFrame)
-content:SetSize(500, 200)
+content:SetSize(500, 350)
 scrollFrame:SetScrollChild(content)
 
 local function RefreshList()
