@@ -142,6 +142,9 @@ function ns.Commands.Initialize()
             local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
             ns.Events.ShowToxicWarningPopup(testToxicPlayers)
             ns.Core.DebugPrint("Test warning popup shown.", true)
+        elseif cmd == "testimport" then
+            -- Test import/export functionality
+            ns.Core.TestImportExport()
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
@@ -158,6 +161,7 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
             ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
             ns.Core.DebugPrint("/toxic testwarning             - Show test warning popup", true)
+            ns.Core.DebugPrint("/toxic testimport              - Test import/export functionality", true)
         end
     end
 end

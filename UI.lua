@@ -446,12 +446,16 @@ function ns.UI.ShowIOPopup(mode, data)
         
         f.actionBtn:SetScript("OnClick", function()
             local text = f.editBox:GetText()
+            print("|cff39FF14Toxicify:|r Import button clicked")
+            
             if text == "" then
                 -- Try to get from clipboard if editbox is empty
                 text = ns.Core.GetFromClipboard()
                 if text and text ~= "" then
                     f.editBox:SetText(text)
                     print("|cff39FF14Toxicify:|r Data loaded from clipboard.")
+                else
+                    print("|cff39FF14Toxicify:|r No data in clipboard.")
                 end
             end
             
@@ -460,6 +464,7 @@ function ns.UI.ShowIOPopup(mode, data)
                 return
             end
             
+            print("|cff39FF14Toxicify:|r Attempting to import data...")
             local ok, result = ns.Core.ImportList(text)
             if ok then
                 print("|cff39FF14Toxicify:|r ✓ " .. result)
@@ -469,6 +474,7 @@ function ns.UI.ShowIOPopup(mode, data)
                 f:Hide()
             else
                 print("|cffff0000Toxicify:|r Import failed: " .. result)
+                print("|cff39FF14Toxicify:|r Try using /toxic debug to enable debug mode for more details.")
             end
         end)
     end
