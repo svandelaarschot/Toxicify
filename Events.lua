@@ -300,37 +300,38 @@ end
 -- Check guild members for toxic/pumper status and show toast
 function ns.Events.CheckGuildMemberOnline()
     if not ToxicifyDB.GuildToastEnabled then
-        ns.Core.DebugPrint("Guild toast notifications disabled")
         return
     end
-    
-    ns.Core.DebugPrint("Checking guild members for online status...")
     
     -- Get guild roster info
     local numGuildMembers = GetNumGuildMembers()
     if numGuildMembers == 0 then
-        ns.Core.DebugPrint("No guild members found")
         return
     end
     
-    ns.Core.DebugPrint("Found " .. numGuildMembers .. " guild members")
-    
-    -- Check each guild member
+    local foundCount = 0
+    -- Check each guild member (only show debug for found players)
     for i = 1, numGuildMembers do
         local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
         
         if name and online then
             local fullName = name .. "-" .. GetRealmName()
-            ns.Core.DebugPrint("Checking online guild member: " .. name .. " (full: " .. fullName .. ")")
             
             if ns.Player.IsToxic(fullName) then
-                ns.Core.DebugPrint("Found toxic guild member: " .. name)
+                ns.Core.DebugPrint("Toxic guild member online: " .. name)
                 ns.Events.ShowGuildToast(name, "toxic")
+                foundCount = foundCount + 1
             elseif ns.Player.IsPumper(fullName) then
-                ns.Core.DebugPrint("Found pumper guild member: " .. name)
+                ns.Core.DebugPrint("Pumper guild member online: " .. name)
                 ns.Events.ShowGuildToast(name, "pumper")
+                foundCount = foundCount + 1
             end
         end
+    end
+    
+    -- Only show summary if we found marked players
+    if foundCount > 0 then
+        ns.Core.DebugPrint("Guild scan: " .. foundCount .. " marked players online")
     end
 end
 

@@ -444,62 +444,65 @@ function ns.UI.ShowIOPopup(mode)
         
     elseif mode == "import" then
         f.title:SetText("|cff39FF14Toxicify|r - Import List")
-        f.description:SetText("Paste a friend's export string below and click Import.")
-        f.actionBtn:SetText("Import")
+        f.description:SetText("Paste your friend's export string below with CTRL+V - it will import automatically!")
+        f.actionBtn:SetText("Close")
+        
+        -- Make editbox more visible
+        f.editBox:SetTextColor(1, 1, 1) -- White text
+        f.editBox:SetFontObject("GameFontNormalLarge")
         
         -- Try to auto-paste from clipboard (if available)
         local clipboardData = ns.Core.GetFromClipboard()
         
         if clipboardData and clipboardData ~= "" then
-            ns.Core.DebugPrint("Found data in clipboard: " .. clipboardData:sub(1, 50) .. "...")
             if clipboardData:match("^TX:") or clipboardData:match("^TOXICIFYv") then
                 f.editBox:SetText(clipboardData)
-                f.description:SetText("✓ Valid import data found in clipboard and loaded! Click Import to continue.")
+                f.description:SetText("✓ Valid import data found in clipboard! Paste will auto-import.")
                 ns.Core.DebugPrint("✓ Valid import data found and loaded!")
             else
-                f.editBox:SetText(clipboardData)
-                f.description:SetText("Data found in clipboard but format unknown. Please check and click Import.")
-                ns.Core.DebugPrint("Data found but format unknown - loaded anyway for manual check.")
+                f.editBox:SetText("")
+                f.description:SetText("Paste your friend's export string below with CTRL+V - it will import automatically!")
             end
         else
             f.editBox:SetText("")
-            f.editBox:SetFocus()
-            f.description:SetText("Paste your friend's export string below and click Import.")
-            ns.Core.DebugPrint("No clipboard data available. Please paste manually.")
+            f.description:SetText("Paste your friend's export string below with CTRL+V - it will import automatically!")
         end
         
-        f.actionBtn:SetScript("OnClick", function()
-            local text = f.editBox:GetText()
-            
-            -- If no text in editbox, try clipboard as last resort
-            if text == "" then
-                text = ns.Core.GetFromClipboard()
-                if text and text ~= "" then
-                    f.editBox:SetText(text)
-                    ns.Core.DebugPrint("Loaded data from clipboard for import.")
-                end
-            end
-            
-            if text == "" then
-                ns.Core.DebugPrint("No data to import. Please paste an export string in the text field.")
-                f.description:SetText("❌ No data to import. Please paste an export string above.")
-                return
-            end
-            
-            ns.Core.DebugPrint("Attempting to import: " .. text:sub(1, 30) .. "...")
-            local ok, result = ns.Core.ImportList(text)
-            if ok then
-                ns.Core.DebugPrint("✓ " .. result)
-                f.description:SetText("✅ " .. result)
-                if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
-                    _G.ToxicifyListFrame:Refresh()
-                end
-                -- Auto-close after 2 seconds
-                C_Timer.After(2, function() f:Hide() end)
+        f.editBox:SetFocus()
+        
+        -- Auto-import on text change
+        f.editBox:SetScript("OnTextChanged", function(self)
+            local text = self:GetText()
+            if text and text ~= "" and (text:match("^TX:") or text:match("^TOXICIFYv")) then
+                ns.Core.DebugPrint("Auto-importing pasted data...")
+                f.description:SetText("🔄 Importing...")
+                
+                -- Small delay to ensure text is fully pasted
+                C_Timer.After(0.1, function()
+                    local ok, result = ns.Core.ImportList(text)
+                    if ok then
+                        ns.Core.DebugPrint("✓ " .. result)
+                        f.description:SetText("✅ " .. result .. " - Closing in 3 seconds...")
+                        if _G.ToxicifyListFrame and _G.ToxicifyListFrame.Refresh then
+                            _G.ToxicifyListFrame:Refresh()
+                        end
+                        -- Auto-close after 3 seconds
+                        C_Timer.After(3, function() f:Hide() end)
+                    else
+                        ns.Core.DebugPrint("Import failed: " .. result)
+                        f.description:SetText("❌ Import failed: " .. result)
+                    end
+                end)
+            elseif text and text ~= "" then
+                f.description:SetText("⚠️ Invalid format. Please paste a valid Toxicify export string.")
             else
-                ns.Core.DebugPrint("Import failed: " .. result)
-                f.description:SetText("❌ Import failed: " .. result)
+                f.description:SetText("Paste your friend's export string below with CTRL+V - it will import automatically!")
             end
+        end)
+        
+        -- Close button
+        f.actionBtn:SetScript("OnClick", function()
+            f:Hide()
         end)
     end
 end
