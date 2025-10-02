@@ -57,9 +57,41 @@ function ns.Events.UpdateGroupMembers(event)
                 if name and ns.Player.IsPumper(name) then
                     ns.Core.DebugPrint("Found pumper player: " .. name)
                     table.insert(pumperPlayers, name)
+                    ns.Core.DebugPrint("Attempting to get unit frame for: " .. unit)
                     local frame = ns.UI.GetUnitFrame(unit)
-                    if frame and frame.name and frame.name.SetText then
-                        frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                    if frame then
+                        ns.Core.DebugPrint("Frame found, checking for name property")
+                        ns.Core.DebugPrint("Frame type: " .. (frame:GetObjectType() or "unknown"))
+                        ns.Core.DebugPrint("Frame name: " .. (frame:GetName() or "unnamed"))
+                        
+                        -- Debug frame properties
+                        if frame.name then
+                            ns.Core.DebugPrint("Frame has .name property")
+                            if frame.name.SetText then
+                                ns.Core.DebugPrint("Setting pumper text for: " .. name)
+                                frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                            else
+                                ns.Core.DebugPrint("Frame.name exists but no SetText method")
+                            end
+                        else
+                            ns.Core.DebugPrint("Frame has no .name property")
+                            -- Try alternative properties
+                            if frame.healthbar and frame.healthbar.name then
+                                ns.Core.DebugPrint("Trying frame.healthbar.name")
+                                if frame.healthbar.name.SetText then
+                                    frame.healthbar.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                                end
+                            elseif frame.Name then
+                                ns.Core.DebugPrint("Trying frame.Name (capital N)")
+                                if frame.Name.SetText then
+                                    frame.Name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
+                                end
+                            else
+                                ns.Core.DebugPrint("No name property found on frame")
+                            end
+                        end
+                    else
+                        ns.Core.DebugPrint("No frame found for unit: " .. unit)
                     end
                 end
             end
@@ -415,6 +447,7 @@ function ns.Events.Initialize()
     rosterFrame:RegisterEvent("CHALLENGE_MODE_RESET")
     rosterFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     rosterFrame:SetScript("OnEvent", function(self, event, ...)
+        ns.Core.DebugPrint("Event fired: " .. event)
         if event == "CHALLENGE_MODE_START" then
             ns.Core.DebugPrint("Mythic+ key activated - no warning popup")
             -- No warning popup when M+ key is activated
@@ -560,8 +593,22 @@ function ns.Events.Initialize()
                     ns.Core.DebugPrint("No player name from unit, returning")
                     return 
                 end
+            -- Handle players by name only (fallback)
+            elseif contextData.name then
+                ns.Core.DebugPrint("Name-only detection: " .. contextData.name)
+                playerName = contextData.name
+                -- Add realm if not present
+                if not playerName:find("-") then
+                    local realm = GetRealmName()
+                    playerName = playerName .. "-" .. realm
+                    ns.Core.DebugPrint("Added realm: " .. playerName)
+                end
             else
                 ns.Core.DebugPrint("No recognized context data, returning")
+                ns.Core.DebugPrint("Available contextData keys:")
+                for k, v in pairs(contextData) do
+                    ns.Core.DebugPrint("  " .. k .. " = " .. tostring(v))
+                end
                 return 
             end
             
@@ -572,10 +619,50 @@ function ns.Events.Initialize()
             
             ns.Core.DebugPrint("Adding context menu for player: " .. playerName)
             
-            local toxicSubmenu = rootDescription:CreateButton("Toxicify")
-            toxicSubmenu:CreateButton("Mark player as Toxic", function() ns.Player.MarkToxic(playerName) end)
-            toxicSubmenu:CreateButton("Mark player as Pumper", function() ns.Player.MarkPumper(playerName) end)
-            toxicSubmenu:CreateButton("Remove from List", function() ns.Player.UnmarkToxic(playerName) end)
+            if not rootDescription then
+                ns.Core.DebugPrint("rootDescription is nil, cannot create menu")
+                return
+            end
+            
+            ns.Core.DebugPrint("Creating Toxicify submenu...")
+            
+            -- Create submenu for better organization
+            local success, toxicSubmenu = pcall(function()
+                return rootDescription:CreateButton("Toxicify")
+            end)
+            
+            if not success or not toxicSubmenu then
+                ns.Core.DebugPrint("Failed to create submenu, creating direct buttons")
+                -- Fallback to direct buttons
+                rootDescription:CreateButton("Mark as Toxic", function() 
+                    ns.Player.MarkToxic(playerName)
+                    ns.Core.DebugPrint("Marked " .. playerName .. " as Toxic via context menu")
+                end)
+                rootDescription:CreateButton("Mark as Pumper", function() 
+                    ns.Player.MarkPumper(playerName)
+                    ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
+                end)
+                rootDescription:CreateButton("Remove from Toxicify", function() 
+                    ns.Player.UnmarkToxic(playerName)
+                    ns.Core.DebugPrint("Removed " .. playerName .. " from Toxicify list via context menu")
+                end)
+            else
+                ns.Core.DebugPrint("Submenu created, adding buttons...")
+                toxicSubmenu:CreateButton("Mark as Toxic", function() 
+                    ns.Player.MarkToxic(playerName)
+                    ns.Core.DebugPrint("Marked " .. playerName .. " as Toxic via context menu")
+                end)
+                toxicSubmenu:CreateButton("Mark as Pumper", function() 
+                    ns.Player.MarkPumper(playerName)
+                    ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
+                end)
+                toxicSubmenu:CreateButton("Remove from List", function() 
+                    ns.Player.UnmarkToxic(playerName)
+                    ns.Core.DebugPrint("Removed " .. playerName .. " from Toxicify list via context menu")
+                end)
+            end
+            
+            ns.Core.DebugPrint("Context menu buttons created successfully")
         end
 
         -- Context menus will be registered after function definition
@@ -584,20 +671,26 @@ end
 
 -- Register context menu for various unit types
 function ns.Events.RegisterContextMenus()
+        ns.Core.DebugPrint("Registering context menus...")
         -- Core unit types
         Menu.ModifyMenu("MENU_UNIT_SELF", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_SELF triggered")
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         Menu.ModifyMenu("MENU_UNIT_PLAYER", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_PLAYER triggered")
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         Menu.ModifyMenu("MENU_UNIT_TARGET", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_TARGET triggered")
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         Menu.ModifyMenu("MENU_UNIT_FRIEND", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_FRIEND triggered")
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         Menu.ModifyMenu("MENU_UNIT_ENEMY_PLAYER", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_ENEMY_PLAYER triggered")
             ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         end)
         
@@ -669,9 +762,21 @@ function ns.Events.RegisterContextMenus()
         -- Party members (specific slots)
         for i = 1, 4 do
             Menu.ModifyMenu("MENU_UNIT_PARTY" .. i, function(_, rootDescription, contextData)
+                ns.Core.DebugPrint("MENU_UNIT_PARTY" .. i .. " triggered")
                 ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             end)
         end
+        
+        -- Additional party member menu types
+        Menu.ModifyMenu("MENU_UNIT_PARTY", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_PARTY triggered")
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
+        
+        Menu.ModifyMenu("MENU_UNIT_PARTY_PLAYER", function(_, rootDescription, contextData)
+            ns.Core.DebugPrint("MENU_UNIT_PARTY_PLAYER triggered")
+            ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+        end)
         
         -- Raid members (specific slots)
         for i = 1, 40 do
@@ -682,6 +787,18 @@ function ns.Events.RegisterContextMenus()
         
     end
 
--- Register context menus after function definition
-ns.Events.RegisterContextMenus()
+-- Register context menus after addon is fully loaded
+ns.Core.DebugPrint("Events.lua loaded completely, scheduling context menu registration...")
+
+-- Use a timer to register context menus after everything is loaded
+C_Timer.After(2, function()
+    ns.Core.DebugPrint("Attempting to register context menus...")
+    if Menu then
+        ns.Core.DebugPrint("Menu API available, registering context menus")
+        ns.Events.RegisterContextMenus()
+    else
+        ns.Core.DebugPrint("Menu API not available - context menus will not work")
+    end
+    ns.Core.DebugPrint("Context menu registration complete")
+end)
 

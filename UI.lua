@@ -15,37 +15,55 @@ function ns.UI.GetUnitFrame(unit)
     if C_CompactUnitFrame and C_CompactUnitFrame.GetAllFrames then
         for _, frame in ipairs(C_CompactUnitFrame.GetAllFrames()) do
             if frame and frame.unit == unit then
-                ns.Core.DebugPrint("Found compact unit frame for " .. unit)
+                ns.Core.DebugPrint("Found compact frame for " .. unit)
+                return frame
+            end
+        end
+    else
+        ns.Core.DebugPrint("C_CompactUnitFrame API not available, trying fallback methods")
+    end
+    
+    -- Fallback: Try traditional party frames
+    if unit == "player" then
+        -- For player, try to find any player frame
+        local playerFrame = _G["PlayerFrame"]
+        if playerFrame then
+            ns.Core.DebugPrint("Found PlayerFrame for " .. unit)
+            return playerFrame
+        end
+    elseif unit:match("^party") then
+        -- For party members, try PartyMemberFrame1-4
+        local partyNum = unit:match("party(%d+)")
+        if partyNum then
+            local frameName = "PartyMemberFrame" .. partyNum
+            local frame = _G[frameName]
+            if frame then
+                ns.Core.DebugPrint("Found " .. frameName .. " for " .. unit)
+                return frame
+            end
+            
+            -- Also try CompactPartyFrameMember
+            frameName = "CompactPartyFrameMember" .. partyNum
+            frame = _G[frameName]
+            if frame then
+                ns.Core.DebugPrint("Found " .. frameName .. " for " .. unit)
+                return frame
+            end
+        end
+    elseif unit:match("^raid") then
+        -- For raid members, try CompactRaidFrame1-40
+        local raidNum = unit:match("raid(%d+)")
+        if raidNum then
+            local frameName = "CompactRaidFrame" .. raidNum
+            local frame = _G[frameName]
+            if frame then
+                ns.Core.DebugPrint("Found " .. frameName .. " for " .. unit)
                 return frame
             end
         end
     end
-    
-    -- Fallback to traditional unit frames
-    local frameNames = {
-        "PartyMemberFrame1", "PartyMemberFrame2", "PartyMemberFrame3", "PartyMemberFrame4",
-        "CompactPartyFrameMember1", "CompactPartyFrameMember2", "CompactPartyFrameMember3", "CompactPartyFrameMember4",
-        "CompactRaidFrame1", "CompactRaidFrame2", "CompactRaidFrame3", "CompactRaidFrame4", "CompactRaidFrame5"
-    }
-    
-    for _, frameName in ipairs(frameNames) do
-        local frame = _G[frameName]
-        if frame and frame.unit == unit then
-            ns.Core.DebugPrint("Found traditional unit frame " .. frameName .. " for " .. unit)
-            return frame
-        end
-    end
-    
-    -- Try raid frames (up to 40 members)
-    for i = 1, 40 do
-        local frame = _G["CompactRaidFrame" .. i]
-        if frame and frame.unit == unit then
-            ns.Core.DebugPrint("Found raid frame " .. i .. " for " .. unit)
-            return frame
-        end
-    end
-    
-    ns.Core.DebugPrint("No unit frame found for " .. unit)
+
+    ns.Core.DebugPrint("No frame found for " .. unit .. " using any method")
     return nil
 end
 
