@@ -21,6 +21,11 @@ local function InitializeOnlineNotificationCache()
             toxic = {},
             pumper = {}
         }
+        ns.Core.DebugPrint("Initialized new online notification cache")
+    else
+        ns.Core.DebugPrint("Using existing online notification cache with " .. 
+            (ToxicifyDB.OnlineNotificationCache.toxic and #ToxicifyDB.OnlineNotificationCache.toxic or 0) .. " toxic and " .. 
+            (ToxicifyDB.OnlineNotificationCache.pumper and #ToxicifyDB.OnlineNotificationCache.pumper or 0) .. " pumper entries")
     end
 end
 
@@ -442,13 +447,13 @@ function ns.Events.CheckGuildMemberOnline()
                     
                     -- Check if we already notified about this player this session
                     if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
-                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
                         ns.Events.ShowGuildToast(name, "toxic")
                         ToxicifyDB.OnlineNotificationCache.toxic[name] = true
                         foundCount = foundCount + 1
                         ns.Core.DebugPrint("Added " .. name .. " to toxic notification cache")
                     else
-                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already notified this session)")
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already notified this session) - SKIPPING")
                     end
                     found = true
                     break
@@ -460,12 +465,12 @@ function ns.Events.CheckGuildMemberOnline()
                     
                     -- Check if we already notified about this player this session
                     if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
-                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
                         ns.Events.ShowGuildToast(name, "pumper")
                         ToxicifyDB.OnlineNotificationCache.pumper[name] = true
                         foundCount = foundCount + 1
                     else
-                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already notified this session)")
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already notified this session) - SKIPPING")
                     end
                     found = true
                     break
@@ -699,6 +704,9 @@ function ns.Events.Initialize()
     if ToxicifyDB.GuildToastEnabled == nil then
         ToxicifyDB.GuildToastEnabled = true
     end
+    
+    -- Initialize online notification cache immediately
+    InitializeOnlineNotificationCache()
     
     -- Group roster updates
     local rosterFrame = CreateFrame("Frame")

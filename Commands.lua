@@ -298,6 +298,16 @@ function ns.Commands.Initialize()
             else
                 ns.Core.DebugPrint("Online notification cache not initialized", true)
             end
+        elseif cmd == "testcache" then
+            -- Test cache by adding a fake entry
+            if not ToxicifyDB.OnlineNotificationCache then
+                ns.Core.DebugPrint("Initializing cache for test...", true)
+                if ns.Events and ns.Events.ClearOnlineNotificationCache then
+                    ns.Events.ClearOnlineNotificationCache()
+                end
+            end
+            ToxicifyDB.OnlineNotificationCache.toxic["TestPlayer"] = true
+            ns.Core.DebugPrint("Added TestPlayer to cache. Use /reload to test persistence.", true)
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
