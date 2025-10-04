@@ -403,6 +403,14 @@ function ns.Events.CheckGuildMemberOnline()
         return
     end
     
+    -- Initialize cache if needed
+    if not ToxicifyDB.OnlineNotificationCache then
+        InitializeOnlineNotificationCache()
+    end
+    
+    -- Debug: Show current cache state
+    ns.Core.DebugPrint("Current online notification cache - Toxic: " .. (ToxicifyDB.OnlineNotificationCache.toxic and "exists" or "nil") .. ", Pumper: " .. (ToxicifyDB.OnlineNotificationCache.pumper and "exists" or "nil"))
+    
     -- Get guild roster info
     local numGuildMembers = GetNumGuildMembers()
     if numGuildMembers == 0 then
@@ -438,6 +446,7 @@ function ns.Events.CheckGuildMemberOnline()
                         ns.Events.ShowGuildToast(name, "toxic")
                         ToxicifyDB.OnlineNotificationCache.toxic[name] = true
                         foundCount = foundCount + 1
+                        ns.Core.DebugPrint("Added " .. name .. " to toxic notification cache")
                     else
                         ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already notified this session)")
                     end
@@ -475,6 +484,11 @@ end
 function ns.Events.CheckFriendListOnline()
     if not ToxicifyDB.GuildToastEnabled then
         return
+    end
+    
+    -- Initialize cache if needed
+    if not ToxicifyDB.OnlineNotificationCache then
+        InitializeOnlineNotificationCache()
     end
     
     -- Get friend list info
