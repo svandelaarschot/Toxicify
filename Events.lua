@@ -415,6 +415,101 @@ function ns.Events.CheckGuildMemberOnline()
     end
 end
 
+-- Check friend list for toxic/pumper status and show toast
+function ns.Events.CheckFriendListOnline()
+    if not ToxicifyDB.GuildToastEnabled then
+        return
+    end
+    
+    -- Get friend list info
+    local numFriends = C_FriendList.GetNumFriends()
+    if numFriends == 0 then
+        return
+    end
+    
+    local foundCount = 0
+    -- Check each friend
+    for i = 1, numFriends do
+        local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+        if friendInfo and friendInfo.connected then
+            local name = friendInfo.name
+            if name then
+                local fullName = name .. "-" .. GetRealmName()
+                
+                if ns.Player.IsToxic(fullName) then
+                    ns.Core.DebugPrint("Toxic friend online: " .. name)
+                    ns.Events.ShowGuildToast(name, "toxic")
+                    foundCount = foundCount + 1
+                elseif ns.Player.IsPumper(fullName) then
+                    ns.Core.DebugPrint("Pumper friend online: " .. name)
+                    ns.Events.ShowGuildToast(name, "pumper")
+                    foundCount = foundCount + 1
+                end
+            end
+        end
+    end
+    
+    -- Only show summary if we found marked players
+    if foundCount > 0 then
+        ns.Core.DebugPrint("Friend scan: " .. foundCount .. " marked players online")
+    end
+end
+
+-- Check for marked players in current group/raid
+function ns.Events.CheckGroupForMarkedPlayers()
+    if not ToxicifyDB.GuildToastEnabled then
+        return
+    end
+    
+    if not IsInGroup() then
+        return
+    end
+    
+    local foundCount = 0
+    local toxicPlayers = {}
+    local pumperPlayers = {}
+    
+    -- Check yourself first
+    local playerName = GetUnitName("player", true)
+    if playerName and ns.Player.IsToxic(playerName) then
+        table.insert(toxicPlayers, playerName)
+    end
+    if playerName and ns.Player.IsPumper(playerName) then
+        table.insert(pumperPlayers, playerName)
+    end
+    
+    -- Check group members
+    for i = 1, GetNumGroupMembers() do
+        local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
+        if UnitExists(unit) then
+            local name = GetUnitName(unit, true)
+            if name and ns.Player.IsToxic(name) then
+                table.insert(toxicPlayers, name)
+            end
+            if name and ns.Player.IsPumper(name) then
+                table.insert(pumperPlayers, name)
+            end
+        end
+    end
+    
+    -- Show notifications for found players
+    for _, playerName in ipairs(toxicPlayers) do
+        ns.Core.DebugPrint("Toxic player in group: " .. playerName)
+        ns.Events.ShowGuildToast(playerName, "toxic")
+        foundCount = foundCount + 1
+    end
+    
+    for _, playerName in ipairs(pumperPlayers) do
+        ns.Core.DebugPrint("Pumper player in group: " .. playerName)
+        ns.Events.ShowGuildToast(playerName, "pumper")
+        foundCount = foundCount + 1
+    end
+    
+    if foundCount > 0 then
+        ns.Core.DebugPrint("Group scan: " .. foundCount .. " marked players found")
+    end
+end
+
 -- Show guild member toast notification
 function ns.Events.ShowGuildToast(playerName, status)
     if not _G.ToxicifyGuildToastFrame then
@@ -483,7 +578,7 @@ function ns.Events.Initialize()
     
     -- Initialize guild toast notification setting
     if ToxicifyDB.GuildToastEnabled == nil then
-        ToxicifyDB.GuildToastEnabled = false
+        ToxicifyDB.GuildToastEnabled = true
     end
     
     -- Group roster updates
@@ -527,13 +622,24 @@ function ns.Events.Initialize()
     -- Guild member online notifications
     local guildFrame = CreateFrame("Frame")
     guildFrame:RegisterEvent("GUILD_ROSTER_UPDATE")
+    guildFrame:RegisterEvent("FRIENDLIST_UPDATE")
     guildFrame:RegisterEvent("CHAT_MSG_SYSTEM")
+    guildFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     guildFrame:SetScript("OnEvent", function(self, event, ...)
         if event == "GUILD_ROSTER_UPDATE" then
             ns.Events.CheckGuildMemberOnline()
             -- Also update guild roster display
             C_Timer.After(0.5, function()
                 ns.Events.UpdateGuildRosterDisplay()
+            end)
+        elseif event == "FRIENDLIST_UPDATE" then
+            ns.Events.CheckFriendListOnline()
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            -- Check for online players when entering world
+            C_Timer.After(2, function() -- Delay to ensure everything is loaded
+                ns.Events.CheckGuildMemberOnline()
+                ns.Events.CheckFriendListOnline()
+                ns.Events.CheckGroupForMarkedPlayers()
             end)
         elseif event == "CHAT_MSG_SYSTEM" then
             local message = ...
