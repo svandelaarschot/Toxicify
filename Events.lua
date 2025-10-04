@@ -397,14 +397,28 @@ function ns.Events.CheckGuildMemberOnline()
         if name and online then
             local fullName = name .. "-" .. GetRealmName()
             
-            if ns.Player.IsToxic(fullName) then
-                ns.Core.DebugPrint("Toxic guild member online: " .. name)
-                ns.Events.ShowGuildToast(name, "toxic")
-                foundCount = foundCount + 1
-            elseif ns.Player.IsPumper(fullName) then
-                ns.Core.DebugPrint("Pumper guild member online: " .. name)
-                ns.Events.ShowGuildToast(name, "pumper")
-                foundCount = foundCount + 1
+            -- Try multiple name formats
+            local nameVariations = {
+                name,  -- Just the name
+                fullName,  -- Name-Realm
+                name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+            }
+            
+            local found = false
+            for _, testName in ipairs(nameVariations) do
+                if ns.Player.IsToxic(testName) then
+                    ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ")")
+                    ns.Events.ShowGuildToast(name, "toxic")
+                    foundCount = foundCount + 1
+                    found = true
+                    break
+                elseif ns.Player.IsPumper(testName) then
+                    ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ")")
+                    ns.Events.ShowGuildToast(name, "pumper")
+                    foundCount = foundCount + 1
+                    found = true
+                    break
+                end
             end
         end
     end
@@ -436,14 +450,28 @@ function ns.Events.CheckFriendListOnline()
             if name then
                 local fullName = name .. "-" .. GetRealmName()
                 
-                if ns.Player.IsToxic(fullName) then
-                    ns.Core.DebugPrint("Toxic friend online: " .. name)
-                    ns.Events.ShowGuildToast(name, "toxic")
-                    foundCount = foundCount + 1
-                elseif ns.Player.IsPumper(fullName) then
-                    ns.Core.DebugPrint("Pumper friend online: " .. name)
-                    ns.Events.ShowGuildToast(name, "pumper")
-                    foundCount = foundCount + 1
+                -- Try multiple name formats
+                local nameVariations = {
+                    name,  -- Just the name
+                    fullName,  -- Name-Realm
+                    name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                }
+                
+                local found = false
+                for _, testName in ipairs(nameVariations) do
+                    if ns.Player.IsToxic(testName) then
+                        ns.Core.DebugPrint("Toxic friend online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Events.ShowGuildToast(name, "toxic")
+                        foundCount = foundCount + 1
+                        found = true
+                        break
+                    elseif ns.Player.IsPumper(testName) then
+                        ns.Core.DebugPrint("Pumper friend online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Events.ShowGuildToast(name, "pumper")
+                        foundCount = foundCount + 1
+                        found = true
+                        break
+                    end
                 end
             end
         end
@@ -483,11 +511,24 @@ function ns.Events.CheckGroupForMarkedPlayers()
         local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
         if UnitExists(unit) then
             local name = GetUnitName(unit, true)
-            if name and ns.Player.IsToxic(name) then
-                table.insert(toxicPlayers, name)
-            end
-            if name and ns.Player.IsPumper(name) then
-                table.insert(pumperPlayers, name)
+            if name then
+                -- Try multiple name formats
+                local nameVariations = {
+                    name,  -- Just the name
+                    name .. "-" .. GetRealmName(),  -- Name-Realm
+                    name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                }
+                
+                for _, testName in ipairs(nameVariations) do
+                    if ns.Player.IsToxic(testName) then
+                        table.insert(toxicPlayers, name)
+                        break
+                    end
+                    if ns.Player.IsPumper(testName) then
+                        table.insert(pumperPlayers, name)
+                        break
+                    end
+                end
             end
         end
     end

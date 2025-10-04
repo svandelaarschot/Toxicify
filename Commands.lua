@@ -36,12 +36,6 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Refresh()
                 _G.ToxicifyListFrame:Show()
             end
-        elseif cmd == "testwarning" or cmd == "testpopup" then
-            -- Test the warning popup
-            local testPlayers = {"TestPlayer1", "TestPlayer2"}
-            if ns.Events and ns.Events.ShowToxicWarningPopup then
-                ns.Events.ShowToxicWarningPopup(testPlayers)
-            end
         elseif cmd == "testtoast" or cmd == "testguildtoast" then
             -- Test the guild toast notification
             if ns.Events and ns.Events.ShowGuildToast then
@@ -137,15 +131,50 @@ function ns.Commands.Initialize()
             -- Show warning popup with real online marked players
             local onlineMarkedPlayers = {}
             
+            ns.Core.DebugPrint("=== DEBUGGING TESTWARNING ===", true)
+            
+            -- Show what's in the database
+            ns.Core.DebugPrint("Current database entries:", true)
+            for name, status in pairs(ToxicifyDB) do
+                if type(status) == "string" and (status == "toxic" or status == "pumper") then
+                    ns.Core.DebugPrint("  " .. name .. " = " .. status, true)
+                end
+            end
+            
             -- Check guild members
             local numGuildMembers = GetNumGuildMembers()
+            ns.Core.DebugPrint("Checking " .. numGuildMembers .. " guild members...", true)
             if numGuildMembers > 0 then
                 for i = 1, numGuildMembers do
                     local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
                     if name and online then
                         local fullName = name .. "-" .. GetRealmName()
-                        if ns.Player.IsToxic(fullName) or ns.Player.IsPumper(fullName) then
-                            table.insert(onlineMarkedPlayers, name)
+                        ns.Core.DebugPrint("Checking guild member: " .. name .. " (full: " .. fullName .. ")", true)
+                        
+                        -- Try multiple name formats
+                        local nameVariations = {
+                            name,  -- Just the name
+                            fullName,  -- Name-Realm
+                            name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                        }
+                        
+                        local found = false
+                        for _, testName in ipairs(nameVariations) do
+                            if ns.Player.IsToxic(testName) then
+                                ns.Core.DebugPrint("FOUND TOXIC: " .. name .. " (matched: " .. testName .. ")", true)
+                                table.insert(onlineMarkedPlayers, name)
+                                found = true
+                                break
+                            elseif ns.Player.IsPumper(testName) then
+                                ns.Core.DebugPrint("FOUND PUMPER: " .. name .. " (matched: " .. testName .. ")", true)
+                                table.insert(onlineMarkedPlayers, name)
+                                found = true
+                                break
+                            end
+                        end
+                        
+                        if not found then
+                            ns.Core.DebugPrint("No match found for: " .. name, true)
                         end
                     end
                 end
@@ -153,6 +182,7 @@ function ns.Commands.Initialize()
             
             -- Check friends
             local numFriends = C_FriendList.GetNumFriends()
+            ns.Core.DebugPrint("Checking " .. numFriends .. " friends...", true)
             if numFriends > 0 then
                 for i = 1, numFriends do
                     local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
@@ -160,8 +190,32 @@ function ns.Commands.Initialize()
                         local name = friendInfo.name
                         if name then
                             local fullName = name .. "-" .. GetRealmName()
-                            if (ns.Player.IsToxic(fullName) or ns.Player.IsPumper(fullName)) and not tContains(onlineMarkedPlayers, name) then
-                                table.insert(onlineMarkedPlayers, name)
+                            ns.Core.DebugPrint("Checking friend: " .. name .. " (full: " .. fullName .. ")", true)
+                            
+                            -- Try multiple name formats
+                            local nameVariations = {
+                                name,  -- Just the name
+                                fullName,  -- Name-Realm
+                                name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                            }
+                            
+                            local found = false
+                            for _, testName in ipairs(nameVariations) do
+                                if ns.Player.IsToxic(testName) then
+                                    ns.Core.DebugPrint("FOUND TOXIC FRIEND: " .. name .. " (matched: " .. testName .. ")", true)
+                                    if not tContains(onlineMarkedPlayers, name) then
+                                        table.insert(onlineMarkedPlayers, name)
+                                    end
+                                    found = true
+                                    break
+                                elseif ns.Player.IsPumper(testName) then
+                                    ns.Core.DebugPrint("FOUND PUMPER FRIEND: " .. name .. " (matched: " .. testName .. ")", true)
+                                    if not tContains(onlineMarkedPlayers, name) then
+                                        table.insert(onlineMarkedPlayers, name)
+                                    end
+                                    found = true
+                                    break
+                                end
                             end
                         end
                     end
@@ -170,12 +224,39 @@ function ns.Commands.Initialize()
             
             -- Check group members
             if IsInGroup() then
+                ns.Core.DebugPrint("Checking " .. GetNumGroupMembers() .. " group members...", true)
                 for i = 1, GetNumGroupMembers() do
                     local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
                     if UnitExists(unit) then
                         local name = GetUnitName(unit, true)
-                        if name and (ns.Player.IsToxic(name) or ns.Player.IsPumper(name)) and not tContains(onlineMarkedPlayers, name) then
-                            table.insert(onlineMarkedPlayers, name)
+                        if name then
+                            ns.Core.DebugPrint("Checking group member: " .. name, true)
+                            
+                            -- Try multiple name formats
+                            local nameVariations = {
+                                name,  -- Just the name
+                                name .. "-" .. GetRealmName(),  -- Name-Realm
+                                name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                            }
+                            
+                            local found = false
+                            for _, testName in ipairs(nameVariations) do
+                                if ns.Player.IsToxic(testName) then
+                                    ns.Core.DebugPrint("FOUND TOXIC GROUP MEMBER: " .. name .. " (matched: " .. testName .. ")", true)
+                                    if not tContains(onlineMarkedPlayers, name) then
+                                        table.insert(onlineMarkedPlayers, name)
+                                    end
+                                    found = true
+                                    break
+                                elseif ns.Player.IsPumper(testName) then
+                                    ns.Core.DebugPrint("FOUND PUMPER GROUP MEMBER: " .. name .. " (matched: " .. testName .. ")", true)
+                                    if not tContains(onlineMarkedPlayers, name) then
+                                        table.insert(onlineMarkedPlayers, name)
+                                    end
+                                    found = true
+                                    break
+                                end
+                            end
                         end
                     end
                 end
