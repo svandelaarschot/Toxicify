@@ -70,6 +70,12 @@ function ns.Events.UpdateGroupMembers(event)
         return
     end
     
+    -- Don't trigger online detection for manual marking
+    if event == "MANUAL_MARK" then
+        ns.Core.DebugPrint("Manual marking detected - skipping online detection")
+        return
+    end
+    
     -- Only show warning if we're actually in a group
     if not IsInGroup() then
         return

@@ -55,9 +55,9 @@ function ns.Player.MarkPumper(playerName)
             ns.UI.ToxicUIFrame:Refresh()
         end
         
-        -- Trigger party warning check
+        -- Trigger party warning check (but not online detection for manual marking)
         if ns.Events and ns.Events.UpdateGroupMembers then
-            ns.Events.UpdateGroupMembers()
+            ns.Events.UpdateGroupMembers("MANUAL_MARK")
         end
         
         -- Update player frame specifically when marking yourself
@@ -106,9 +106,9 @@ function ns.Player.MarkToxic(playerName)
             ns.UI.ToxicUIFrame:Refresh()
         end
         
-        -- Trigger party warning check
+        -- Trigger party warning check (but not online detection for manual marking)
         if ns.Events and ns.Events.UpdateGroupMembers then
-            ns.Events.UpdateGroupMembers()
+            ns.Events.UpdateGroupMembers("MANUAL_MARK")
         end
         
         -- Update player frame specifically when marking yourself
