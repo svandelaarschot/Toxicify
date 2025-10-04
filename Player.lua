@@ -60,6 +60,11 @@ function ns.Player.MarkPumper(playerName)
             ns.Events.UpdateGroupMembers()
         end
         
+        -- Update player frame specifically when marking yourself
+        if ns.Events and ns.Events.UpdatePlayerFrame then
+            ns.Events.UpdatePlayerFrame()
+        end
+        
         -- Update target frame if this player is currently targeted
         if ns.Events and ns.Events.UpdateTargetFrame then
             ns.Events.UpdateTargetFrame()
@@ -106,6 +111,11 @@ function ns.Player.MarkToxic(playerName)
             ns.Events.UpdateGroupMembers()
         end
         
+        -- Update player frame specifically when marking yourself
+        if ns.Events and ns.Events.UpdatePlayerFrame then
+            ns.Events.UpdatePlayerFrame()
+        end
+        
         -- Update target frame if this player is currently targeted
         if ns.Events and ns.Events.UpdateTargetFrame then
             ns.Events.UpdateTargetFrame()
@@ -133,6 +143,11 @@ function ns.Player.UnmarkToxic(playerName)
         -- Force refresh toxic UI if it exists
         if ns.UI and ns.UI.ToxicUIFrame and ns.UI.ToxicUIFrame.Refresh then
             ns.UI.ToxicUIFrame:Refresh()
+        end
+        
+        -- Update player frame specifically when marking yourself
+        if ns.Events and ns.Events.UpdatePlayerFrame then
+            ns.Events.UpdatePlayerFrame()
         end
         
         -- Update target frame if this player is currently targeted

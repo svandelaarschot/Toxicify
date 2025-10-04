@@ -336,6 +336,41 @@ function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     frame.countdownTimer = countdownTimer
 end
 
+-- Player frame indicator for toxic/pumper players
+function ns.Events.UpdatePlayerFrame()
+    -- Check if player frame exists
+    local playerFrame = _G["PlayerFrame"]
+    if not playerFrame then 
+        return 
+    end
+    
+    -- Get player name
+    local playerName = GetUnitName("player", true)
+    if not playerName then 
+        return 
+    end
+    
+    -- Check if player is marked
+    local isToxic = ns.Player.IsToxic(playerName)
+    local isPumper = ns.Player.IsPumper(playerName)
+    
+    -- Try to find the name text element in player frame
+    local nameText = playerFrame.nameText or playerFrame.Name or playerFrame.healthbar and playerFrame.healthbar.nameText
+    if nameText and nameText.SetText then
+        if isToxic then
+            nameText:SetText("|cffff0000 Toxic: " .. playerName .. "|r")
+        elseif isPumper then
+            nameText:SetText("|cff00ff00 Pumper: " .. playerName .. "|r")
+        else
+            -- Reset to normal name
+            nameText:SetText(playerName)
+        end
+        ns.Core.DebugPrint("Updated player frame for: " .. playerName .. " (toxic: " .. tostring(isToxic) .. ", pumper: " .. tostring(isPumper) .. ")")
+    else
+        ns.Core.DebugPrint("Could not find name text element in player frame")
+    end
+end
+
 -- Target frame indicator for toxic/pumper players
 function ns.Events.UpdateTargetFrame()
     if not _G.TargetFrame then 
@@ -1234,6 +1269,15 @@ function ns.Events.Initialize()
             
             if not playerName then
                 ns.Core.DebugPrint("No player name determined, returning")
+                return
+            end
+            
+            -- Check if trying to mark yourself - hide menu completely
+            local myName = GetUnitName("player", true)
+            local myNameShort = GetUnitName("player", false)
+            if playerName == myName or playerName == myNameShort or 
+               playerName:find("^" .. myNameShort .. "-") or playerName:find("^" .. myName .. "-") then
+                ns.Core.DebugPrint("Context menu hidden - cannot mark yourself")
                 return
             end
             

@@ -12,11 +12,29 @@ function ns.Commands.Initialize()
         cmd = string.lower(cmd or "")
 
         if cmd == "add" and arg1 then
-            ns.Player.MarkToxic(arg1)
+            -- Check if trying to mark yourself
+            local playerName = GetUnitName("player", true)
+            if arg1 == playerName or arg1 == GetUnitName("player", false) then
+                ns.Core.DebugPrint("You cannot mark yourself as toxic!", true)
+            else
+                ns.Player.MarkToxic(arg1)
+            end
         elseif cmd == "addpumper" and arg1 then
-            ns.Player.MarkPumper(arg1)
+            -- Check if trying to mark yourself
+            local playerName = GetUnitName("player", true)
+            if arg1 == playerName or arg1 == GetUnitName("player", false) then
+                ns.Core.DebugPrint("You cannot mark yourself as pumper!", true)
+            else
+                ns.Player.MarkPumper(arg1)
+            end
         elseif cmd == "del" and arg1 then
-            ns.Player.UnmarkToxic(arg1)
+            -- Check if trying to unmark yourself
+            local playerName = GetUnitName("player", true)
+            if arg1 == playerName or arg1 == GetUnitName("player", false) then
+                ns.Core.DebugPrint("You cannot unmark yourself!", true)
+            else
+                ns.Player.UnmarkToxic(arg1)
+            end
         elseif cmd == "list" then
             ns.Core.DebugPrint("|cff39FF14Toxicify:|r Current list:", true)
             for name, status in pairs(ToxicifyDB) do
@@ -291,7 +309,7 @@ function ns.Commands.Initialize()
                 for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic or {}) do
                     ns.Core.DebugPrint("  - " .. name, true)
                 end
-                ns.Core.DebugPrint("Pumper players:", true)
+                ns.Core.DebugPrint("Pumper players:", true)www
                 for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper or {}) do
                     ns.Core.DebugPrint("  - " .. name, true)
                 end
