@@ -14,6 +14,26 @@ local function InitializeWarningCache()
     end
 end
 
+-- Persistent session cache for online notifications (resets only when player goes offline or you logout)
+local function InitializeOnlineNotificationCache()
+    if not ToxicifyDB.OnlineNotificationCache then
+        ToxicifyDB.OnlineNotificationCache = {
+            toxic = {},
+            pumper = {}
+        }
+    end
+end
+
+-- Function to clear online notification cache
+function ns.Events.ClearOnlineNotificationCache()
+    if not ToxicifyDB.OnlineNotificationCache then
+        InitializeOnlineNotificationCache()
+    end
+    ToxicifyDB.OnlineNotificationCache.toxic = {}
+    ToxicifyDB.OnlineNotificationCache.pumper = {}
+    ns.Core.DebugPrint("Online notification cache cleared")
+end
+
 -- Function to clear warning cache (useful for new groups)
 function ns.Events.ClearWarningCache()
     if not ToxicifyDB.WarningCache then
@@ -407,15 +427,37 @@ function ns.Events.CheckGuildMemberOnline()
             local found = false
             for _, testName in ipairs(nameVariations) do
                 if ns.Player.IsToxic(testName) then
-                    ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ")")
-                    ns.Events.ShowGuildToast(name, "toxic")
-                    foundCount = foundCount + 1
+                    -- Initialize cache if needed
+                    if not ToxicifyDB.OnlineNotificationCache then
+                        InitializeOnlineNotificationCache()
+                    end
+                    
+                    -- Check if we already notified about this player this session
+                    if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Events.ShowGuildToast(name, "toxic")
+                        ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                        foundCount = foundCount + 1
+                    else
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already notified this session)")
+                    end
                     found = true
                     break
                 elseif ns.Player.IsPumper(testName) then
-                    ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ")")
-                    ns.Events.ShowGuildToast(name, "pumper")
-                    foundCount = foundCount + 1
+                    -- Initialize cache if needed
+                    if not ToxicifyDB.OnlineNotificationCache then
+                        InitializeOnlineNotificationCache()
+                    end
+                    
+                    -- Check if we already notified about this player this session
+                    if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ")")
+                        ns.Events.ShowGuildToast(name, "pumper")
+                        ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                        foundCount = foundCount + 1
+                    else
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already notified this session)")
+                    end
                     found = true
                     break
                 end
@@ -460,15 +502,37 @@ function ns.Events.CheckFriendListOnline()
                 local found = false
                 for _, testName in ipairs(nameVariations) do
                     if ns.Player.IsToxic(testName) then
-                        ns.Core.DebugPrint("Toxic friend online: " .. name .. " (matched: " .. testName .. ")")
-                        ns.Events.ShowGuildToast(name, "toxic")
-                        foundCount = foundCount + 1
+                        -- Initialize cache if needed
+                        if not ToxicifyDB.OnlineNotificationCache then
+                            InitializeOnlineNotificationCache()
+                        end
+                        
+                        -- Check if we already notified about this player this session
+                        if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                            ns.Core.DebugPrint("Toxic friend online: " .. name .. " (matched: " .. testName .. ")")
+                            ns.Events.ShowGuildToast(name, "toxic")
+                            ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                            foundCount = foundCount + 1
+                        else
+                            ns.Core.DebugPrint("Toxic friend online: " .. name .. " (already notified this session)")
+                        end
                         found = true
                         break
                     elseif ns.Player.IsPumper(testName) then
-                        ns.Core.DebugPrint("Pumper friend online: " .. name .. " (matched: " .. testName .. ")")
-                        ns.Events.ShowGuildToast(name, "pumper")
-                        foundCount = foundCount + 1
+                        -- Initialize cache if needed
+                        if not ToxicifyDB.OnlineNotificationCache then
+                            InitializeOnlineNotificationCache()
+                        end
+                        
+                        -- Check if we already notified about this player this session
+                        if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                            ns.Core.DebugPrint("Pumper friend online: " .. name .. " (matched: " .. testName .. ")")
+                            ns.Events.ShowGuildToast(name, "pumper")
+                            ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                            foundCount = foundCount + 1
+                        else
+                            ns.Core.DebugPrint("Pumper friend online: " .. name .. " (already notified this session)")
+                        end
                         found = true
                         break
                     end
@@ -666,6 +730,7 @@ function ns.Events.Initialize()
     guildFrame:RegisterEvent("FRIENDLIST_UPDATE")
     guildFrame:RegisterEvent("CHAT_MSG_SYSTEM")
     guildFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    guildFrame:RegisterEvent("PLAYER_LOGOUT")
     guildFrame:SetScript("OnEvent", function(self, event, ...)
         if event == "GUILD_ROSTER_UPDATE" then
             ns.Events.CheckGuildMemberOnline()
@@ -682,14 +747,31 @@ function ns.Events.Initialize()
                 ns.Events.CheckFriendListOnline()
                 ns.Events.CheckGroupForMarkedPlayers()
             end)
+        elseif event == "PLAYER_LOGOUT" then
+            -- Clear online notification cache when you logout
+            ns.Events.ClearOnlineNotificationCache()
+            ns.Core.DebugPrint("Player logout detected - online notification cache cleared")
         elseif event == "CHAT_MSG_SYSTEM" then
             local message = ...
-            -- Check for guild member online messages
+            -- Check for guild member online/offline messages
             if message and (message:find("has come online") or message:find("is now online")) then
                 ns.Core.DebugPrint("Guild member online detected: " .. message)
                 C_Timer.After(1, function() -- Delay to ensure roster is updated
                     ns.Events.CheckGuildMemberOnline()
                 end)
+            elseif message and (message:find("has gone offline") or message:find("is now offline")) then
+                -- Extract player name from offline message and reset cache
+                local playerName = message:match("([^%s]+) has gone offline") or message:match("([^%s]+) is now offline")
+                if playerName then
+                    ns.Core.DebugPrint("Player went offline: " .. playerName)
+                    -- Initialize cache if needed
+                    if not ToxicifyDB.OnlineNotificationCache then
+                        InitializeOnlineNotificationCache()
+                    end
+                    -- Reset cache for this player so they can be detected again when they come back online
+                    ToxicifyDB.OnlineNotificationCache.toxic[playerName] = nil
+                    ToxicifyDB.OnlineNotificationCache.pumper[playerName] = nil
+                end
             end
         end
     end)

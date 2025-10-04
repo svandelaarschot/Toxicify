@@ -279,6 +279,10 @@ function ns.Commands.Initialize()
             ns.Events.CheckFriendListOnline()
             ns.Events.CheckGroupForMarkedPlayers()
             ns.Core.DebugPrint("Online scan completed.", true)
+        elseif cmd == "clearonline" or cmd == "resetonline" then
+            -- Clear online notification cache
+            ns.Events.ClearOnlineNotificationCache()
+            ns.Core.DebugPrint("Online notification cache cleared - notifications will show again for all players", true)
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
@@ -294,6 +298,7 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic partywarning            - Toggle party warning", true)
             ns.Core.DebugPrint("/toxic clearwarnings           - Reset warning cache (show warnings again)", true)
             ns.Core.DebugPrint("/toxic checkonline             - Manually scan for online marked players", true)
+            ns.Core.DebugPrint("/toxic clearonline             - Reset online notification cache", true)
             ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
             ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
         end
