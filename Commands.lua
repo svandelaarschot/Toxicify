@@ -134,10 +134,60 @@ function ns.Commands.Initialize()
                 ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
             end
         elseif cmd == "testwarning" then
-            -- Show warning popup for testing
-            local testToxicPlayers = {"TestPlayer-Realm1", "AnotherToxic-Realm2"}
-            ns.Events.ShowToxicWarningPopup(testToxicPlayers)
-            ns.Core.DebugPrint("Test warning popup shown.", true)
+            -- Show warning popup with real online marked players
+            local onlineMarkedPlayers = {}
+            
+            -- Check guild members
+            local numGuildMembers = GetNumGuildMembers()
+            if numGuildMembers > 0 then
+                for i = 1, numGuildMembers do
+                    local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+                    if name and online then
+                        local fullName = name .. "-" .. GetRealmName()
+                        if ns.Player.IsToxic(fullName) or ns.Player.IsPumper(fullName) then
+                            table.insert(onlineMarkedPlayers, name)
+                        end
+                    end
+                end
+            end
+            
+            -- Check friends
+            local numFriends = C_FriendList.GetNumFriends()
+            if numFriends > 0 then
+                for i = 1, numFriends do
+                    local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+                    if friendInfo and friendInfo.connected then
+                        local name = friendInfo.name
+                        if name then
+                            local fullName = name .. "-" .. GetRealmName()
+                            if (ns.Player.IsToxic(fullName) or ns.Player.IsPumper(fullName)) and not tContains(onlineMarkedPlayers, name) then
+                                table.insert(onlineMarkedPlayers, name)
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- Check group members
+            if IsInGroup() then
+                for i = 1, GetNumGroupMembers() do
+                    local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
+                    if UnitExists(unit) then
+                        local name = GetUnitName(unit, true)
+                        if name and (ns.Player.IsToxic(name) or ns.Player.IsPumper(name)) and not tContains(onlineMarkedPlayers, name) then
+                            table.insert(onlineMarkedPlayers, name)
+                        end
+                    end
+                end
+            end
+            
+            if #onlineMarkedPlayers > 0 then
+                ns.Events.ShowToxicWarningPopup(onlineMarkedPlayers)
+                ns.Core.DebugPrint("Test warning popup shown with " .. #onlineMarkedPlayers .. " real online marked players: " .. table.concat(onlineMarkedPlayers, ", "), true)
+            else
+                ns.Core.DebugPrint("No marked players are currently online to test with.", true)
+                ns.Core.DebugPrint("Make sure you have marked players in your guild, friends list, or current group.", true)
+            end
         elseif cmd == "clearwarnings" then
             ns.Events.ClearWarningCache()
             ns.Core.DebugPrint("Warning cache cleared - warnings will show again for all players", true)
