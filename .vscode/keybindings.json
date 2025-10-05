@@ -1,0 +1,7 @@
+[
+    {
+        "key": "ctrl+s",
+        "command": "workbench.action.tasks.runTask",
+        "args": "Sync to WoW"
+    }
+]
