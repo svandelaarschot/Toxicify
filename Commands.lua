@@ -54,13 +54,18 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Refresh()
                 _G.ToxicifyListFrame:Show()
             end
-        elseif cmd == "testtoast" or cmd == "testguildtoast" then
+        elseif cmd == "testtoast" or cmd == "testguildtoast" or cmd == "tgt" then
             -- Test the guild toast notification
             if ns.Events and ns.Events.ShowGuildToast then
-                ns.Events.ShowGuildToast("TestPlayer", "toxic")
+                ns.Events.ShowGuildToast("TestPlayer", "toxic", "guild")
+            end
+        elseif cmd == "testfriendtoast" or cmd == "tft" then
+            -- Test the friend toast notification (WoW friends only)
+            if ns.Events and ns.Events.ShowGuildToast then
+                ns.Events.ShowGuildToast("TestWoWFriend", "pumper", "friend")
             end
         
-        elseif cmd == "guildtoast" then
+        elseif cmd == "guildtoast" or cmd == "gt" then
             if ToxicifyDB.GuildToastEnabled then
                 ToxicifyDB.GuildToastEnabled = false
                 ns.Core.DebugPrint("Toxicify: Guild toast notifications disabled")
@@ -69,7 +74,7 @@ function ns.Commands.Initialize()
                 ns.Core.DebugPrint("Toxicify: Guild toast notifications enabled", true)
             end
         
-        elseif cmd == "settings" or cmd == "config" then
+        elseif cmd == "settings" or cmd == "config" or cmd == "s" or cmd == "c" then
             -- Sluit het huidige Toxicify dialoog als het open is
             if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then
                 _G.ToxicifyListFrame:Hide()
@@ -145,6 +150,11 @@ function ns.Commands.Initialize()
                 SetCVar("scriptErrors", "1")
                 ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
             end
+        elseif cmd == "silent" or cmd == "noerrors" then
+            -- Simple command to disable Lua errors without requiring debug mode
+            SetCVar("scriptErrors", "0")
+            ns.Core.DebugPrint("Lua errors disabled in console - /console scriptErrors set to 0", true)
+            ns.Core.DebugPrint("Use /console scriptErrors 1 to re-enable errors", true)
         elseif cmd == "testwarning" then
             -- Show warning popup with real online marked players
             local onlineMarkedPlayers = {}
@@ -301,6 +311,29 @@ function ns.Commands.Initialize()
             -- Clear online notification cache
             ns.Events.ClearOnlineNotificationCache()
             ns.Core.DebugPrint("Online notification cache cleared - notifications will show again for all players", true)
+        elseif cmd == "populatecache" or cmd == "populate" then
+            -- Populate cache with currently online players
+            ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+            ns.Core.DebugPrint("Cache populated with currently online marked players", true)
+        elseif cmd == "testcache" or cmd == "tc" then
+            -- Test cache functionality by showing current state and testing guild/friend checking
+            ns.Core.DebugPrint("=== CACHE TEST ===", true)
+            if ToxicifyDB.OnlineNotificationCache then
+                ns.Core.DebugPrint("Cache exists - Toxic: " .. (ToxicifyDB.OnlineNotificationCache.toxic and "exists" or "nil") .. ", Pumper: " .. (ToxicifyDB.OnlineNotificationCache.pumper and "exists" or "nil"), true)
+                ns.Core.DebugPrint("Cache populated flag: " .. tostring(ToxicifyDB.CachePopulated), true)
+            else
+                ns.Core.DebugPrint("Cache does not exist", true)
+            end
+            ns.Core.DebugPrint("Phase change flag: " .. tostring(ToxicifyDB.InPhaseChange), true)
+            ns.Core.DebugPrint("Running guild member check...", true)
+            ns.Events.CheckGuildMemberOnline()
+            ns.Core.DebugPrint("Running friend list check...", true)
+            ns.Events.CheckFriendListOnline()
+            ns.Core.DebugPrint("=== CACHE TEST COMPLETE ===", true)
+        elseif cmd == "clearphase" or cmd == "cp" then
+            -- Clear phase change flag
+            ToxicifyDB.InPhaseChange = false
+            ns.Core.DebugPrint("Phase change flag cleared", true)
         elseif cmd == "showonlinecache" or cmd == "cache" then
             -- Show current online notification cache
             if ToxicifyDB.OnlineNotificationCache then
@@ -342,8 +375,15 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic clearwarnings           - Reset warning cache (show warnings again)", true)
             ns.Core.DebugPrint("/toxic checkonline             - Manually scan for online marked players", true)
             ns.Core.DebugPrint("/toxic clearonline             - Reset online notification cache", true)
+            ns.Core.DebugPrint("/toxic populatecache           - Populate cache with currently online players", true)
+            ns.Core.DebugPrint("/toxic testcache               - Test cache functionality and show debug info", true)
+            ns.Core.DebugPrint("/toxic clearphase              - Clear phase change flag", true)
             ns.Core.DebugPrint("/toxic cache                   - Show current online notification cache", true)
+            ns.Core.DebugPrint("/toxic testguildtoast          - Test guild member notification toasts", true)
+            ns.Core.DebugPrint("/toxic testfriendtoast         - Test friend notification toasts", true)
             ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
+            ns.Core.DebugPrint("/toxic silent                  - Disable Lua errors in console", true)
+            ns.Core.DebugPrint("/toxic noerrors                - Disable Lua errors in console (alias)", true)
             ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
         end
     end

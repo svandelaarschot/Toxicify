@@ -317,13 +317,20 @@ end
 addToxicBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ns.Player.MarkToxic(name)
-        input:SetText("")
-        suggestionBox:Hide()
-        RefreshList()
-        -- Also update the main UI list if it exists
-        if ns.UI and ns.UI.RefreshSharedList then
-            ns.UI.RefreshSharedList()
+        -- Check if trying to mark yourself
+        local playerName = GetUnitName("player", true)
+        local playerShortName = GetUnitName("player", false)
+        if name == playerName or name == playerShortName then
+            print("|cffff0000Toxicify:|r You cannot mark yourself as toxic!")
+        else
+            ns.Player.MarkToxic(name)
+            input:SetText("")
+            suggestionBox:Hide()
+            RefreshList()
+            -- Also update the main UI list if it exists
+            if ns.UI and ns.UI.RefreshSharedList then
+                ns.UI.RefreshSharedList()
+            end
         end
     end
 end)
@@ -332,13 +339,20 @@ end)
 addPumperBtn:SetScript("OnClick", function()
     local name = input:GetText()
     if name and name ~= "" then
-        ns.Player.MarkPumper(name)
-        input:SetText("")
-        suggestionBox:Hide()
-        RefreshList()
-        -- Also update the main UI list if it exists
-        if ns.UI and ns.UI.RefreshSharedList then
-            ns.UI.RefreshSharedList()
+        -- Check if trying to mark yourself
+        local playerName = GetUnitName("player", true)
+        local playerShortName = GetUnitName("player", false)
+        if name == playerName or name == playerShortName then
+            print("|cffff0000Toxicify:|r You cannot mark yourself as pumper!")
+        else
+            ns.Player.MarkPumper(name)
+            input:SetText("")
+            suggestionBox:Hide()
+            RefreshList()
+            -- Also update the main UI list if it exists
+            if ns.UI and ns.UI.RefreshSharedList then
+                ns.UI.RefreshSharedList()
+            end
         end
     end
 end)

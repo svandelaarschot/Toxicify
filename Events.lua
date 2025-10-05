@@ -36,7 +36,103 @@ function ns.Events.ClearOnlineNotificationCache()
     end
     ToxicifyDB.OnlineNotificationCache.toxic = {}
     ToxicifyDB.OnlineNotificationCache.pumper = {}
+    ToxicifyDB.CachePopulated = false
     ns.Core.DebugPrint("Online notification cache cleared")
+end
+
+-- Function to populate cache with currently online marked players (prevents notifications for already online players)
+function ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+    if not ToxicifyDB.OnlineNotificationCache then
+        InitializeOnlineNotificationCache()
+    end
+    
+    local populatedCount = 0
+    
+    -- Check guild members
+    if IsInGuild() then
+        local numGuildMembers = GetNumGuildMembers()
+        for i = 1, numGuildMembers do
+            local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+            if name and online then
+                local playerName = GetUnitName("player", false)
+                local playerFullName = GetUnitName("player", true)
+                if name ~= playerName and name ~= playerFullName then
+                    local fullName = name .. "-" .. GetRealmName()
+                    local nameVariations = { name, fullName, name .. "-" .. GetNormalizedRealmName() }
+                    
+                    for _, testName in ipairs(nameVariations) do
+                        if ns.Player.IsToxic(testName) then
+                            if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                                ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                                populatedCount = populatedCount + 1
+                                ns.Core.DebugPrint("Populated cache: Added toxic guild member " .. name .. " (matched: " .. testName .. ")")
+                            else
+                                ns.Core.DebugPrint("Cache already contains toxic guild member " .. name)
+                            end
+                            break
+                        elseif ns.Player.IsPumper(testName) then
+                            if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                                ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                                populatedCount = populatedCount + 1
+                                ns.Core.DebugPrint("Populated cache: Added pumper guild member " .. name .. " (matched: " .. testName .. ")")
+                            else
+                                ns.Core.DebugPrint("Cache already contains pumper guild member " .. name)
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Check friends
+    local numFriends = C_FriendList.GetNumFriends()
+    for i = 1, numFriends do
+        local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+        if friendInfo and friendInfo.connected then
+            local name = friendInfo.name
+            if name then
+                local playerName = GetUnitName("player", false)
+                local playerFullName = GetUnitName("player", true)
+                if name ~= playerName and name ~= playerFullName then
+                    local fullName = name .. "-" .. GetRealmName()
+                    local nameVariations = { name, fullName, name .. "-" .. GetNormalizedRealmName() }
+                    
+                    for _, testName in ipairs(nameVariations) do
+                        if ns.Player.IsToxic(testName) then
+                            if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                                ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                                populatedCount = populatedCount + 1
+                                ns.Core.DebugPrint("Populated cache: Added toxic friend " .. name .. " (matched: " .. testName .. ")")
+                            else
+                                ns.Core.DebugPrint("Cache already contains toxic friend " .. name)
+                            end
+                            break
+                        elseif ns.Player.IsPumper(testName) then
+                            if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                                ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                                populatedCount = populatedCount + 1
+                                ns.Core.DebugPrint("Populated cache: Added pumper friend " .. name .. " (matched: " .. testName .. ")")
+                            else
+                                ns.Core.DebugPrint("Cache already contains pumper friend " .. name)
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    if populatedCount > 0 then
+        ns.Core.DebugPrint("Populated cache with " .. populatedCount .. " currently online marked players (no notifications will show for these)")
+    else
+        ns.Core.DebugPrint("No currently online marked players found to populate cache")
+    end
+    
+    -- Mark cache as populated
+    ToxicifyDB.CachePopulated = true
 end
 
 -- Function to clear warning cache (useful for new groups)
@@ -449,9 +545,22 @@ function ns.Events.CheckGuildMemberOnline()
         return
     end
     
+    -- Skip notifications during phase changes
+    if ToxicifyDB.InPhaseChange then
+        ns.Core.DebugPrint("Skipping guild member notifications during phase change")
+        return
+    end
+    
     -- Initialize cache if needed
     if not ToxicifyDB.OnlineNotificationCache then
         InitializeOnlineNotificationCache()
+    end
+    
+    -- Ensure cache is populated with currently online players if not done yet
+    if not ToxicifyDB.CachePopulated then
+        ns.Core.DebugPrint("Cache not populated yet, populating now...")
+        ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+        ToxicifyDB.CachePopulated = true
     end
     
     -- Debug: Show current cache state
@@ -469,6 +578,11 @@ function ns.Events.CheckGuildMemberOnline()
         local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
         
         if name and online then
+            -- Skip self (current player)
+            local playerName = GetUnitName("player", false) -- Get player name without realm
+            local playerFullName = GetUnitName("player", true) -- Get player name with realm
+            if name ~= playerName and name ~= playerFullName then
+            
             local fullName = name .. "-" .. GetRealmName()
             
             -- Try multiple name formats
@@ -489,12 +603,14 @@ function ns.Events.CheckGuildMemberOnline()
                     -- Check if we already notified about this player this session
                     if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
                         ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Events.ShowGuildToast(name, "toxic")
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                        ns.Events.ShowGuildToast(name, "toxic", "guild")
                         ToxicifyDB.OnlineNotificationCache.toxic[name] = true
                         foundCount = foundCount + 1
                         ns.Core.DebugPrint("Added " .. name .. " to toxic notification cache")
                     else
-                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already notified this session) - SKIPPING")
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already in cache) - SKIPPING")
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
                     end
                     found = true
                     break
@@ -507,15 +623,18 @@ function ns.Events.CheckGuildMemberOnline()
                     -- Check if we already notified about this player this session
                     if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
                         ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Events.ShowGuildToast(name, "pumper")
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                        ns.Events.ShowGuildToast(name, "pumper", "guild")
                         ToxicifyDB.OnlineNotificationCache.pumper[name] = true
                         foundCount = foundCount + 1
                     else
-                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already notified this session) - SKIPPING")
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already in cache) - SKIPPING")
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
                     end
                     found = true
                     break
                 end
+            end
             end
         end
     end
@@ -532,74 +651,82 @@ function ns.Events.CheckFriendListOnline()
         return
     end
     
+    -- Skip notifications during phase changes
+    if ToxicifyDB.InPhaseChange then
+        ns.Core.DebugPrint("Skipping friend list notifications during phase change")
+        return
+    end
+    
     -- Initialize cache if needed
     if not ToxicifyDB.OnlineNotificationCache then
         InitializeOnlineNotificationCache()
     end
     
-    -- Get friend list info
-    local numFriends = C_FriendList.GetNumFriends()
-    if numFriends == 0 then
-        return
+    -- Ensure cache is populated with currently online players if not done yet
+    if not ToxicifyDB.CachePopulated then
+        ns.Core.DebugPrint("Cache not populated yet, populating now...")
+        ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+        ToxicifyDB.CachePopulated = true
     end
     
     local foundCount = 0
-    -- Check each friend
-    for i = 1, numFriends do
-        local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
-        if friendInfo and friendInfo.connected then
-            local name = friendInfo.name
-            if name then
-                local fullName = name .. "-" .. GetRealmName()
-                
-                -- Try multiple name formats
-                local nameVariations = {
-                    name,  -- Just the name
-                    fullName,  -- Name-Realm
-                    name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
-                }
-                
-                local found = false
-                for _, testName in ipairs(nameVariations) do
-                    if ns.Player.IsToxic(testName) then
-                        -- Initialize cache if needed
-                        if not ToxicifyDB.OnlineNotificationCache then
-                            InitializeOnlineNotificationCache()
-                        end
+    
+    -- Check regular WoW friends
+    local numFriends = C_FriendList.GetNumFriends()
+    if numFriends > 0 then
+        for i = 1, numFriends do
+            local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+            if friendInfo and friendInfo.connected then
+                local name = friendInfo.name
+                if name then
+                    -- Skip self (current player)
+                    local playerName = GetUnitName("player", false)
+                    local playerFullName = GetUnitName("player", true)
+                    if name ~= playerName and name ~= playerFullName then
+                        local fullName = name .. "-" .. GetRealmName()
                         
-                        -- Check if we already notified about this player this session
-                        if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
-                            ns.Core.DebugPrint("Toxic friend online: " .. name .. " (matched: " .. testName .. ")")
-                            ns.Events.ShowGuildToast(name, "toxic")
-                            ToxicifyDB.OnlineNotificationCache.toxic[name] = true
-                            foundCount = foundCount + 1
-                        else
-                            ns.Core.DebugPrint("Toxic friend online: " .. name .. " (already notified this session)")
-                        end
-                        found = true
-                        break
-                    elseif ns.Player.IsPumper(testName) then
-                        -- Initialize cache if needed
-                        if not ToxicifyDB.OnlineNotificationCache then
-                            InitializeOnlineNotificationCache()
-                        end
+                        -- Try multiple name formats
+                        local nameVariations = {
+                            name,  -- Just the name
+                            fullName,  -- Name-Realm
+                            name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
+                        }
                         
-                        -- Check if we already notified about this player this session
-                        if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
-                            ns.Core.DebugPrint("Pumper friend online: " .. name .. " (matched: " .. testName .. ")")
-                            ns.Events.ShowGuildToast(name, "pumper")
-                            ToxicifyDB.OnlineNotificationCache.pumper[name] = true
-                            foundCount = foundCount + 1
-                        else
-                            ns.Core.DebugPrint("Pumper friend online: " .. name .. " (already notified this session)")
+                        for _, testName in ipairs(nameVariations) do
+                            if ns.Player.IsToxic(testName) then
+                                if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
+                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                                    ns.Events.ShowGuildToast(name, "toxic", "friend")
+                                    ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                                    foundCount = foundCount + 1
+                                else
+                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (already in cache) - SKIPPING")
+                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                                end
+                                break
+                            elseif ns.Player.IsPumper(testName) then
+                                if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
+                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                                    ns.Events.ShowGuildToast(name, "pumper", "friend")
+                                    ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                                    foundCount = foundCount + 1
+                                else
+                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (already in cache) - SKIPPING")
+                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                                end
+                                break
+                            end
                         end
-                        found = true
-                        break
                     end
                 end
             end
         end
     end
+    
+    -- Note: Battle.net friend checking removed due to API compatibility issues
+    -- Regular WoW friends checking above works perfectly
     
     -- Only show summary if we found marked players
     if foundCount > 0 then
@@ -607,7 +734,7 @@ function ns.Events.CheckFriendListOnline()
     end
 end
 
--- Check for marked players in current group/raid
+-- Check for marked players in current group/raid (for warning popup only, not notifications)
 function ns.Events.CheckGroupForMarkedPlayers()
     if not ToxicifyDB.GuildToastEnabled then
         return
@@ -657,53 +784,149 @@ function ns.Events.CheckGroupForMarkedPlayers()
         end
     end
     
-    -- Show notifications for found players
-    for _, playerName in ipairs(toxicPlayers) do
-        ns.Core.DebugPrint("Toxic player in group: " .. playerName)
-        ns.Events.ShowGuildToast(playerName, "toxic")
-        foundCount = foundCount + 1
-    end
-    
-    for _, playerName in ipairs(pumperPlayers) do
-        ns.Core.DebugPrint("Pumper player in group: " .. playerName)
-        ns.Events.ShowGuildToast(playerName, "pumper")
-        foundCount = foundCount + 1
-    end
-    
-    if foundCount > 0 then
-        ns.Core.DebugPrint("Group scan: " .. foundCount .. " marked players found")
+    -- Don't show notifications for group members - this function is for warning popups only
+    -- Group member notifications should only come from online events, not group detection
+    if #toxicPlayers > 0 or #pumperPlayers > 0 then
+        ns.Core.DebugPrint("Group scan: " .. (#toxicPlayers + #pumperPlayers) .. " marked players found in group (no notifications shown)")
+        ns.Core.DebugPrint("Toxic players in group: " .. table.concat(toxicPlayers, ", "))
+        ns.Core.DebugPrint("Pumper players in group: " .. table.concat(pumperPlayers, ", "))
     end
 end
 
--- Show guild member toast notification
-function ns.Events.ShowGuildToast(playerName, status)
-    if not _G.ToxicifyGuildToastFrame then
-    local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    frame:SetSize(350, 80)
-    frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+-- Show friend toast notification (with friend type distinction)
+function ns.Events.ShowFriendToast(playerName, status, friendType)
+    if not _G.ToxicifyFriendToastFrame then
+    local frame = CreateFrame("Frame", "ToxicifyFriendToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    frame:SetSize(320, 70)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -180) -- Position below guild toasts
         frame:SetFrameStrata("TOOLTIP")
         frame:SetFrameLevel(1000)
         frame:Hide()
         
-        -- Backdrop
+        -- Backdrop - Much more subtle
         frame:SetBackdrop({
-            bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true, tileSize = 32, edgeSize = 16,
-            insets = { left = 8, right = 8, top = 8, bottom = 8 }
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
-        frame:SetBackdropColor(0, 0, 0, 0.8)
+        frame:SetBackdropColor(0, 0, 0, 0.3)
+        frame:SetBackdropBorderColor(1, 1, 1, 0.2)
         
         -- Title
-        frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        frame.title:SetPoint("TOP", 0, -10)
-        frame.title:SetText("|cff39FF14Guild Member Online|r")
+        frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        frame.title:SetPoint("TOP", 0, -8)
+        frame.title:SetText("|cffaaaaaaFriend Online|r")
         
         -- Content
         frame.content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         frame.content:SetPoint("CENTER", 0, -5)
         frame.content:SetJustifyH("CENTER")
-        frame.content:SetWidth(320)
+        frame.content:SetWidth(290)
+        
+        -- Click instruction text (will be shown for pumpers)
+        frame.clickText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        frame.clickText:SetPoint("BOTTOM", 0, 8)
+        frame.clickText:SetJustifyH("CENTER")
+        frame.clickText:SetText("|cffaaaaaaClick to whisper|r")
+        frame.clickText:Hide()
+        
+        -- Close button
+        frame.closeBtn = CreateFrame("Button", nil, frame)
+        frame.closeBtn:SetSize(20, 20)
+        frame.closeBtn:SetPoint("TOPRIGHT", -10, -10)
+        frame.closeBtn:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
+        frame.closeBtn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
+        frame.closeBtn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+        frame.closeBtn:SetScript("OnClick", function()
+            frame:Hide()
+        end)
+    end
+    
+    local frame = _G.ToxicifyFriendToastFrame
+    local icon = status == "toxic" and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t"
+    local color = status == "toxic" and "|cffff0000" or "|cff00ff00"
+    local statusText = status == "toxic" and "Toxic Player" or "Pumper"
+    
+    -- Add friend type distinction
+    local friendTypeColor = friendType == "Battle.net" and "|cff0078d4" or "|cffaaaaaa"
+    local friendTypeText = " (" .. friendTypeColor .. friendType .. "|r)"
+    
+    frame.content:SetText(icon .. " " .. color .. playerName .. "|r (" .. statusText .. ")" .. friendTypeText)
+    
+    -- Store player info for click handler
+    frame.playerName = playerName
+    frame.playerStatus = status
+    
+    -- Make frame clickable for pumpers
+    if status == "pumper" then
+        frame.clickText:Show()
+        frame:EnableMouse(true)
+        frame:SetScript("OnMouseUp", function(self, button)
+            if button == "LeftButton" then
+                -- Start whisper conversation
+                ChatFrame_OpenChat("/w " .. playerName .. " ", ChatFrame1)
+                frame:Hide()
+                ns.Core.DebugPrint("Opened whisper to pumper friend: " .. playerName, true)
+            end
+        end)
+        frame:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(frame, "ANCHOR_TOP")
+            GameTooltip:SetText("Click to whisper " .. playerName)
+            GameTooltip:Show()
+        end)
+        frame:SetScript("OnLeave", function(self)
+            GameTooltip:Hide()
+        end)
+    else
+        frame.clickText:Hide()
+        frame:EnableMouse(false)
+        frame:SetScript("OnMouseUp", nil)
+        frame:SetScript("OnEnter", nil)
+        frame:SetScript("OnLeave", nil)
+    end
+    
+    frame:Show()
+    
+    -- Auto-hide after 5 seconds
+    if frame.hideTimer then
+        frame.hideTimer:Cancel()
+    end
+    frame.hideTimer = C_Timer.NewTimer(5, function()
+        frame:Hide()
+    end)
+end
+
+-- Show guild member toast notification
+function ns.Events.ShowGuildToast(playerName, status, source)
+    if not _G.ToxicifyGuildToastFrame then
+    local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
+    frame:SetSize(320, 70)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -100)
+        frame:SetFrameStrata("TOOLTIP")
+        frame:SetFrameLevel(1000)
+        frame:Hide()
+        
+        -- Backdrop - Much more subtle
+        frame:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true, tileSize = 16, edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 }
+        })
+        frame:SetBackdropColor(0, 0, 0, 0.3)
+        frame:SetBackdropBorderColor(1, 1, 1, 0.2)
+        
+        -- Title
+        frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        frame.title:SetPoint("TOP", 0, -8)
+        frame.title:SetText("|cffaaaaaaPlayer Online|r")
+        
+        -- Content
+        frame.content = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        frame.content:SetPoint("CENTER", 0, -5)
+        frame.content:SetJustifyH("CENTER")
+        frame.content:SetWidth(290)
         
         -- Click instruction text (will be shown for pumpers)
         frame.clickText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -729,7 +952,28 @@ function ns.Events.ShowGuildToast(playerName, status)
     local color = status == "toxic" and "|cffff0000" or "|cff00ff00"
     local statusText = status == "toxic" and "Toxic Player" or "Pumper"
     
-    frame.content:SetText(icon .. " " .. color .. playerName .. "|r (" .. statusText .. ")")
+    -- Set title based on source
+    local titleText = "|cffaaaaaaPlayer Online|r"
+    if source == "guild" then
+        titleText = "|cffaaaaaaGuild Member Online|r"
+    elseif source == "friend" then
+        titleText = "|cffaaaaaaFriend Online|r"
+    elseif source == "group" then
+        titleText = "|cffaaaaaaGroup Member Online|r"
+    end
+    frame.title:SetText(titleText)
+    
+    -- Set content with source indicator
+    local sourceText = ""
+    if source == "guild" then
+        sourceText = " (Guild)"
+    elseif source == "friend" then
+        sourceText = " (Friend)"
+    elseif source == "group" then
+        sourceText = " (Group)"
+    end
+    
+    frame.content:SetText(icon .. " " .. color .. playerName .. "|r (" .. statusText .. ")" .. sourceText)
     
     -- Store player info for click handler
     frame.playerName = playerName
@@ -844,11 +1088,25 @@ function ns.Events.Initialize()
         elseif event == "FRIENDLIST_UPDATE" then
             ns.Events.CheckFriendListOnline()
         elseif event == "PLAYER_ENTERING_WORLD" then
-            -- Check for online players when entering world
+            -- Set flag to prevent notifications during phase changes
+            ToxicifyDB.InPhaseChange = true
+            ns.Core.DebugPrint("Player entering world - setting phase change flag")
+            
+            -- Only populate cache when entering world, don't check for notifications
+            -- This prevents notifications during phase changes
             C_Timer.After(2, function() -- Delay to ensure everything is loaded
-                ns.Events.CheckGuildMemberOnline()
-                ns.Events.CheckFriendListOnline()
-                ns.Events.CheckGroupForMarkedPlayers()
+                if not ToxicifyDB.CachePopulated then
+                    ns.Core.DebugPrint("Player entering world - populating cache with currently online players")
+                    ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+                else
+                    ns.Core.DebugPrint("Player entering world - cache already populated, skipping")
+                end
+                
+                -- Clear phase change flag after a delay
+                C_Timer.After(5, function()
+                    ToxicifyDB.InPhaseChange = false
+                    ns.Core.DebugPrint("Phase change flag cleared")
+                end)
             end)
         elseif event == "PLAYER_LOGOUT" then
             -- Clear online notification cache when you logout
@@ -1342,7 +1600,9 @@ function ns.Events.Initialize()
                 
                 -- Try to set custom properties for better visibility
                 if button.SetTooltip then
-                    button:SetTooltip("Toxicify Player Management")
+                    button:SetTooltip(function()
+                        GameTooltip:SetText("Toxicify Player Management")
+                    end)
                 end
                 
                 -- Set custom icon if possible
@@ -1377,7 +1637,9 @@ function ns.Events.Initialize()
                 ns.Core.DebugPrint("Marked " .. playerName .. " as Toxic via context menu")
             end)
             if toxicButton and toxicButton.SetTooltip then
-                toxicButton:SetTooltip("Mark this player as toxic")
+                toxicButton:SetTooltip(function()
+                    GameTooltip:SetText("Mark this player as toxic")
+                end)
             end
             
             local pumperButton = toxicSubmenu:CreateButton("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t Mark as Pumper", function() 
@@ -1385,7 +1647,9 @@ function ns.Events.Initialize()
                 ns.Core.DebugPrint("Marked " .. playerName .. " as Pumper via context menu")
             end)
             if pumperButton and pumperButton.SetTooltip then
-                pumperButton:SetTooltip("Mark this player as pumper")
+                pumperButton:SetTooltip(function()
+                    GameTooltip:SetText("Mark this player as pumper")
+                end)
             end
             
             local removeButton = toxicSubmenu:CreateButton("|TInterface\\Buttons\\UI-GroupLoot-Pass-Up:16:16|t Remove Mark", function() 
@@ -1393,13 +1657,87 @@ function ns.Events.Initialize()
                 ns.Core.DebugPrint("Removed mark from " .. playerName .. " via context menu")
             end)
             if removeButton and removeButton.SetTooltip then
-                removeButton:SetTooltip("Remove any marks from this player")
+                removeButton:SetTooltip(function()
+                    GameTooltip:SetText("Remove any marks from this player")
+                end)
             end
             
             ns.Core.DebugPrint("Toxicify submenu created successfully")
         end
 
         -- Context menus will be registered after function definition
+    end
+    
+    -- Periodic check for Battle.net friends (since we can't rely on events)
+    C_Timer.NewTicker(30, function()
+        if ToxicifyDB.GuildToastEnabled then
+            ns.Events.CheckFriendListOnline()
+        end
+    end)
+    
+    -- Initialize phase change flag
+    ToxicifyDB.InPhaseChange = false
+    
+    -- Populate cache with currently online players to prevent notifications for already online players
+    C_Timer.After(2, function() -- Delay to ensure guild roster is loaded
+        ns.Events.PopulateCacheWithCurrentOnlinePlayers()
+    end)
+    
+    ns.Core.DebugPrint("Events initialization complete - periodic Battle.net friend checking enabled")
+end
+
+-- Add Toxicify context menu options
+function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
+    if not contextData or not contextData.name then
+        return
+    end
+    
+    local playerName = contextData.name
+    local currentPlayerName = GetUnitName("player", false)
+    local currentPlayerFullName = GetUnitName("player", true)
+    
+    -- Skip if this is the current player (don't allow self-marking)
+    if playerName == currentPlayerName or playerName == currentPlayerFullName then
+        ns.Core.DebugPrint("Skipping context menu for self: " .. playerName)
+        return
+    end
+    
+    -- Check if player is already marked
+    local isToxic = ns.Player.IsToxic(playerName)
+    local isPumper = ns.Player.IsPumper(playerName)
+    
+    if isToxic or isPumper then
+        -- Player is marked, show remove option
+        local removeOption = {
+            text = "Remove from Toxicify",
+            tooltipTitle = "Remove from Toxicify",
+            tooltipText = "Remove " .. playerName .. " from your Toxicify list",
+            callback = function()
+                ns.Player.UnmarkToxic(playerName)
+            end
+        }
+        Menu.AddOption(rootDescription, removeOption)
+    else
+        -- Player is not marked, show add options
+        local toxicOption = {
+            text = "Mark as Toxic",
+            tooltipTitle = "Mark as Toxic",
+            tooltipText = "Add " .. playerName .. " to your Toxic list",
+            callback = function()
+                ns.Player.MarkToxic(playerName)
+            end
+        }
+        Menu.AddOption(rootDescription, toxicOption)
+        
+        local pumperOption = {
+            text = "Mark as Pumper",
+            tooltipTitle = "Mark as Pumper", 
+            tooltipText = "Add " .. playerName .. " to your Pumper list",
+            callback = function()
+                ns.Player.MarkPumper(playerName)
+            end
+        }
+        Menu.AddOption(rootDescription, pumperOption)
     end
 end
 

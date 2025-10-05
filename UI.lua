@@ -186,24 +186,38 @@ function ns.UI.CreateToxicifyUI()
     addToxicBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
-            ns.Player.MarkToxic(name)
-            addBox:SetText("")
-            suggestionBox:Hide()
-            Refresh()
-            -- Force refresh after a small delay
-            C_Timer.After(0.1, function() Refresh() end)
+            -- Check if trying to mark yourself
+            local playerName = GetUnitName("player", true)
+            local playerShortName = GetUnitName("player", false)
+            if name == playerName or name == playerShortName then
+                print("|cffff0000Toxicify:|r You cannot mark yourself as toxic!")
+            else
+                ns.Player.MarkToxic(name)
+                addBox:SetText("")
+                suggestionBox:Hide()
+                Refresh()
+                -- Force refresh after a small delay
+                C_Timer.After(0.1, function() Refresh() end)
+            end
         end
     end)
 
     addPumperBtn:SetScript("OnClick", function()
         local name = addBox:GetText()
         if name and name ~= "" then
-            ns.Player.MarkPumper(name)
-            addBox:SetText("")
-            suggestionBox:Hide()
-            Refresh()
-            -- Force refresh after a small delay
-            C_Timer.After(0.1, function() Refresh() end)
+            -- Check if trying to mark yourself
+            local playerName = GetUnitName("player", true)
+            local playerShortName = GetUnitName("player", false)
+            if name == playerName or name == playerShortName then
+                print("|cffff0000Toxicify:|r You cannot mark yourself as pumper!")
+            else
+                ns.Player.MarkPumper(name)
+                addBox:SetText("")
+                suggestionBox:Hide()
+                Refresh()
+                -- Force refresh after a small delay
+                C_Timer.After(0.1, function() Refresh() end)
+            end
         end
     end)
 
