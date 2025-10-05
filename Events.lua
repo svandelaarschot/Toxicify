@@ -149,49 +149,156 @@ ns.Events.CanNotifyPlayer = CanNotifyPlayer
 local guildDebounceTimer = nil
 local friendDebounceTimer = nil
 
--- Debounced guild member check function
+-- Track actual changes in guild roster
+local lastGuildMembers = {}
+local lastFriendMembers = {}
+
+local function GetCurrentGuildMembers()
+    local members = {}
+    local numGuildMembers = GetNumGuildMembers()
+    
+    for i = 1, numGuildMembers do
+        local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+        if name then
+            members[name] = {
+                online = online,
+                status = status
+            }
+        end
+    end
+    
+    return members
+end
+
+-- Check if there are actual changes in guild roster
+local function HasGuildRosterChanged()
+    local currentMembers = GetCurrentGuildMembers()
+    local hasChanges = false
+    
+    -- If this is the first time (lastGuildMembers is empty), just initialize without triggering changes
+    if not next(lastGuildMembers) then
+        lastGuildMembers = currentMembers
+        return false
+    end
+    
+    -- Check for new online members or status changes
+    for name, data in pairs(currentMembers) do
+        if not lastGuildMembers[name] then
+            -- New member
+            hasChanges = true
+        elseif lastGuildMembers[name].online ~= data.online then
+            -- Status changed
+            hasChanges = true
+        end
+    end
+    
+    -- Check for members who left
+    for name, data in pairs(lastGuildMembers) do
+        if not currentMembers[name] then
+            -- Member left
+            hasChanges = true
+        end
+    end
+    
+    -- Update tracking
+    lastGuildMembers = currentMembers
+    
+    return hasChanges
+end
+
+local function GetCurrentFriendMembers()
+    local members = {}
+    local numFriends = C_FriendList.GetNumFriends()
+    
+    for i = 1, numFriends do
+        local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+        if friendInfo and friendInfo.name then
+            members[friendInfo.name] = {
+                online = friendInfo.connected,
+                status = friendInfo.status
+            }
+        end
+    end
+    
+    return members
+end
+
+-- Check if there are actual changes in friend list
+local function HasFriendListChanged()
+    local currentMembers = GetCurrentFriendMembers()
+    local hasChanges = false
+    
+    -- If this is the first time (lastFriendMembers is empty), just initialize without triggering changes
+    if not next(lastFriendMembers) then
+        lastFriendMembers = currentMembers
+        return false
+    end
+    
+    -- Check for new online friends or status changes
+    for name, data in pairs(currentMembers) do
+        if not lastFriendMembers[name] then
+            -- New friend
+            hasChanges = true
+        elseif lastFriendMembers[name].online ~= data.online then
+            -- Status changed
+            hasChanges = true
+        end
+    end
+    
+    -- Check for friends who were removed
+    for name, data in pairs(lastFriendMembers) do
+        if not currentMembers[name] then
+            -- Friend removed
+            hasChanges = true
+        end
+    end
+    
+    -- Update tracking
+    lastFriendMembers = currentMembers
+    
+    return hasChanges
+end
+
+-- Debounced guild member check function - only triggers on actual changes
 local function DebouncedCheckGuildMemberOnline()
+    -- Only proceed if there are actual changes
+    if not HasGuildRosterChanged() then
+        return
+    end
+    
     -- Cancel previous timer if it exists
     if guildDebounceTimer then
         guildDebounceTimer:Cancel()
         guildDebounceTimer = nil
-        ns.Core.DebugPrint("Guild roster update - previous timer cancelled, new one scheduled")
-    else
-        ns.Core.DebugPrint("Guild roster update detected - debounced check scheduled")
     end
     
     -- Set new timer to execute after delay
-    guildDebounceTimer = C_Timer.NewTimer(2.0, function()
-        ns.Core.DebugPrint("Executing debounced guild member check")
+    guildDebounceTimer = C_Timer.NewTimer(1.0, function()
         ns.Events.CheckGuildMemberOnline()
-        -- Also check for guild members going offline after the main check
+        -- Update guild roster display
         C_Timer.After(0.2, function()
-            ns.Events.CheckGuildMembersOffline()
             ns.Events.UpdateGuildRosterDisplay()
         end)
         guildDebounceTimer = nil
     end)
 end
 
--- Debounced friend list check function
+-- Debounced friend list check function - only triggers on actual changes
 local function DebouncedCheckFriendListOnline()
+    -- Only proceed if there are actual changes
+    if not HasFriendListChanged() then
+        return
+    end
+    
     -- Cancel previous timer if it exists
     if friendDebounceTimer then
         friendDebounceTimer:Cancel()
         friendDebounceTimer = nil
-        ns.Core.DebugPrint("Friend list update - previous timer cancelled, new one scheduled")
-    else
-        ns.Core.DebugPrint("Friend list update detected - debounced check scheduled")
     end
     
     -- Set new timer to execute after delay
-    friendDebounceTimer = C_Timer.NewTimer(2.0, function()
-        ns.Core.DebugPrint("Executing debounced friend list check")
+    friendDebounceTimer = C_Timer.NewTimer(1.0, function()
         ns.Events.CheckFriendListOnline()
-        -- Also check for friends going offline after the main check
-        C_Timer.After(0.2, function()
-            ns.Events.CheckFriendsOffline()
-        end)
         friendDebounceTimer = nil
     end)
 end
@@ -205,7 +312,6 @@ function ns.Events.ClearOnlineNotificationCache()
     ToxicifyDB.OnlineNotificationCache.pumper = {}
     ToxicifyDB.OnlineNotificationCache.lastNotificationTime = {}
     ToxicifyDB.CachePopulated = false
-    ns.Core.DebugPrint("Online notification cache cleared (including time tracking)")
 end
 
 -- Function to reset cache for a specific player (when they go offline)
@@ -220,26 +326,18 @@ function ns.Events.ResetPlayerCache(playerName)
     if ToxicifyDB.OnlineNotificationCache.toxic[playerName] then
         ToxicifyDB.OnlineNotificationCache.toxic[playerName] = nil
         wasInCache = true
-        ns.Core.DebugPrint("Reset toxic cache for offline player: " .. playerName)
     end
     if ToxicifyDB.OnlineNotificationCache.pumper[playerName] then
         ToxicifyDB.OnlineNotificationCache.pumper[playerName] = nil
         wasInCache = true
-        ns.Core.DebugPrint("Reset pumper cache for offline player: " .. playerName)
     end
     
     -- Also reset the time tracking for this player so they can be notified immediately when they come back online
     if ToxicifyDB.OnlineNotificationCache.lastNotificationTime and ToxicifyDB.OnlineNotificationCache.lastNotificationTime[playerName] then
         ToxicifyDB.OnlineNotificationCache.lastNotificationTime[playerName] = nil
-        ns.Core.DebugPrint("Reset notification time tracking for offline player: " .. playerName)
         wasInCache = true
     end
     
-    if wasInCache then
-        ns.Core.DebugPrint("Player " .. playerName .. " removed from cache - will notify when they come back online")
-    else
-        ns.Core.DebugPrint("Player " .. playerName .. " was not in cache (no reset needed)")
-    end
 end
 
 -- Function to populate cache with currently online marked players (prevents notifications for already online players)
@@ -267,18 +365,13 @@ function ns.Events.PopulateCacheWithCurrentOnlinePlayers()
                             if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
                                 ToxicifyDB.OnlineNotificationCache.toxic[name] = true
                                 populatedCount = populatedCount + 1
-                                ns.Core.DebugPrint("Populated cache: Added toxic guild member " .. name .. " (matched: " .. testName .. ")")
                             else
-                                ns.Core.DebugPrint("Cache already contains toxic guild member " .. name)
                             end
                             break
                         elseif ns.Player.IsPumper(testName) then
                             if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
                                 ToxicifyDB.OnlineNotificationCache.pumper[name] = true
                                 populatedCount = populatedCount + 1
-                                ns.Core.DebugPrint("Populated cache: Added pumper guild member " .. name .. " (matched: " .. testName .. ")")
-                            else
-                                ns.Core.DebugPrint("Cache already contains pumper guild member " .. name)
                             end
                             break
                         end
@@ -306,18 +399,12 @@ function ns.Events.PopulateCacheWithCurrentOnlinePlayers()
                             if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
                                 ToxicifyDB.OnlineNotificationCache.toxic[name] = true
                                 populatedCount = populatedCount + 1
-                                ns.Core.DebugPrint("Populated cache: Added toxic friend " .. name .. " (matched: " .. testName .. ")")
-                            else
-                                ns.Core.DebugPrint("Cache already contains toxic friend " .. name)
                             end
                             break
                         elseif ns.Player.IsPumper(testName) then
                             if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
                                 ToxicifyDB.OnlineNotificationCache.pumper[name] = true
                                 populatedCount = populatedCount + 1
-                                ns.Core.DebugPrint("Populated cache: Added pumper friend " .. name .. " (matched: " .. testName .. ")")
-                            else
-                                ns.Core.DebugPrint("Cache already contains pumper friend " .. name)
                             end
                             break
                         end
@@ -328,9 +415,7 @@ function ns.Events.PopulateCacheWithCurrentOnlinePlayers()
     end
     
     if populatedCount > 0 then
-        ns.Core.DebugPrint("Populated cache with " .. populatedCount .. " currently online marked players (no notifications will show for these)")
     else
-        ns.Core.DebugPrint("No currently online marked players found to populate cache")
     end
     
     -- Mark cache as populated
@@ -420,41 +505,24 @@ function ns.Events.UpdateGroupMembers(event)
                 if name and ns.Player.IsPumper(name) then
                     ns.Core.DebugPrint("Found pumper player: " .. name)
                     table.insert(pumperPlayers, name)
-                    ns.Core.DebugPrint("Attempting to get unit frame for: " .. unit)
                     local frame = ns.UI.GetUnitFrame(unit)
-                    if frame then
-                        ns.Core.DebugPrint("Frame found, checking for name property")
-                        ns.Core.DebugPrint("Frame type: " .. (frame:GetObjectType() or "unknown"))
-                        ns.Core.DebugPrint("Frame name: " .. (frame:GetName() or "unnamed"))
-                        
+                    if frame then                        
                         -- Debug frame properties
                         if frame.name then
-                            ns.Core.DebugPrint("Frame has .name property")
                             if frame.name.SetText then
-                                ns.Core.DebugPrint("Setting pumper text for: " .. name)
-                        frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
-                            else
-                                ns.Core.DebugPrint("Frame.name exists but no SetText method")
-                            end
+                                frame.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                         else
-                            ns.Core.DebugPrint("Frame has no .name property")
                             -- Try alternative properties
                             if frame.healthbar and frame.healthbar.name then
-                                ns.Core.DebugPrint("Trying frame.healthbar.name")
                                 if frame.healthbar.name.SetText then
                                     frame.healthbar.name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                                 end
                             elseif frame.Name then
-                                ns.Core.DebugPrint("Trying frame.Name (capital N)")
                                 if frame.Name.SetText then
                                     frame.Name:SetText("|cff00ff00 Pumper: " .. name .. "|r")
                                 end
-                            else
-                                ns.Core.DebugPrint("No name property found on frame")
                             end
                         end
-                    else
-                        ns.Core.DebugPrint("No frame found for unit: " .. unit)
                     end
                 end
             end
@@ -476,9 +544,6 @@ function ns.Events.UpdateGroupMembers(event)
             if not ToxicifyDB.WarningCache.toxic[playerName] then
                 table.insert(newToxicPlayers, playerName)
                 ToxicifyDB.WarningCache.toxic[playerName] = true
-                ns.Core.DebugPrint("Added to toxic warning cache: " .. playerName)
-            else
-                ns.Core.DebugPrint("Skipping toxic warning for " .. playerName .. " (already shown this session)")
             end
         end
         
@@ -496,7 +561,6 @@ end
 function ns.Events.ShowToxicWarningPopup(toxicPlayers)
     -- Check if warnings should be suppressed during runs
     if ShouldSuppressWarnings() then
-        ns.Core.DebugPrint("Suppressing toxic warning popup (during active run or recent manual marking)")
         return
     end
     
@@ -675,9 +739,6 @@ function ns.Events.UpdatePlayerFrame()
             -- Reset to normal name
             nameText:SetText(playerName)
         end
-        ns.Core.DebugPrint("Updated player frame for: " .. playerName .. " (toxic: " .. tostring(isToxic) .. ", pumper: " .. tostring(isPumper) .. ")")
-    else
-        ns.Core.DebugPrint("Could not find name text element in player frame")
     end
 end
 
@@ -755,7 +816,6 @@ function ns.Events.CheckGuildMemberOnline()
     
     -- Skip notifications during phase changes
     if ToxicifyDB.InPhaseChange then
-        ns.Core.DebugPrint("Skipping guild member notifications during phase change")
         return
     end
     
@@ -766,7 +826,6 @@ function ns.Events.CheckGuildMemberOnline()
     
     -- Ensure cache is populated with currently online players if not done yet
     if not ToxicifyDB.CachePopulated then
-        ns.Core.DebugPrint("Cache not populated yet, populating now...")
         ns.Events.PopulateCacheWithCurrentOnlinePlayers()
         ToxicifyDB.CachePopulated = true
     end
@@ -780,7 +839,6 @@ function ns.Events.CheckGuildMemberOnline()
     if ToxicifyDB.OnlineNotificationCache.pumper then
         for _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper) do pumperCount = pumperCount + 1 end
     end
-    ns.Core.DebugPrint("Current online notification cache - Toxic: " .. toxicCount .. " entries, Pumper: " .. pumperCount .. " entries")
     
     -- Get guild roster info
     local numGuildMembers = GetNumGuildMembers()
@@ -825,19 +883,15 @@ function ns.Events.CheckGuildMemberOnline()
                         ToxicifyDB.OnlineNotificationCache.toxic = {}
                     end
                     
-                    -- Check if we can notify this player (time-based only)
-                    local canNotify = CanNotifyPlayer(cacheKey, "toxic")
-                    
-                    if canNotify then
+                    -- Simple check: only notify if not already in cache
+                    if not ToxicifyDB.OnlineNotificationCache.toxic[cacheKey] then
                         ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. cacheKey .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[cacheKey]))
                         ns.Events.ShowGuildToast(name, "toxic", "guild")
                         ToxicifyDB.OnlineNotificationCache.toxic[cacheKey] = true
-                        RecordNotification(cacheKey, "toxic")
                         foundCount = foundCount + 1
                         ns.Core.DebugPrint("Added " .. cacheKey .. " to toxic notification cache")
                     else
-                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (time-based suppression) - SKIPPING")
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already in cache) - SKIPPING")
                     end
                     found = true
                     break
@@ -856,19 +910,15 @@ function ns.Events.CheckGuildMemberOnline()
                         ToxicifyDB.OnlineNotificationCache.pumper = {}
                     end
                     
-                    -- Check if we can notify this player (time-based only)
-                    local canNotify = CanNotifyPlayer(cacheKey, "pumper")
-                    
-                    if canNotify then
+                    -- Simple check: only notify if not already in cache
+                    if not ToxicifyDB.OnlineNotificationCache.pumper[cacheKey] then
                         ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. cacheKey .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[cacheKey]))
                         ns.Events.ShowGuildToast(name, "pumper", "guild")
                         ToxicifyDB.OnlineNotificationCache.pumper[cacheKey] = true
-                        RecordNotification(cacheKey, "pumper")
                         foundCount = foundCount + 1
                         ns.Core.DebugPrint("Added " .. cacheKey .. " to pumper notification cache")
                     else
-                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (time-based suppression) - SKIPPING")
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already in cache) - SKIPPING")
                     end
                     found = true
                     break
@@ -892,7 +942,6 @@ function ns.Events.CheckFriendListOnline()
     
     -- Skip notifications during phase changes
     if ToxicifyDB.InPhaseChange then
-        ns.Core.DebugPrint("Skipping friend list notifications during phase change")
         return
     end
     
@@ -903,7 +952,6 @@ function ns.Events.CheckFriendListOnline()
     
     -- Ensure cache is populated with currently online players if not done yet
     if not ToxicifyDB.CachePopulated then
-        ns.Core.DebugPrint("Cache not populated yet, populating now...")
         ns.Events.PopulateCacheWithCurrentOnlinePlayers()
         ToxicifyDB.CachePopulated = true
     end
@@ -933,33 +981,25 @@ function ns.Events.CheckFriendListOnline()
                         
                         for _, testName in ipairs(nameVariations) do
                             if ns.Player.IsToxic(testName) then
-                                -- Check if we can notify this player (time-based only)
-                                local canNotify = CanNotifyPlayer(name, "toxic")
-                                
-                                if canNotify then
+                                -- Simple check: only notify if not already in cache
+                                if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
                                     ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
                                     ns.Events.ShowGuildToast(name, "toxic", "friend")
                                     ToxicifyDB.OnlineNotificationCache.toxic[name] = true
-                                    RecordNotification(name, "toxic")
                                     foundCount = foundCount + 1
                                 else
-                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (time-based suppression) - SKIPPING")
+                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (already in cache) - SKIPPING")
                                 end
                                 break
                             elseif ns.Player.IsPumper(testName) then
-                                -- Check if we can notify this player (time-based only)
-                                local canNotify = CanNotifyPlayer(name, "pumper")
-                                
-                                if canNotify then
+                                -- Simple check: only notify if not already in cache
+                                if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
                                     ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
                                     ns.Events.ShowGuildToast(name, "pumper", "friend")
                                     ToxicifyDB.OnlineNotificationCache.pumper[name] = true
-                                    RecordNotification(name, "pumper")
                                     foundCount = foundCount + 1
                                 else
-                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (time-based suppression) - SKIPPING")
+                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (already in cache) - SKIPPING")
                                 end
                                 break
                             end
@@ -1027,53 +1067,6 @@ function ns.Events.CheckFriendsOffline()
     end
 end
 
--- Check for guild members who went offline and reset their cache
-function ns.Events.CheckGuildMembersOffline()
-    if not ToxicifyDB.OnlineNotificationCache or not IsInGuild() then
-        return
-    end
-    
-    -- Check if any cached guild members are no longer online
-    if ToxicifyDB.OnlineNotificationCache.toxic then
-        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic) do
-            -- Check if this player is still online in guild roster
-            local stillOnline = false
-            local numGuildMembers = GetNumGuildMembers()
-            for i = 1, numGuildMembers do
-                local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
-                if name == playerName and online then
-                    stillOnline = true
-                    break
-                end
-            end
-            
-            if not stillOnline then
-                ns.Core.DebugPrint("Guild member went offline (detected via guild roster): " .. playerName)
-                ns.Events.ResetPlayerCache(playerName)
-            end
-        end
-    end
-    
-    if ToxicifyDB.OnlineNotificationCache.pumper then
-        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper) do
-            -- Check if this player is still online in guild roster
-            local stillOnline = false
-            local numGuildMembers = GetNumGuildMembers()
-            for i = 1, numGuildMembers do
-                local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
-                if name == playerName and online then
-                    stillOnline = true
-                    break
-                end
-            end
-            
-            if not stillOnline then
-                ns.Core.DebugPrint("Guild member went offline (detected via guild roster): " .. playerName)
-                ns.Events.ResetPlayerCache(playerName)
-            end
-        end
-    end
-end
 
 -- Check for marked players in current group/raid (for warning popup only, not notifications)
 function ns.Events.CheckGroupForMarkedPlayers()
@@ -1506,7 +1499,6 @@ function ns.Events.Initialize()
                 end
                 tooltipCache[nameText] = GetTime()
                 
-                ns.Core.DebugPrint("GameTooltip name: " .. nameText)
                 
                 -- Try multiple name formats
                 local nameVariations = {
@@ -1647,13 +1639,7 @@ function ns.Events.Initialize()
         -- Debug all tooltip types to see which one is used for guild members
         local function DebugTooltipType(tooltipType, typeName)
             TooltipDataProcessor.AddTooltipPostCall(tooltipType, function(tooltip, data)
-                ns.Core.DebugPrint("Tooltip type triggered: " .. typeName)
-                if data then
-                    ns.Core.DebugPrint("  Data available: " .. tostring(data ~= nil))
-                    if data.memberInfo then
-                        ns.Core.DebugPrint("  Has memberInfo: " .. (data.memberInfo.name or "no name"))
-                    end
-                end
+                -- Empty function for debugging
             end)
         end
         
@@ -1681,7 +1667,6 @@ function ns.Events.Initialize()
             
             if unit then
                 name = GetUnitName(unit, true)
-                ns.Core.DebugPrint("Unit tooltip - unit name: " .. (name or "nil"))
             end
             
             -- If no unit name, try to get name from tooltip text (for guild members)
@@ -1713,7 +1698,6 @@ function ns.Events.Initialize()
                 }
                 
                 for _, testName in ipairs(nameVariations) do
-                    ns.Core.DebugPrint("Testing name: " .. testName)
                     if ns.Player.IsToxic(testName) then
                         tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
                         ns.Core.DebugPrint("Added toxic tooltip for: " .. testName)
@@ -1724,7 +1708,6 @@ function ns.Events.Initialize()
                         return
                     end
                 end
-                ns.Core.DebugPrint("No match found for any variation of: " .. name)
             else
                 ns.Core.DebugPrint("Could not extract name from tooltip")
             end
@@ -1732,7 +1715,7 @@ function ns.Events.Initialize()
         
         -- Guild member tooltip integration (multiple types)
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.GuildMember, function(tooltip, data)
-            ns.Core.DebugPrint("GuildMember tooltip triggered")
+            --ns.Core.DebugPrint("GuildMember tooltip triggered")
         end)
         
         -- Also try Communities member tooltip
@@ -1753,13 +1736,8 @@ function ns.Events.Initialize()
                     
                     -- Try just the name (for same server)
                     local justName = name
-                    
-                    ns.Core.DebugPrint("Communities tooltip check: " .. name)
-                    ns.Core.DebugPrint("  Trying: " .. fullName)
-                    ns.Core.DebugPrint("  Trying: " .. nameOnly)
-                    ns.Core.DebugPrint("  Trying: " .. normalizedName)
-                    ns.Core.DebugPrint("  Trying: " .. justName)
-                    
+                
+
                     -- Check all possible name variations
                     local isToxic = ns.Player.IsToxic(fullName) or ns.Player.IsToxic(nameOnly) or 
                                    ns.Player.IsToxic(normalizedName) or ns.Player.IsToxic(justName)
@@ -1768,12 +1746,9 @@ function ns.Events.Initialize()
                     
                     if isToxic then
                         tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
-                        ns.Core.DebugPrint("Added toxic tooltip for: " .. name)
                     elseif isPumper then
                         tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
-                        ns.Core.DebugPrint("Added pumper tooltip for: " .. name)
                     else
-                        ns.Core.DebugPrint("No match found for: " .. name)
                     end
                 end
             end
@@ -1796,13 +1771,7 @@ function ns.Events.Initialize()
                     
                     -- Try just the name (for same server)
                     local justName = name
-                    
-                    ns.Core.DebugPrint("Guild tooltip check: " .. name)
-                    ns.Core.DebugPrint("  Trying: " .. fullName)
-                    ns.Core.DebugPrint("  Trying: " .. nameOnly)
-                    ns.Core.DebugPrint("  Trying: " .. normalizedName)
-                    ns.Core.DebugPrint("  Trying: " .. justName)
-                    
+                                        
                     -- Check all possible name variations
                     local isToxic = ns.Player.IsToxic(fullName) or ns.Player.IsToxic(nameOnly) or 
                                    ns.Player.IsToxic(normalizedName) or ns.Player.IsToxic(justName)
@@ -1811,12 +1780,9 @@ function ns.Events.Initialize()
                     
                     if isToxic then
                         tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:16:16|t |cffff0000Toxic Player|r")
-                        ns.Core.DebugPrint("Added toxic tooltip for: " .. name)
                     elseif isPumper then
                         tooltip:AddLine("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:16:16|t |cff00ff00Pumper|r")
-                        ns.Core.DebugPrint("Added pumper tooltip for: " .. name)
                     else
-                        ns.Core.DebugPrint("No match found for: " .. name)
                     end
                 end
             end
@@ -1832,11 +1798,9 @@ function ns.Events.Initialize()
         -- Define the context menu function
         function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             if not contextData then 
-                ns.Core.DebugPrint("No contextData provided")
                 return 
             end
 
-            ns.Core.DebugPrint("Context menu triggered - inspecting contextData:")
             for k, v in pairs(contextData) do
                 ns.Core.DebugPrint("  " .. tostring(k) .. " = " .. tostring(v))
             end
@@ -1867,40 +1831,31 @@ function ns.Events.Initialize()
                 end
             -- Handle guild members (have name and server)
             elseif contextData.name and contextData.server then
-                ns.Core.DebugPrint("Guild member detected: " .. contextData.name .. "-" .. contextData.server)
                 playerName = contextData.name .. "-" .. contextData.server
             -- Handle guild members with different field names
             elseif contextData.name and (contextData.realm or contextData.server) then
                 local realm = contextData.realm or contextData.server or GetRealmName()
-                ns.Core.DebugPrint("Guild member detected (alt): " .. contextData.name .. "-" .. realm)
                 playerName = contextData.name .. "-" .. realm
             -- Handle regular players (have unit)
             elseif contextData.unit then
-                ns.Core.DebugPrint("Unit detected: " .. contextData.unit)
                 -- Only show for real players, not NPCs
                 if not UnitIsPlayer(contextData.unit) then 
-                    ns.Core.DebugPrint("Not a player unit, returning")
                     return 
                 end
                 
                 playerName = GetUnitName(contextData.unit, true)
                 if not playerName then 
-                    ns.Core.DebugPrint("No player name from unit, returning")
                     return 
                 end
             -- Handle players by name only (fallback)
             elseif contextData.name then
-                ns.Core.DebugPrint("Name-only detection: " .. contextData.name)
                 playerName = contextData.name
                 -- Add realm if not present
                 if not playerName:find("-") then
                     local realm = GetRealmName()
                     playerName = playerName .. "-" .. realm
-                    ns.Core.DebugPrint("Added realm: " .. playerName)
                 end
             else
-                ns.Core.DebugPrint("No recognized context data, returning")
-                ns.Core.DebugPrint("Available contextData keys:")
                 for k, v in pairs(contextData) do
                     ns.Core.DebugPrint("  " .. k .. " = " .. tostring(v))
                 end
@@ -1908,7 +1863,6 @@ function ns.Events.Initialize()
             end
             
             if not playerName then
-                ns.Core.DebugPrint("No player name determined, returning")
                 return
             end
             
@@ -1921,14 +1875,9 @@ function ns.Events.Initialize()
                 return
             end
             
-            ns.Core.DebugPrint("Adding context menu for player: " .. playerName)
-            
             if not rootDescription then
-                ns.Core.DebugPrint("rootDescription is nil, cannot create menu")
                 return
             end
-            
-            ns.Core.DebugPrint("Creating custom Toxicify submenu...")
             
             -- Create custom submenu with full control
             local success, toxicSubmenu = pcall(function()
@@ -1950,7 +1899,6 @@ function ns.Events.Initialize()
             end)
             
             if not success or not toxicSubmenu then
-                ns.Core.DebugPrint("Failed to create submenu, creating direct buttons")
                 -- Fallback to direct buttons
                 rootDescription:CreateButton("Mark as Toxic", function() 
                     ns.Player.MarkToxic(playerName)
@@ -1997,11 +1945,7 @@ function ns.Events.Initialize()
                     GameTooltip:SetText("Remove any marks from this player")
                 end)
             end
-            
-            ns.Core.DebugPrint("Toxicify submenu created successfully")
         end
-
-        -- Context menus will be registered after function definition
     end
     
     -- Periodic check for Battle.net friends (since we can't rely on events)
@@ -2018,8 +1962,6 @@ function ns.Events.Initialize()
     C_Timer.After(2, function() -- Delay to ensure guild roster is loaded
         ns.Events.PopulateCacheWithCurrentOnlinePlayers()
     end)
-    
-    ns.Core.DebugPrint("Events initialization complete - periodic Battle.net friend checking enabled")
 end
 
 -- Add Toxicify context menu options
@@ -2113,7 +2055,6 @@ function ns.Events.RegisterContextMenus()
         
         for _, menuType in ipairs(guildMenuTypes) do
             Menu.ModifyMenu(menuType, function(_, rootDescription, contextData)
-                ns.Core.DebugPrint("Guild context menu triggered: " .. menuType)
                 ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
             end)
         end
@@ -2146,7 +2087,6 @@ function ns.Events.RegisterContextMenus()
                         originalOnClick(self, button)
                     end
                 end)
-                ns.Core.DebugPrint("Guild roster frame hooked successfully")
                 return true
             end
             return false
@@ -2199,16 +2139,10 @@ function ns.Events.RegisterContextMenus()
 function ns.Events.UpdateGuildRosterDisplay()
     -- Check for modern Communities frame first
     if _G.CommunitiesFrame and _G.CommunitiesFrame:IsShown() then
-        ns.Core.DebugPrint("Communities frame is open, updating guild roster...")
     elseif _G.GuildFrame and _G.GuildFrame:IsShown() then
-        ns.Core.DebugPrint("Guild frame is open, updating guild roster...")
     else
-        ns.Core.DebugPrint("No guild/communities frame is open")
         return
     end
-    
-    ns.Core.DebugPrint("Updating guild roster display...")
-    
     -- Wait for guild roster to be populated
     C_Timer.After(0.1, function()
         local numGuildMembers = GetNumGuildMembers()
@@ -2224,10 +2158,8 @@ function ns.Events.UpdateGuildRosterDisplay()
         -- Check for Communities guild roster structure
         local rosterFrame = nil
         if _G.CommunitiesFrame and _G.CommunitiesFrame.MemberList then
-            ns.Core.DebugPrint("Found Communities member list")
             rosterFrame = _G.CommunitiesFrame.MemberList
         elseif _G.GuildRosterContainer and _G.GuildRosterContainer.listScroll then
-            ns.Core.DebugPrint("Found modern guild roster container")
             rosterFrame = _G.GuildRosterContainer.listScroll
         end
         
@@ -2235,18 +2167,13 @@ function ns.Events.UpdateGuildRosterDisplay()
             local scrollFrame = rosterFrame
             
             -- Debug the Communities frame structure
-            ns.Core.DebugPrint("Examining Communities member list structure...")
             if scrollFrame.buttons then
-                ns.Core.DebugPrint("Found buttons array with " .. #scrollFrame.buttons .. " buttons")
             elseif scrollFrame.ListScrollFrame and scrollFrame.ListScrollFrame.buttons then
-                ns.Core.DebugPrint("Found ListScrollFrame.buttons")
                 scrollFrame = scrollFrame.ListScrollFrame
             elseif scrollFrame.ScrollBox then
-                ns.Core.DebugPrint("Found ScrollBox (modern UI)")
                 -- Modern scroll box system
                 if scrollFrame.ScrollBox.GetFrames then
                     local frames = scrollFrame.ScrollBox:GetFrames()
-                    ns.Core.DebugPrint("ScrollBox has " .. #frames .. " frames")
                     
                     -- First, clean up any existing icon text to prevent duplicates
                     for i, button in ipairs(frames) do
@@ -2291,7 +2218,6 @@ function ns.Events.UpdateGuildRosterDisplay()
                                                 local newText = icon .. " " .. text
                                                 region:SetText(newText)
                                                 nameUpdated = true
-                                                ns.Core.DebugPrint("Updated name text for: " .. memberInfo.name)
                                                 break
                                             end
                                         end
@@ -2301,29 +2227,16 @@ function ns.Events.UpdateGuildRosterDisplay()
                                     if not nameUpdated and memberInfo.SetName then
                                         memberInfo:SetName(icon .. " " .. memberInfo.name)
                                         nameUpdated = true
-                                        ns.Core.DebugPrint("Updated memberInfo name for: " .. memberInfo.name)
-                                    end
-                                    
-                                    if nameUpdated then
-                                        ns.Core.DebugPrint("Successfully added icon to name: " .. memberInfo.name)
-                                    else
-                                        ns.Core.DebugPrint("Could not update name for: " .. memberInfo.name)
                                     end
                                 end
                                 
                                 -- Old approach (keeping for fallback)
                                 if false then -- Disabled for now
-                                    ns.Core.DebugPrint("Found marked Communities member: " .. memberInfo.name)
                                     local icon = isToxic and "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:12:12|t" or "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
-                                    
                                     -- Debug button structure
-                                    ns.Core.DebugPrint("Debugging button structure for: " .. memberInfo.name)
                                     if button.Name then
-                                        ns.Core.DebugPrint("  Has button.Name")
                                         if button.Name.SetText then
-                                            ns.Core.DebugPrint("  button.Name has SetText")
                                             local text = button.Name:GetText()
-                                            ns.Core.DebugPrint("  Current text: " .. (text or "nil"))
                                         end
                                     end
                                     
@@ -2337,7 +2250,6 @@ function ns.Events.UpdateGuildRosterDisplay()
                                             if originalText and not originalText:find("|T") then
                                                 button[fieldName]:SetText(icon .. " " .. originalText)
                                                 nameUpdated = true
-                                                ns.Core.DebugPrint("Updated via " .. fieldName .. ": " .. memberInfo.name)
                                                 break
                                             end
                                         end
@@ -2346,42 +2258,29 @@ function ns.Events.UpdateGuildRosterDisplay()
                                     -- If still not updated, try regions
                                     if not nameUpdated then
                                         local regions = {button:GetRegions()}
-                                        ns.Core.DebugPrint("  Found " .. #regions .. " regions")
                                         for i, region in ipairs(regions) do
                                             if region then
                                                 if region.GetText then
                                                     local text = region:GetText()
                                                     if text and text ~= "" then
-                                                        ns.Core.DebugPrint("  Region " .. i .. " text: '" .. text .. "'")
                                                         -- Try exact match or partial match
                                                         if (text == memberInfo.name or text:find(memberInfo.name)) and not text:find("|T") then
                                                             if region.SetText then
                                                                 region:SetText(icon .. " " .. text)
                                                                 nameUpdated = true
-                                                                ns.Core.DebugPrint("Updated via region " .. i .. ": " .. memberInfo.name)
                                                                 break
                                                             end
                                                         end
-                                                    else
-                                                        ns.Core.DebugPrint("  Region " .. i .. " has no text or empty text")
                                                     end
-                                                else
-                                                    ns.Core.DebugPrint("  Region " .. i .. " has no GetText method")
                                                 end
                                             end
                                         end
-                                    end
-                                    
-                                    if not nameUpdated then
-                                        ns.Core.DebugPrint("Could not update name display for: " .. memberInfo.name)
                                     end
                                 end -- End of disabled old approach
                             end
                         end
                     end
                 end
-            else
-                ns.Core.DebugPrint("Unknown Communities frame structure")
             end
             
             -- Original button processing for older systems
@@ -2410,7 +2309,6 @@ function ns.Events.UpdateGuildRosterDisplay()
                                     if not originalText:find("|T") then
                                         button.Name:SetText(icon .. " " .. originalText)
                                         nameUpdated = true
-                                        ns.Core.DebugPrint("Updated Name field for: " .. name)
                                     end
                                 end
                                 
@@ -2424,59 +2322,16 @@ function ns.Events.UpdateGuildRosterDisplay()
                                                 if not text:find("|T") then
                                                     region:SetText(icon .. " " .. text)
                                                     nameUpdated = true
-                                                    ns.Core.DebugPrint("Updated text region for: " .. name)
                                                     break
                                                 end
                                             end
                                         end
                                     end
                                 end
-                                
-                                if not nameUpdated then
-                                    ns.Core.DebugPrint("Could not find text element to update for: " .. name)
-                                end
                             end
                         end
                     end
                 end
-            end
-        end
-        
-        -- Fallback: Try classic guild frame structure
-        if foundButtons == 0 then
-            ns.Core.DebugPrint("Trying classic guild frame structure...")
-            for i = 1, 20 do -- Check first 20 visible buttons
-                local buttonName = "GuildFrameButton" .. i
-                local button = _G[buttonName]
-                
-                if button then
-                    foundButtons = foundButtons + 1
-                    ns.Core.DebugPrint("Found button: " .. buttonName)
-                    
-                    -- Try different name field variations
-                    local nameText = _G[buttonName .. "Name"] or button.Name or button.name
-                    if nameText then
-                        ns.Core.DebugPrint("Found name text element for button " .. i)
-                    else
-                        ns.Core.DebugPrint("No name text found for button " .. i)
-                    end
-                else
-                    break -- No more buttons
-                end
-            end
-        end
-        
-        ns.Core.DebugPrint("Total buttons found: " .. foundButtons)
-        
-        -- Manual test: Try to update Agatio if he's in the list
-        for i = 1, numGuildMembers do
-            local name = GetGuildRosterInfo(i)
-            if name and name == "Agatio" then
-                ns.Core.DebugPrint("Found Agatio in guild roster at index " .. i)
-                local fullName = "Agatio-Bloodscalp"
-                local isPumper = ns.Player.IsPumper(fullName)
-                ns.Core.DebugPrint("Agatio is pumper: " .. tostring(isPumper))
-                break
             end
         end
     end)
@@ -2487,19 +2342,16 @@ local function InstallGuildHooks()
     -- Hook Communities frame (modern guild system)
     if _G.CommunitiesFrame then
         _G.CommunitiesFrame:HookScript("OnShow", function()
-            ns.Core.DebugPrint("Communities frame opened, updating roster display...")
             C_Timer.After(1, function()
                 ns.Events.UpdateGuildRosterDisplay()
             end)
         end)
-        ns.Core.DebugPrint("Communities frame hooks installed")
     end
     
     -- Also hook old guild frame for compatibility
     if _G.GuildFrame then
         -- Hook when guild frame is shown
         _G.GuildFrame:HookScript("OnShow", function()
-            ns.Core.DebugPrint("Guild frame opened, updating roster display...")
             C_Timer.After(1, function()
                 ns.Events.UpdateGuildRosterDisplay()
             end)
@@ -2508,7 +2360,6 @@ local function InstallGuildHooks()
         -- Hook guild roster updates
         if _G.GuildRosterFrame then
             _G.GuildRosterFrame:HookScript("OnShow", function()
-                ns.Core.DebugPrint("Guild roster frame shown, updating display...")
                 C_Timer.After(0.5, function()
                     ns.Events.UpdateGuildRosterDisplay()
                 end)
@@ -2528,7 +2379,6 @@ local function InstallGuildHooks()
                     end)
                     return result
                 end
-                ns.Core.DebugPrint("Hooked GuildRosterContainer.Update")
             end
             
             -- Also hook scroll events
@@ -2544,15 +2394,11 @@ local function InstallGuildHooks()
                         end)
                         return result
                     end
-                    ns.Core.DebugPrint("Hooked ScrollBox scroll events")
                 end
             end
         end
-        
-        ns.Core.DebugPrint("Guild frame hooks installed")
         return true
     else
-        ns.Core.DebugPrint("Guild frame not available for hooking")
         return false
     end
 end
@@ -2573,30 +2419,18 @@ C_Timer.After(3, function()
                 end)
             end
         end)
-        ns.Core.DebugPrint("Waiting for guild addon to load...")
     end
 end)
 
 -- Register context menus after addon is fully loaded
-ns.Core.DebugPrint("Events.lua loaded completely, scheduling context menu registration...")
-
--- Register context menus immediately for higher priority
-ns.Core.DebugPrint("Attempting to register context menus...")
 if Menu then
-    ns.Core.DebugPrint("Menu API available, registering context menus")
-ns.Events.RegisterContextMenus()
+    ns.Events.RegisterContextMenus()
 else
     -- Use a timer if Menu API not available yet
     C_Timer.After(1, function()
-        ns.Core.DebugPrint("Attempting to register context menus (delayed)...")
         if Menu then
-            ns.Core.DebugPrint("Menu API available, registering context menus")
             ns.Events.RegisterContextMenus()
-        else
-            ns.Core.DebugPrint("Menu API not available - context menus will not work")
         end
-        ns.Core.DebugPrint("Context menu registration complete")
     end)
 end
-ns.Core.DebugPrint("Context menu registration complete")
-
+end
