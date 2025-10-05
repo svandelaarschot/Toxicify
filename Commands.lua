@@ -1,11 +1,7 @@
--- Commands.lua - Slash command functionality
 local addonName, ns = ...
 
--- Commands namespace
-ns.Commands = {}
-
--- Initialize Commands module
-function ns.Commands.Initialize()
+-- Slash command registration
+if not SLASH_TOXICIFY1 then
     SLASH_TOXICIFY1 = "/toxic"
     SlashCmdList["TOXICIFY"] = function(msg)
         local cmd, arg1, arg2 = strsplit(" ", msg, 3)
@@ -16,36 +12,39 @@ function ns.Commands.Initialize()
             local playerName = GetUnitName("player", true)
             if arg1 == playerName or arg1 == GetUnitName("player", false) then
                 ns.Core.DebugPrint("You cannot mark yourself as toxic!", true)
-            else
-                ns.Player.MarkToxic(arg1)
+                return
             end
+            ns.Player.MarkToxic(arg1)
         elseif cmd == "addpumper" and arg1 then
             -- Check if trying to mark yourself
             local playerName = GetUnitName("player", true)
             if arg1 == playerName or arg1 == GetUnitName("player", false) then
                 ns.Core.DebugPrint("You cannot mark yourself as pumper!", true)
-            else
-                ns.Player.MarkPumper(arg1)
+                return
             end
+            ns.Player.MarkPumper(arg1)
         elseif cmd == "del" and arg1 then
             -- Check if trying to unmark yourself
             local playerName = GetUnitName("player", true)
             if arg1 == playerName or arg1 == GetUnitName("player", false) then
                 ns.Core.DebugPrint("You cannot unmark yourself!", true)
-            else
-                ns.Player.UnmarkToxic(arg1)
+                return
             end
+            ns.Player.UnmarkPlayer(arg1)
         elseif cmd == "list" then
             ns.Core.DebugPrint("|cff39FF14Toxicify:|r Current list:", true)
-            for name, status in pairs(ToxicifyDB) do
-                if status then
-                    ns.Core.DebugPrint(" - " .. name .. " (" .. status .. ")", true)
+            local players = ns.Player.GetAllPlayers()
+            for name, data in pairs(players) do
+                if type(data) == "table" then
+                    -- New format with datetime
+                    local statusColor = data.status == "toxic" and "|cffff0000" or "|cff00ff00"
+                    ns.Core.DebugPrint(" - " .. statusColor .. name .. "|r (" .. data.status .. ") - " .. (data.datetime or "Unknown date"), true)
+                else
+                    -- Legacy format
+                    local statusColor = data == "toxic" and "|cffff0000" or "|cff00ff00"
+                    ns.Core.DebugPrint(" - " .. statusColor .. name .. "|r (" .. data .. ") - Legacy entry", true)
                 end
             end
-        elseif cmd == "export" then
-            ns.UI.ShowIOPopup("export")
-        elseif cmd == "import" then
-            ns.UI.ShowIOPopup("import")
         elseif cmd == "ui" then
             if not _G.ToxicifyListFrame then ns.UI.CreateToxicifyUI() end
             if _G.ToxicifyListFrame:IsShown() then
@@ -54,26 +53,6 @@ function ns.Commands.Initialize()
                 _G.ToxicifyListFrame:Refresh()
                 _G.ToxicifyListFrame:Show()
             end
-        elseif cmd == "testtoast" or cmd == "testguildtoast" or cmd == "tgt" then
-            -- Test the guild toast notification
-            if ns.Events and ns.Events.ShowGuildToast then
-                ns.Events.ShowGuildToast("TestPlayer", "toxic", "guild")
-            end
-        elseif cmd == "testfriendtoast" or cmd == "tft" then
-            -- Test the friend toast notification (WoW friends only)
-            if ns.Events and ns.Events.ShowGuildToast then
-                ns.Events.ShowGuildToast("TestWoWFriend", "pumper", "friend")
-            end
-        
-        elseif cmd == "guildtoast" or cmd == "gt" then
-            if ToxicifyDB.GuildToastEnabled then
-                ToxicifyDB.GuildToastEnabled = false
-                ns.Core.DebugPrint("Toxicify: Guild toast notifications disabled")
-            else
-                ToxicifyDB.GuildToastEnabled = true
-                ns.Core.DebugPrint("Toxicify: Guild toast notifications enabled", true)
-            end
-        
         elseif cmd == "settings" or cmd == "config" or cmd == "s" or cmd == "c" then
             -- Sluit het huidige Toxicify dialoog als het open is
             if _G.ToxicifyListFrame and _G.ToxicifyListFrame:IsShown() then
@@ -104,292 +83,74 @@ function ns.Commands.Initialize()
                 C_Timer.After(0.1, function()
                     InterfaceOptionsFrame_OpenToCategory("Toxicify")
                 end)
-                ns.Core.DebugPrint("Opening settings...", true)
+                ns.Core.DebugPrint("Opening Toxicify settings (Classic)...", true)
             else
-                -- Fallback: open interface options
-                if SettingsPanel then
-                    SettingsPanel:Show()
-                    ns.Core.DebugPrint("Please navigate to the Toxicify section in Settings.")
-                elseif InterfaceOptionsFrame then
-                    InterfaceOptionsFrame:Show()
-                    ns.Core.DebugPrint("Please navigate to the Toxicify section in Interface Options.")
-                else
-                    ns.Core.DebugPrint("Could not open settings. Please use the Game Menu > Options > AddOns.")
-                end
+                ns.Core.DebugPrint("Settings system not available", true)
             end
         elseif cmd == "debug" then
             if ToxicifyDB.DebugEnabled then
                 ToxicifyDB.DebugEnabled = false
                 ns.Core.DebugPrint("Debug mode disabled! Debug messages are now hidden.", true)
-                ns.Core.DebugPrint("Lua errors toggle is now hidden in settings.", true)
             else
                 ToxicifyDB.DebugEnabled = true
-                ns.Core.DebugPrint("Debug mode enabled! All debug messages will show in main chat with [DEBUG] prefix.", true)
-                ns.Core.DebugPrint("Debug messages will appear when you use Toxicify features.", true)
-                ns.Core.DebugPrint("Lua errors toggle is now visible in settings.", true)
+                ns.Core.DebugPrint("Debug mode enabled! Debug messages will now show in main chat.", true)
             end
-        elseif cmd == "partywarning" then
-            if ToxicifyDB.PartyWarningEnabled then
-                ToxicifyDB.PartyWarningEnabled = false
-                ns.Core.DebugPrint("Party warning disabled.", true)
-            else
-                ToxicifyDB.PartyWarningEnabled = true
-                ns.Core.DebugPrint("Party warning enabled.", true)
-            end
-        elseif cmd == "luaerrors" then
-            if not ToxicifyDB.DebugEnabled then
-                ns.Core.DebugPrint("Debug mode must be enabled first. Use /toxic debug", true)
-                return
-            end
-            if ToxicifyDB.LuaErrorsEnabled then
-                ToxicifyDB.LuaErrorsEnabled = false
-                SetCVar("scriptErrors", "0")
-                ns.Core.DebugPrint("Lua errors disabled - /console scriptErrors set to 0", true)
-            else
-                ToxicifyDB.LuaErrorsEnabled = true
-                SetCVar("scriptErrors", "1")
-                ns.Core.DebugPrint("Lua errors enabled - /console scriptErrors set to 1", true)
-            end
-        elseif cmd == "silent" or cmd == "noerrors" then
-            -- Simple command to disable Lua errors without requiring debug mode
-            SetCVar("scriptErrors", "0")
-            ns.Core.DebugPrint("Lua errors disabled in console - /console scriptErrors set to 0", true)
-            ns.Core.DebugPrint("Use /console scriptErrors 1 to re-enable errors", true)
-        elseif cmd == "testwarning" then
-            -- Show warning popup with real online marked players
-            local onlineMarkedPlayers = {}
-            
-            ns.Core.DebugPrint("=== DEBUGGING TESTWARNING ===", true)
-            
-            -- Show what's in the database
-            ns.Core.DebugPrint("Current database entries:", true)
-            for name, status in pairs(ToxicifyDB) do
-                if type(status) == "string" and (status == "toxic" or status == "pumper") then
-                    ns.Core.DebugPrint("  " .. name .. " = " .. status, true)
-                end
-            end
-            
-            -- Check guild members
-            local numGuildMembers = GetNumGuildMembers()
-            ns.Core.DebugPrint("Checking " .. numGuildMembers .. " guild members...", true)
-            if numGuildMembers > 0 then
-                for i = 1, numGuildMembers do
-                    local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
-                    if name and online then
-                        local fullName = name .. "-" .. GetRealmName()
-                        ns.Core.DebugPrint("Checking guild member: " .. name .. " (full: " .. fullName .. ")", true)
-                        
-                        -- Try multiple name formats
-                        local nameVariations = {
-                            name,  -- Just the name
-                            fullName,  -- Name-Realm
-                            name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
-                        }
-                        
-                        local found = false
-                        for _, testName in ipairs(nameVariations) do
-                            if ns.Player.IsToxic(testName) then
-                                ns.Core.DebugPrint("FOUND TOXIC: " .. name .. " (matched: " .. testName .. ")", true)
-                                table.insert(onlineMarkedPlayers, name)
-                                found = true
-                                break
-                            elseif ns.Player.IsPumper(testName) then
-                                ns.Core.DebugPrint("FOUND PUMPER: " .. name .. " (matched: " .. testName .. ")", true)
-                                table.insert(onlineMarkedPlayers, name)
-                                found = true
-                                break
-                            end
-                        end
-                        
-                        if not found then
-                            ns.Core.DebugPrint("No match found for: " .. name, true)
-                        end
-                    end
-                end
-            end
-            
-            -- Check friends
-            local numFriends = C_FriendList.GetNumFriends()
-            ns.Core.DebugPrint("Checking " .. numFriends .. " friends...", true)
-            if numFriends > 0 then
-                for i = 1, numFriends do
-                    local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
-                    if friendInfo and friendInfo.connected then
-                        local name = friendInfo.name
-                        if name then
-                            local fullName = name .. "-" .. GetRealmName()
-                            ns.Core.DebugPrint("Checking friend: " .. name .. " (full: " .. fullName .. ")", true)
-                            
-                            -- Try multiple name formats
-                            local nameVariations = {
-                                name,  -- Just the name
-                                fullName,  -- Name-Realm
-                                name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
-                            }
-                            
-                            local found = false
-                            for _, testName in ipairs(nameVariations) do
-                                if ns.Player.IsToxic(testName) then
-                                    ns.Core.DebugPrint("FOUND TOXIC FRIEND: " .. name .. " (matched: " .. testName .. ")", true)
-                                    if not tContains(onlineMarkedPlayers, name) then
-                                        table.insert(onlineMarkedPlayers, name)
-                                    end
-                                    found = true
-                                    break
-                                elseif ns.Player.IsPumper(testName) then
-                                    ns.Core.DebugPrint("FOUND PUMPER FRIEND: " .. name .. " (matched: " .. testName .. ")", true)
-                                    if not tContains(onlineMarkedPlayers, name) then
-                                        table.insert(onlineMarkedPlayers, name)
-                                    end
-                                    found = true
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            -- Check group members
-            if IsInGroup() then
-                ns.Core.DebugPrint("Checking " .. GetNumGroupMembers() .. " group members...", true)
-                for i = 1, GetNumGroupMembers() do
-                    local unit = (IsInRaid() and "raid"..i) or (i == GetNumGroupMembers() and "player" or "party"..i)
-                    if UnitExists(unit) then
-                        local name = GetUnitName(unit, true)
-                        if name then
-                            ns.Core.DebugPrint("Checking group member: " .. name, true)
-                            
-                            -- Try multiple name formats
-                            local nameVariations = {
-                                name,  -- Just the name
-                                name .. "-" .. GetRealmName(),  -- Name-Realm
-                                name .. "-" .. GetNormalizedRealmName(),  -- Name-NormalizedRealm
-                            }
-                            
-                            local found = false
-                            for _, testName in ipairs(nameVariations) do
-                                if ns.Player.IsToxic(testName) then
-                                    ns.Core.DebugPrint("FOUND TOXIC GROUP MEMBER: " .. name .. " (matched: " .. testName .. ")", true)
-                                    if not tContains(onlineMarkedPlayers, name) then
-                                        table.insert(onlineMarkedPlayers, name)
-                                    end
-                                    found = true
-                                    break
-                                elseif ns.Player.IsPumper(testName) then
-                                    ns.Core.DebugPrint("FOUND PUMPER GROUP MEMBER: " .. name .. " (matched: " .. testName .. ")", true)
-                                    if not tContains(onlineMarkedPlayers, name) then
-                                        table.insert(onlineMarkedPlayers, name)
-                                    end
-                                    found = true
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            if #onlineMarkedPlayers > 0 then
-                ns.Events.ShowToxicWarningPopup(onlineMarkedPlayers)
-                ns.Core.DebugPrint("Test warning popup shown with " .. #onlineMarkedPlayers .. " real online marked players: " .. table.concat(onlineMarkedPlayers, ", "), true)
-            else
-                ns.Core.DebugPrint("No marked players are currently online to test with.", true)
-                ns.Core.DebugPrint("Make sure you have marked players in your guild, friends list, or current group.", true)
-            end
-        elseif cmd == "clearwarnings" then
-            ns.Events.ClearWarningCache()
-            ns.Core.DebugPrint("Warning cache cleared - warnings will show again for all players", true)
-        elseif cmd == "checkonline" or cmd == "scanonline" then
-            -- Manually trigger online detection
-            ns.Core.DebugPrint("Scanning for online marked players...", true)
-            ns.Events.CheckGuildMemberOnline()
-            ns.Events.CheckFriendListOnline()
-            ns.Events.CheckGroupForMarkedPlayers()
-            ns.Core.DebugPrint("Online scan completed.", true)
         elseif cmd == "clearonline" or cmd == "resetonline" then
             -- Clear online notification cache
             ns.Events.ClearOnlineNotificationCache()
             ns.Core.DebugPrint("Online notification cache cleared - notifications will show again for all players", true)
-        elseif cmd == "populatecache" or cmd == "populate" then
-            -- Populate cache with currently online players
-            ns.Events.PopulateCacheWithCurrentOnlinePlayers()
-            ns.Core.DebugPrint("Cache populated with currently online marked players", true)
-        elseif cmd == "testcache" or cmd == "tc" then
-            -- Test cache functionality by showing current state and testing guild/friend checking
-            ns.Core.DebugPrint("=== CACHE TEST ===", true)
-            if ToxicifyDB.OnlineNotificationCache then
-                ns.Core.DebugPrint("Cache exists - Toxic: " .. (ToxicifyDB.OnlineNotificationCache.toxic and "exists" or "nil") .. ", Pumper: " .. (ToxicifyDB.OnlineNotificationCache.pumper and "exists" or "nil"), true)
-                ns.Core.DebugPrint("Cache populated flag: " .. tostring(ToxicifyDB.CachePopulated), true)
-            else
-                ns.Core.DebugPrint("Cache does not exist", true)
-            end
-            ns.Core.DebugPrint("Phase change flag: " .. tostring(ToxicifyDB.InPhaseChange), true)
-            ns.Core.DebugPrint("Running guild member check...", true)
-            ns.Events.CheckGuildMemberOnline()
-            ns.Core.DebugPrint("Running friend list check...", true)
-            ns.Events.CheckFriendListOnline()
-            ns.Core.DebugPrint("=== CACHE TEST COMPLETE ===", true)
-        elseif cmd == "clearphase" or cmd == "cp" then
-            -- Clear phase change flag
-            ToxicifyDB.InPhaseChange = false
-            ns.Core.DebugPrint("Phase change flag cleared", true)
-        elseif cmd == "resetplayer" and arg1 then
-            -- Reset cache for a specific player
-            ns.Events.ResetPlayerCache(arg1)
-            ns.Core.DebugPrint("Cache reset for player: " .. arg1, true)
-        elseif cmd == "showonlinecache" or cmd == "cache" then
-            -- Show current online notification cache
-            if ToxicifyDB.OnlineNotificationCache then
-                ns.Core.DebugPrint("Current online notification cache:", true)
-                ns.Core.DebugPrint("Toxic players:", true)
-                for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic or {}) do
-                    ns.Core.DebugPrint("  - " .. name, true)
-                end
-                ns.Core.DebugPrint("Pumper players:", true)
-                for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper or {}) do
-                    ns.Core.DebugPrint("  - " .. name, true)
+        elseif cmd == "notificationinterval" or cmd == "notifyinterval" then
+            -- Show or set notification interval
+            if arg1 then
+                local minutes = tonumber(arg1)
+                if minutes and minutes > 0 then
+                    ToxicifyDB.NotificationIntervalMinutes = minutes
+                    ns.Core.DebugPrint("Notification interval set to " .. minutes .. " minutes", true)
+                else
+                    ns.Core.DebugPrint("Error: Please specify a valid number of minutes. Use /toxic notificationinterval <minutes>", true)
                 end
             else
-                ns.Core.DebugPrint("Online notification cache not initialized", true)
+                local interval = ToxicifyDB.NotificationIntervalMinutes or 10
+                ns.Core.DebugPrint("Current notification interval: " .. interval .. " minutes", true)
+                ns.Core.DebugPrint("Use /toxic notificationinterval <minutes> to change", true)
             end
-        elseif cmd == "testcache" then
-            -- Test cache by adding a fake entry
-            if not ToxicifyDB.OnlineNotificationCache then
-                ns.Core.DebugPrint("Initializing cache for test...", true)
-                if ns.Events and ns.Events.ClearOnlineNotificationCache then
-                    ns.Events.ClearOnlineNotificationCache()
+        elseif cmd == "runstatus" or cmd == "runsuppress" then
+            -- Show run suppression status
+            if ns.Events and ns.Events.IsInActiveRun then
+                local inRun = ns.Events.IsInActiveRun()
+                local suppressWarnings = ns.Events.ShouldSuppressWarnings()
+                
+                ns.Core.DebugPrint("=== RUN STATUS ===", true)
+                ns.Core.DebugPrint("In active run: " .. (inRun and "YES" or "NO"), true)
+                ns.Core.DebugPrint("Warnings suppressed: " .. (suppressWarnings and "YES" or "NO"), true)
+                ns.Core.DebugPrint("Suppress during runs setting: " .. (ToxicifyDB.SuppressWarningsDuringRuns and "ENABLED" or "DISABLED"), true)
+                
+                if ToxicifyDB.RunTracking then
+                    ns.Core.DebugPrint("Run tracking data:", true)
+                    ns.Core.DebugPrint("  - In key run: " .. (ToxicifyDB.RunTracking.inKeyRun and "YES" or "NO"), true)
+                    ns.Core.DebugPrint("  - In dungeon: " .. (ToxicifyDB.RunTracking.inDungeon and "YES" or "NO"), true)
+                    ns.Core.DebugPrint("  - In raid: " .. (ToxicifyDB.RunTracking.inRaid and "YES" or "NO"), true)
+                    ns.Core.DebugPrint("  - Manual marking during run: " .. (ToxicifyDB.RunTracking.manualMarkingDuringRun and "YES" or "NO"), true)
+                    if ToxicifyDB.RunTracking.lastManualMarkTime > 0 then
+                        local timeSince = time() - ToxicifyDB.RunTracking.lastManualMarkTime
+                        ns.Core.DebugPrint("  - Time since last manual mark: " .. timeSince .. " seconds", true)
+                    end
                 end
+            else
+                ns.Core.DebugPrint("Run tracking functions not available", true)
             end
-            ToxicifyDB.OnlineNotificationCache.toxic["TestPlayer"] = true
-            ns.Core.DebugPrint("Added TestPlayer to cache. Use /reload to test persistence.", true)
         else
             ns.Core.DebugPrint("|cff39FF14Toxicify Commands:|r", true)
             ns.Core.DebugPrint("/toxic add <name-realm>        - Mark player as Toxic", true)
             ns.Core.DebugPrint("/toxic addpumper <name-realm>  - Mark player as Pumper", true)
             ns.Core.DebugPrint("/toxic del <name-realm>        - Remove player from list", true)
             ns.Core.DebugPrint("/toxic list                    - Show current list", true)
-            ns.Core.DebugPrint("/toxic export                  - Export list (string)", true)
-            ns.Core.DebugPrint("/toxic import <string>         - Import list from string", true)
             ns.Core.DebugPrint("/toxic ui                      - Toggle Toxicify list window", true)
             ns.Core.DebugPrint("/toxic settings                - Open addon settings", true)
-            ns.Core.DebugPrint("/toxic config                  - Open addon settings (alias)", true)
-            ns.Core.DebugPrint("/toxic debug                   - Toggle debug mode (shows in main chat)", true)
-            ns.Core.DebugPrint("/toxic partywarning            - Toggle party warning", true)
-            ns.Core.DebugPrint("/toxic clearwarnings           - Reset warning cache (show warnings again)", true)
-            ns.Core.DebugPrint("/toxic checkonline             - Manually scan for online marked players", true)
-            ns.Core.DebugPrint("/toxic clearonline             - Reset online notification cache", true)
-            ns.Core.DebugPrint("/toxic populatecache           - Populate cache with currently online players", true)
-            ns.Core.DebugPrint("/toxic testcache               - Test cache functionality and show debug info", true)
-            ns.Core.DebugPrint("/toxic clearphase              - Clear phase change flag", true)
-            ns.Core.DebugPrint("/toxic resetplayer <name>      - Reset cache for specific player", true)
-            ns.Core.DebugPrint("/toxic cache                   - Show current online notification cache", true)
-            ns.Core.DebugPrint("/toxic testguildtoast          - Test guild member notification toasts", true)
-            ns.Core.DebugPrint("/toxic testfriendtoast         - Test friend notification toasts", true)
-            ns.Core.DebugPrint("/toxic luaerrors               - Toggle Lua errors (requires debug mode)", true)
-            ns.Core.DebugPrint("/toxic silent                  - Disable Lua errors in console", true)
-            ns.Core.DebugPrint("/toxic noerrors                - Disable Lua errors in console (alias)", true)
-            ns.Core.DebugPrint("/toxic contextmenu             - Activate context menu marking", true)
+            ns.Core.DebugPrint("/toxic debug                   - Toggle debug mode", true)
+            ns.Core.DebugPrint("/toxic clearonline             - Reset notification cache", true)
+            ns.Core.DebugPrint("/toxic notificationinterval    - Set notification interval (minutes)", true)
+            ns.Core.DebugPrint("/toxic runstatus               - Show run suppression status", true)
         end
     end
 end

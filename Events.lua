@@ -19,15 +19,131 @@ local function InitializeOnlineNotificationCache()
     if not ToxicifyDB.OnlineNotificationCache then
         ToxicifyDB.OnlineNotificationCache = {
             toxic = {},
-            pumper = {}
+            pumper = {},
+            lastNotificationTime = {} -- Track when we last notified about each player
         }
         ns.Core.DebugPrint("Initialized new online notification cache")
     else
+        -- Initialize lastNotificationTime if it doesn't exist
+        if not ToxicifyDB.OnlineNotificationCache.lastNotificationTime then
+            ToxicifyDB.OnlineNotificationCache.lastNotificationTime = {}
+        end
         ns.Core.DebugPrint("Using existing online notification cache with " .. 
             (ToxicifyDB.OnlineNotificationCache.toxic and #ToxicifyDB.OnlineNotificationCache.toxic or 0) .. " toxic and " .. 
             (ToxicifyDB.OnlineNotificationCache.pumper and #ToxicifyDB.OnlineNotificationCache.pumper or 0) .. " pumper entries")
     end
 end
+
+-- Check if enough time has passed since last notification for this player
+local function CanNotifyPlayer(playerName, playerType)
+    InitializeOnlineNotificationCache()
+    
+    local cacheKey = playerName
+    local currentTime = time()
+    local lastNotification = ToxicifyDB.OnlineNotificationCache.lastNotificationTime[cacheKey]
+    
+    -- If never notified before, allow notification
+    if not lastNotification then
+        return true
+    end
+    
+    -- Check if enough time has passed since last notification
+    local timeSinceLastNotification = currentTime - lastNotification
+    local intervalMinutes = ToxicifyDB.NotificationIntervalMinutes or 10
+    local minInterval = intervalMinutes * 60 -- Convert minutes to seconds
+    
+    if timeSinceLastNotification >= minInterval then
+        ns.Core.DebugPrint("Player " .. playerName .. " can be notified again (last notification " .. timeSinceLastNotification .. " seconds ago)")
+        return true
+    else
+        ns.Core.DebugPrint("Player " .. playerName .. " notification suppressed (last notification " .. timeSinceLastNotification .. " seconds ago, min interval " .. minInterval .. "s)")
+        return false
+    end
+end
+
+-- Record that we notified about this player
+local function RecordNotification(playerName, playerType)
+    InitializeOnlineNotificationCache()
+    
+    local cacheKey = playerName
+    ToxicifyDB.OnlineNotificationCache.lastNotificationTime[cacheKey] = time()
+    ns.Core.DebugPrint("Recorded notification for " .. playerName .. " at " .. date("%H:%M:%S"))
+end
+
+-- Key/Run detection and warning suppression
+local function InitializeRunTracking()
+    if not ToxicifyDB.RunTracking then
+        ToxicifyDB.RunTracking = {
+            inKeyRun = false,
+            inDungeon = false,
+            inRaid = false,
+            suppressWarnings = false,
+            manualMarkingDuringRun = false,
+            lastManualMarkTime = 0
+        }
+    end
+end
+
+-- Check if player is currently in a key run or dungeon
+local function IsInActiveRun()
+    InitializeRunTracking()
+    
+    -- Check if in dungeon
+    local inDungeon = IsInInstance() and select(2, GetInstanceInfo()) == "party"
+    
+    -- Check if in challenge mode (mythic+)
+    local inChallengeMode = C_ChallengeMode and C_ChallengeMode.IsChallengeModeActive()
+    
+    -- Check if in raid
+    local inRaid = IsInInstance() and select(2, GetInstanceInfo()) == "raid"
+    
+    local inKeyRun = inDungeon and inChallengeMode
+    local inAnyRun = inKeyRun or (inDungeon and not inChallengeMode) or inRaid
+    
+    -- Update tracking
+    ToxicifyDB.RunTracking.inKeyRun = inKeyRun
+    ToxicifyDB.RunTracking.inDungeon = inDungeon
+    ToxicifyDB.RunTracking.inRaid = inRaid
+    
+    return inAnyRun
+end
+
+-- Check if warnings should be suppressed
+local function ShouldSuppressWarnings()
+    InitializeRunTracking()
+    
+    -- If manually marked someone during this run, suppress warnings for a while
+    local currentTime = time()
+    local timeSinceLastMark = currentTime - ToxicifyDB.RunTracking.lastManualMarkTime
+    
+    -- Suppress warnings for 5 minutes after manual marking during a run
+    if ToxicifyDB.RunTracking.manualMarkingDuringRun and timeSinceLastMark < 300 then
+        return true
+    end
+    
+    -- Check if suppress warnings setting is enabled for runs
+    if ToxicifyDB.SuppressWarningsDuringRuns and IsInActiveRun() then
+        return true
+    end
+    
+    return false
+end
+
+-- Track manual marking during runs
+function ns.Events.TrackManualMarking()
+    InitializeRunTracking()
+    ToxicifyDB.RunTracking.manualMarkingDuringRun = true
+    ToxicifyDB.RunTracking.lastManualMarkTime = time()
+    
+    if IsInActiveRun() then
+        ns.Core.DebugPrint("Manual marking detected during active run - warnings will be suppressed for 5 minutes")
+    end
+end
+
+-- Make functions available in namespace
+ns.Events.IsInActiveRun = IsInActiveRun
+ns.Events.ShouldSuppressWarnings = ShouldSuppressWarnings
+ns.Events.CanNotifyPlayer = CanNotifyPlayer
 
 -- Debouncing timers for online notifications
 local guildDebounceTimer = nil
@@ -39,10 +155,14 @@ local function DebouncedCheckGuildMemberOnline()
     if guildDebounceTimer then
         guildDebounceTimer:Cancel()
         guildDebounceTimer = nil
+        ns.Core.DebugPrint("Guild roster update - previous timer cancelled, new one scheduled")
+    else
+        ns.Core.DebugPrint("Guild roster update detected - debounced check scheduled")
     end
     
     -- Set new timer to execute after delay
-    guildDebounceTimer = C_Timer.NewTimer(0.8, function()
+    guildDebounceTimer = C_Timer.NewTimer(2.0, function()
+        ns.Core.DebugPrint("Executing debounced guild member check")
         ns.Events.CheckGuildMemberOnline()
         -- Also check for guild members going offline after the main check
         C_Timer.After(0.2, function()
@@ -51,8 +171,6 @@ local function DebouncedCheckGuildMemberOnline()
         end)
         guildDebounceTimer = nil
     end)
-    
-    ns.Core.DebugPrint("Guild roster update detected - debounced check scheduled")
 end
 
 -- Debounced friend list check function
@@ -61,10 +179,14 @@ local function DebouncedCheckFriendListOnline()
     if friendDebounceTimer then
         friendDebounceTimer:Cancel()
         friendDebounceTimer = nil
+        ns.Core.DebugPrint("Friend list update - previous timer cancelled, new one scheduled")
+    else
+        ns.Core.DebugPrint("Friend list update detected - debounced check scheduled")
     end
     
     -- Set new timer to execute after delay
-    friendDebounceTimer = C_Timer.NewTimer(0.8, function()
+    friendDebounceTimer = C_Timer.NewTimer(2.0, function()
+        ns.Core.DebugPrint("Executing debounced friend list check")
         ns.Events.CheckFriendListOnline()
         -- Also check for friends going offline after the main check
         C_Timer.After(0.2, function()
@@ -72,8 +194,6 @@ local function DebouncedCheckFriendListOnline()
         end)
         friendDebounceTimer = nil
     end)
-    
-    ns.Core.DebugPrint("Friend list update detected - debounced check scheduled")
 end
 
 -- Function to clear online notification cache
@@ -83,8 +203,9 @@ function ns.Events.ClearOnlineNotificationCache()
     end
     ToxicifyDB.OnlineNotificationCache.toxic = {}
     ToxicifyDB.OnlineNotificationCache.pumper = {}
+    ToxicifyDB.OnlineNotificationCache.lastNotificationTime = {}
     ToxicifyDB.CachePopulated = false
-    ns.Core.DebugPrint("Online notification cache cleared")
+    ns.Core.DebugPrint("Online notification cache cleared (including time tracking)")
 end
 
 -- Function to reset cache for a specific player (when they go offline)
@@ -105,6 +226,13 @@ function ns.Events.ResetPlayerCache(playerName)
         ToxicifyDB.OnlineNotificationCache.pumper[playerName] = nil
         wasInCache = true
         ns.Core.DebugPrint("Reset pumper cache for offline player: " .. playerName)
+    end
+    
+    -- Also reset the time tracking for this player so they can be notified immediately when they come back online
+    if ToxicifyDB.OnlineNotificationCache.lastNotificationTime and ToxicifyDB.OnlineNotificationCache.lastNotificationTime[playerName] then
+        ToxicifyDB.OnlineNotificationCache.lastNotificationTime[playerName] = nil
+        ns.Core.DebugPrint("Reset notification time tracking for offline player: " .. playerName)
+        wasInCache = true
     end
     
     if wasInCache then
@@ -366,6 +494,12 @@ end
 
 -- Show toxic warning popup
 function ns.Events.ShowToxicWarningPopup(toxicPlayers)
+    -- Check if warnings should be suppressed during runs
+    if ShouldSuppressWarnings() then
+        ns.Core.DebugPrint("Suppressing toxic warning popup (during active run or recent manual marking)")
+        return
+    end
+    
     if _G.ToxicifyWarningFrame then
         _G.ToxicifyWarningFrame:Hide()
     end
@@ -638,7 +772,15 @@ function ns.Events.CheckGuildMemberOnline()
     end
     
     -- Debug: Show current cache state
-    ns.Core.DebugPrint("Current online notification cache - Toxic: " .. (ToxicifyDB.OnlineNotificationCache.toxic and "exists" or "nil") .. ", Pumper: " .. (ToxicifyDB.OnlineNotificationCache.pumper and "exists" or "nil"))
+    local toxicCount = 0
+    local pumperCount = 0
+    if ToxicifyDB.OnlineNotificationCache.toxic then
+        for _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic) do toxicCount = toxicCount + 1 end
+    end
+    if ToxicifyDB.OnlineNotificationCache.pumper then
+        for _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper) do pumperCount = pumperCount + 1 end
+    end
+    ns.Core.DebugPrint("Current online notification cache - Toxic: " .. toxicCount .. " entries, Pumper: " .. pumperCount .. " entries")
     
     -- Get guild roster info
     local numGuildMembers = GetNumGuildMembers()
@@ -675,16 +817,27 @@ function ns.Events.CheckGuildMemberOnline()
                     end
                     
                     -- Check if we already notified about this player this session
-                    if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                    -- Use consistent name format for cache (just the name, not full name)
+                    local cacheKey = name
+                    
+                    -- Ensure cache exists
+                    if not ToxicifyDB.OnlineNotificationCache.toxic then
+                        ToxicifyDB.OnlineNotificationCache.toxic = {}
+                    end
+                    
+                    -- Check if we can notify this player (time-based only)
+                    local canNotify = CanNotifyPlayer(cacheKey, "toxic")
+                    
+                    if canNotify then
                         ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. cacheKey .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[cacheKey]))
                         ns.Events.ShowGuildToast(name, "toxic", "guild")
-                        ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                        ToxicifyDB.OnlineNotificationCache.toxic[cacheKey] = true
+                        RecordNotification(cacheKey, "toxic")
                         foundCount = foundCount + 1
-                        ns.Core.DebugPrint("Added " .. name .. " to toxic notification cache")
+                        ns.Core.DebugPrint("Added " .. cacheKey .. " to toxic notification cache")
                     else
-                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (already in cache) - SKIPPING")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                        ns.Core.DebugPrint("Toxic guild member online: " .. name .. " (time-based suppression) - SKIPPING")
                     end
                     found = true
                     break
@@ -695,15 +848,27 @@ function ns.Events.CheckGuildMemberOnline()
                     end
                     
                     -- Check if we already notified about this player this session
-                    if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                    -- Use consistent name format for cache (just the name, not full name)
+                    local cacheKey = name
+                    
+                    -- Ensure cache exists
+                    if not ToxicifyDB.OnlineNotificationCache.pumper then
+                        ToxicifyDB.OnlineNotificationCache.pumper = {}
+                    end
+                    
+                    -- Check if we can notify this player (time-based only)
+                    local canNotify = CanNotifyPlayer(cacheKey, "pumper")
+                    
+                    if canNotify then
                         ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. cacheKey .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[cacheKey]))
                         ns.Events.ShowGuildToast(name, "pumper", "guild")
-                        ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                        ToxicifyDB.OnlineNotificationCache.pumper[cacheKey] = true
+                        RecordNotification(cacheKey, "pumper")
                         foundCount = foundCount + 1
+                        ns.Core.DebugPrint("Added " .. cacheKey .. " to pumper notification cache")
                     else
-                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (already in cache) - SKIPPING")
-                        ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                        ns.Core.DebugPrint("Pumper guild member online: " .. name .. " (time-based suppression) - SKIPPING")
                     end
                     found = true
                     break
@@ -768,27 +933,33 @@ function ns.Events.CheckFriendListOnline()
                         
                         for _, testName in ipairs(nameVariations) do
                             if ns.Player.IsToxic(testName) then
-                                if not ToxicifyDB.OnlineNotificationCache.toxic[name] then
+                                -- Check if we can notify this player (time-based only)
+                                local canNotify = CanNotifyPlayer(name, "toxic")
+                                
+                                if canNotify then
                                     ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
                                     ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
                                     ns.Events.ShowGuildToast(name, "toxic", "friend")
                                     ToxicifyDB.OnlineNotificationCache.toxic[name] = true
+                                    RecordNotification(name, "toxic")
                                     foundCount = foundCount + 1
                                 else
-                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (already in cache) - SKIPPING")
-                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.toxic[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.toxic[name]))
+                                    ns.Core.DebugPrint("Toxic WoW friend online: " .. name .. " (time-based suppression) - SKIPPING")
                                 end
                                 break
                             elseif ns.Player.IsPumper(testName) then
-                                if not ToxicifyDB.OnlineNotificationCache.pumper[name] then
+                                -- Check if we can notify this player (time-based only)
+                                local canNotify = CanNotifyPlayer(name, "pumper")
+                                
+                                if canNotify then
                                     ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (matched: " .. testName .. ") - SHOWING NOTIFICATION")
                                     ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
                                     ns.Events.ShowGuildToast(name, "pumper", "friend")
                                     ToxicifyDB.OnlineNotificationCache.pumper[name] = true
+                                    RecordNotification(name, "pumper")
                                     foundCount = foundCount + 1
                                 else
-                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (already in cache) - SKIPPING")
-                                    ns.Core.DebugPrint("Cache check: ToxicifyDB.OnlineNotificationCache.pumper[" .. name .. "] = " .. tostring(ToxicifyDB.OnlineNotificationCache.pumper[name]))
+                                    ns.Core.DebugPrint("Pumper WoW friend online: " .. name .. " (time-based suppression) - SKIPPING")
                                 end
                                 break
                             end
@@ -1069,6 +1240,12 @@ end
 
 -- Show guild member toast notification
 function ns.Events.ShowGuildToast(playerName, status, source)
+    -- Check if warnings should be suppressed during runs
+    if ShouldSuppressWarnings() then
+        ns.Core.DebugPrint("Suppressing " .. status .. " warning for " .. playerName .. " (during active run or recent manual marking)")
+        return
+    end
+    
     if not _G.ToxicifyGuildToastFrame then
     local frame = CreateFrame("Frame", "ToxicifyGuildToastFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
     frame:SetSize(320, 70)

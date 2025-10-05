@@ -89,9 +89,30 @@ partyWarningDesc:SetWidth(400)
 partyWarningDesc:SetJustifyH("LEFT")
 partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
 
+-- Suppress warnings during runs
+local suppressRunWarningCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
+suppressRunWarningCheck:SetPoint("TOPLEFT", partyWarningDesc, "BOTTOMLEFT", 0, -15)
+suppressRunWarningCheck.Text:SetText("Suppress warnings during key runs/dungeons")
+suppressRunWarningCheck:SetChecked(ToxicifyDB.SuppressWarningsDuringRuns or true)
+suppressRunWarningCheck:SetScript("OnClick", function(self)
+    ns.Core.DebugPrint("Suppress run warnings checkbox clicked, new value: " .. tostring(self:GetChecked()))
+    ToxicifyDB.SuppressWarningsDuringRuns = self:GetChecked()
+    ns.Core.DebugPrint("SuppressWarningsDuringRuns set to: " .. tostring(ToxicifyDB.SuppressWarningsDuringRuns))
+    
+    -- Update description
+    suppressRunWarningDesc:SetText("Prevents toxic/pumper warnings during active dungeon or key runs.")
+end)
+
+-- Suppress Run Warning description
+local suppressRunWarningDesc = generalPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+suppressRunWarningDesc:SetPoint("TOPLEFT", suppressRunWarningCheck, "BOTTOMLEFT", 0, -5)
+suppressRunWarningDesc:SetWidth(400)
+suppressRunWarningDesc:SetJustifyH("LEFT")
+suppressRunWarningDesc:SetText("Prevents toxic/pumper warnings during active dungeon or key runs.")
+
 -- Target Frame Indicator
 local targetFrameCheck = CreateFrame("CheckButton", nil, generalPanel, "InterfaceOptionsCheckButtonTemplate")
-targetFrameCheck:SetPoint("TOPLEFT", partyWarningDesc, "BOTTOMLEFT", 0, -15)
+targetFrameCheck:SetPoint("TOPLEFT", suppressRunWarningDesc, "BOTTOMLEFT", 0, -15)
 targetFrameCheck.Text:SetText("Show Toxic/Pumper indicator above target frame")
 targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
 targetFrameCheck:SetScript("OnClick", function(self)
@@ -217,6 +238,10 @@ generalPanel:SetScript("OnShow", function()
     -- Initialize party warning checkbox and description
     partyWarningCheck:SetChecked(ToxicifyDB.PartyWarningEnabled or true)
     partyWarningDesc:SetText("Shows a warning popup when joining parties with toxic players.")
+    
+    -- Initialize suppress run warnings checkbox and description
+    suppressRunWarningCheck:SetChecked(ToxicifyDB.SuppressWarningsDuringRuns or true)
+    suppressRunWarningDesc:SetText("Prevents toxic/pumper warnings during active dungeon or key runs.")
     
     -- Initialize target frame indicator checkbox and description
     targetFrameCheck:SetChecked(ToxicifyDB.TargetFrameIndicatorEnabled or true)
