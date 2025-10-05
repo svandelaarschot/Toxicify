@@ -1,6 +1,6 @@
 #!/bin/sh
-# Post-commit hook for Toxicify
-# This runs AFTER a successful commit
+# Pre-commit hook for Toxicify
+# This runs BEFORE a commit
 
 # Set WoW path
 WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
@@ -8,9 +8,5 @@ WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 # Copy all .lua and .toc files using PowerShell
 powershell.exe -Command "Copy-Item *.lua '$WOW_PATH' -Force"
 powershell.exe -Command "Copy-Item *.toc '$WOW_PATH' -Force"
-
-# Copy files to Installer folder
-powershell.exe -Command "Copy-Item *.lua 'Installer' -Force"
-powershell.exe -Command "Copy-Item *.toc 'Installer' -Force"
 
 exit 0
