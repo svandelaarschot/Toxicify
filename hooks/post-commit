@@ -8,14 +8,9 @@ WOW_PATH="D:/World of Warcraft/_retail_/Interface/AddOns/Toxicify"
 # Copy all .lua and .toc files using PowerShell
 powershell.exe -Command "Copy-Item *.lua '$WOW_PATH' -Force"
 powershell.exe -Command "Copy-Item *.toc '$WOW_PATH' -Force"
-powershell.exe -Command "Copy-Item Assets/logo.png '$WOW_PATH' -Force"
 
 # Copy files to Installer folder
 powershell.exe -Command "Copy-Item *.lua 'Installer' -Force"
 powershell.exe -Command "Copy-Item *.toc 'Installer' -Force"
-powershell.exe -Command "Copy-Item Assets/logo.png 'Installer' -Force"
-
-# Build new installer
-powershell.exe -Command "cd Installer; .\Build-Installer-NoDownload.bat"
 
 exit 0

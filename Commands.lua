@@ -309,7 +309,7 @@ function ns.Commands.Initialize()
                 for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic or {}) do
                     ns.Core.DebugPrint("  - " .. name, true)
                 end
-                ns.Core.DebugPrint("Pumper players:", true)www
+                ns.Core.DebugPrint("Pumper players:", true)
                 for name, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper or {}) do
                     ns.Core.DebugPrint("  - " .. name, true)
                 end
