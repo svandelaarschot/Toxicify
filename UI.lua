@@ -72,7 +72,7 @@ function ns.UI.CreateToxicifyUI()
     if _G.ToxicifyListFrame then return end
 
     local f = CreateFrame("Frame", "ToxicifyListFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
-    f:SetSize(800, 650)
+    f:SetSize(800, 680)
     f:SetPoint("CENTER")
     f:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
@@ -183,29 +183,35 @@ function ns.UI.CreateToxicifyUI()
     -- Auto-completion using shared functionality
     local suggestionBox = ns.Core.CreateAutoCompletion(addBox, f)
 
-    -- Search row (moved up to be right below buttons)
+    -- Search row (positioned below Player input)
     local searchLabel = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    searchLabel:SetPoint("TOPLEFT", addBox, "BOTTOMLEFT", 0, -110)
+    searchLabel:SetPoint("TOPLEFT", 20, -80)
     searchLabel:SetText("Search:")
 
     local searchBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
-    searchBox:SetSize(250, 22)
+    searchBox:SetSize(220, 22)
     searchBox:SetPoint("LEFT", searchLabel, "RIGHT", 10, 0)
     searchBox:SetAutoFocus(false)
     searchBox:SetScript("OnTextChanged", function(self) f:Refresh() end)
 
-    -- List (increased height)
+    -- Line spacer between checkbox and list (with padding)
+    local spacerLine = f:CreateTexture(nil, "OVERLAY")
+    spacerLine:SetColorTexture(0.5, 0.5, 0.5, 0.3)
+    spacerLine:SetSize(760, 1)
+    spacerLine:SetPoint("TOPLEFT", 20, -125)
+    
+    -- List (adjusted height and position)
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", searchLabel, "BOTTOMLEFT", 0, -10)
-    scroll:SetPoint("BOTTOMRIGHT", -30, 40)
+    scroll:SetPoint("TOPLEFT", 20, -140)
+    scroll:SetPoint("BOTTOMRIGHT", -45, 50)
 
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(760, 450)
     scroll:SetScrollChild(content)
 
-    -- Filter toxic groups checkbox (moved to bottom left)
+    -- Filter toxic groups checkbox (positioned below Player input)
     local hideToxicCheck = CreateFrame("CheckButton", nil, f, "InterfaceOptionsCheckButtonTemplate")
-    hideToxicCheck:SetPoint("BOTTOMLEFT", 20, 50)
+    hideToxicCheck:SetPoint("TOPLEFT", 20, -110)
     hideToxicCheck.Text:SetText("Hide toxic groups in Premade Groups")
     hideToxicCheck:SetChecked(ToxicifyDB.HideInFinder or false)
     hideToxicCheck:SetScript("OnClick", function(self)
@@ -546,7 +552,7 @@ function ns.UI.RefreshSharedList(content, filterText)
                     icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
                     nameBox:SetTextColor(1, 0, 0) -- rood
                 else
-                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_2")
+                    icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_1")
                     nameBox:SetTextColor(0, 1, 0) -- groen
                 end
                 -- Zorg dat de tekst zichtbaar is
@@ -595,7 +601,7 @@ function ns.UI.RefreshSharedList(content, filterText)
                         elseif playerData.status == "pumper" then
                             ns.Player.MarkPumper(newName)
                         end
-                        name = newName
+                    name = newName
                     end
                     
                     -- Update list after name change
