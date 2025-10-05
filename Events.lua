@@ -705,6 +705,13 @@ function ns.Events.ShowGuildToast(playerName, status)
         frame.content:SetJustifyH("CENTER")
         frame.content:SetWidth(320)
         
+        -- Click instruction text (will be shown for pumpers)
+        frame.clickText = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        frame.clickText:SetPoint("BOTTOM", 0, 8)
+        frame.clickText:SetJustifyH("CENTER")
+        frame.clickText:SetText("|cffaaaaaaClick to whisper|r")
+        frame.clickText:Hide()
+        
         -- Close button
         frame.closeBtn = CreateFrame("Button", nil, frame)
         frame.closeBtn:SetSize(20, 20)
@@ -723,6 +730,39 @@ function ns.Events.ShowGuildToast(playerName, status)
     local statusText = status == "toxic" and "Toxic Player" or "Pumper"
     
     frame.content:SetText(icon .. " " .. color .. playerName .. "|r (" .. statusText .. ")")
+    
+    -- Store player info for click handler
+    frame.playerName = playerName
+    frame.playerStatus = status
+    
+    -- Make frame clickable for pumpers
+    if status == "pumper" then
+        frame.clickText:Show()
+        frame:EnableMouse(true)
+        frame:SetScript("OnMouseUp", function(self, button)
+            if button == "LeftButton" then
+                -- Start whisper conversation
+                ChatFrame_OpenChat("/w " .. playerName .. " ", ChatFrame1)
+                frame:Hide()
+                ns.Core.DebugPrint("Opened whisper to pumper: " .. playerName, true)
+            end
+        end)
+        frame:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(frame, "ANCHOR_TOP")
+            GameTooltip:SetText("Click to whisper " .. playerName)
+            GameTooltip:Show()
+        end)
+        frame:SetScript("OnLeave", function(self)
+            GameTooltip:Hide()
+        end)
+    else
+        frame.clickText:Hide()
+        frame:EnableMouse(false)
+        frame:SetScript("OnMouseUp", nil)
+        frame:SetScript("OnEnter", nil)
+        frame:SetScript("OnLeave", nil)
+    end
+    
     frame:Show()
     
     -- Auto-hide after 5 seconds
