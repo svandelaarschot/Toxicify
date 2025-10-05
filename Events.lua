@@ -29,6 +29,53 @@ local function InitializeOnlineNotificationCache()
     end
 end
 
+-- Debouncing timers for online notifications
+local guildDebounceTimer = nil
+local friendDebounceTimer = nil
+
+-- Debounced guild member check function
+local function DebouncedCheckGuildMemberOnline()
+    -- Cancel previous timer if it exists
+    if guildDebounceTimer then
+        guildDebounceTimer:Cancel()
+        guildDebounceTimer = nil
+    end
+    
+    -- Set new timer to execute after delay
+    guildDebounceTimer = C_Timer.NewTimer(0.8, function()
+        ns.Events.CheckGuildMemberOnline()
+        -- Also check for guild members going offline after the main check
+        C_Timer.After(0.2, function()
+            ns.Events.CheckGuildMembersOffline()
+            ns.Events.UpdateGuildRosterDisplay()
+        end)
+        guildDebounceTimer = nil
+    end)
+    
+    ns.Core.DebugPrint("Guild roster update detected - debounced check scheduled")
+end
+
+-- Debounced friend list check function
+local function DebouncedCheckFriendListOnline()
+    -- Cancel previous timer if it exists
+    if friendDebounceTimer then
+        friendDebounceTimer:Cancel()
+        friendDebounceTimer = nil
+    end
+    
+    -- Set new timer to execute after delay
+    friendDebounceTimer = C_Timer.NewTimer(0.8, function()
+        ns.Events.CheckFriendListOnline()
+        -- Also check for friends going offline after the main check
+        C_Timer.After(0.2, function()
+            ns.Events.CheckFriendsOffline()
+        end)
+        friendDebounceTimer = nil
+    end)
+    
+    ns.Core.DebugPrint("Friend list update detected - debounced check scheduled")
+end
+
 -- Function to clear online notification cache
 function ns.Events.ClearOnlineNotificationCache()
     if not ToxicifyDB.OnlineNotificationCache then
@@ -38,6 +85,33 @@ function ns.Events.ClearOnlineNotificationCache()
     ToxicifyDB.OnlineNotificationCache.pumper = {}
     ToxicifyDB.CachePopulated = false
     ns.Core.DebugPrint("Online notification cache cleared")
+end
+
+-- Function to reset cache for a specific player (when they go offline)
+function ns.Events.ResetPlayerCache(playerName)
+    -- Initialize cache if needed
+    if not ToxicifyDB.OnlineNotificationCache then
+        InitializeOnlineNotificationCache()
+    end
+    
+    -- Reset cache for this player so they can be detected again when they come back online
+    local wasInCache = false
+    if ToxicifyDB.OnlineNotificationCache.toxic[playerName] then
+        ToxicifyDB.OnlineNotificationCache.toxic[playerName] = nil
+        wasInCache = true
+        ns.Core.DebugPrint("Reset toxic cache for offline player: " .. playerName)
+    end
+    if ToxicifyDB.OnlineNotificationCache.pumper[playerName] then
+        ToxicifyDB.OnlineNotificationCache.pumper[playerName] = nil
+        wasInCache = true
+        ns.Core.DebugPrint("Reset pumper cache for offline player: " .. playerName)
+    end
+    
+    if wasInCache then
+        ns.Core.DebugPrint("Player " .. playerName .. " removed from cache - will notify when they come back online")
+    else
+        ns.Core.DebugPrint("Player " .. playerName .. " was not in cache (no reset needed)")
+    end
 end
 
 -- Function to populate cache with currently online marked players (prevents notifications for already online players)
@@ -734,6 +808,102 @@ function ns.Events.CheckFriendListOnline()
     end
 end
 
+-- Check for friends who went offline and reset their cache
+function ns.Events.CheckFriendsOffline()
+    if not ToxicifyDB.OnlineNotificationCache then
+        return
+    end
+    
+    -- Check if any cached friends are no longer online
+    if ToxicifyDB.OnlineNotificationCache.toxic then
+        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic) do
+            -- Check if this player is still online in friends list
+            local stillOnline = false
+            local numFriends = C_FriendList.GetNumFriends()
+            for i = 1, numFriends do
+                local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+                if friendInfo and friendInfo.connected and friendInfo.name == playerName then
+                    stillOnline = true
+                    break
+                end
+            end
+            
+            if not stillOnline then
+                ns.Core.DebugPrint("Friend went offline (detected via friend list): " .. playerName)
+                ns.Events.ResetPlayerCache(playerName)
+            end
+        end
+    end
+    
+    if ToxicifyDB.OnlineNotificationCache.pumper then
+        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper) do
+            -- Check if this player is still online in friends list
+            local stillOnline = false
+            local numFriends = C_FriendList.GetNumFriends()
+            for i = 1, numFriends do
+                local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+                if friendInfo and friendInfo.connected and friendInfo.name == playerName then
+                    stillOnline = true
+                    break
+                end
+            end
+            
+            if not stillOnline then
+                ns.Core.DebugPrint("Friend went offline (detected via friend list): " .. playerName)
+                ns.Events.ResetPlayerCache(playerName)
+            end
+        end
+    end
+end
+
+-- Check for guild members who went offline and reset their cache
+function ns.Events.CheckGuildMembersOffline()
+    if not ToxicifyDB.OnlineNotificationCache or not IsInGuild() then
+        return
+    end
+    
+    -- Check if any cached guild members are no longer online
+    if ToxicifyDB.OnlineNotificationCache.toxic then
+        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.toxic) do
+            -- Check if this player is still online in guild roster
+            local stillOnline = false
+            local numGuildMembers = GetNumGuildMembers()
+            for i = 1, numGuildMembers do
+                local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+                if name == playerName and online then
+                    stillOnline = true
+                    break
+                end
+            end
+            
+            if not stillOnline then
+                ns.Core.DebugPrint("Guild member went offline (detected via guild roster): " .. playerName)
+                ns.Events.ResetPlayerCache(playerName)
+            end
+        end
+    end
+    
+    if ToxicifyDB.OnlineNotificationCache.pumper then
+        for playerName, _ in pairs(ToxicifyDB.OnlineNotificationCache.pumper) do
+            -- Check if this player is still online in guild roster
+            local stillOnline = false
+            local numGuildMembers = GetNumGuildMembers()
+            for i = 1, numGuildMembers do
+                local name, rank, rankIndex, level, class, zone, note, officernote, online, status, classFileName, achievementPoints, achievementRank, isMobile, canSoR, repStanding, guid = GetGuildRosterInfo(i)
+                if name == playerName and online then
+                    stillOnline = true
+                    break
+                end
+            end
+            
+            if not stillOnline then
+                ns.Core.DebugPrint("Guild member went offline (detected via guild roster): " .. playerName)
+                ns.Events.ResetPlayerCache(playerName)
+            end
+        end
+    end
+end
+
 -- Check for marked players in current group/raid (for warning popup only, not notifications)
 function ns.Events.CheckGroupForMarkedPlayers()
     if not ToxicifyDB.GuildToastEnabled then
@@ -1080,13 +1250,9 @@ function ns.Events.Initialize()
     guildFrame:RegisterEvent("PLAYER_LOGOUT")
     guildFrame:SetScript("OnEvent", function(self, event, ...)
         if event == "GUILD_ROSTER_UPDATE" then
-            ns.Events.CheckGuildMemberOnline()
-            -- Also update guild roster display
-            C_Timer.After(0.5, function()
-                ns.Events.UpdateGuildRosterDisplay()
-            end)
+            DebouncedCheckGuildMemberOnline()
         elseif event == "FRIENDLIST_UPDATE" then
-            ns.Events.CheckFriendListOnline()
+            DebouncedCheckFriendListOnline()
         elseif event == "PLAYER_ENTERING_WORLD" then
             -- Set flag to prevent notifications during phase changes
             ToxicifyDB.InPhaseChange = true
@@ -1117,21 +1283,14 @@ function ns.Events.Initialize()
             -- Check for guild member online/offline messages
             if message and (message:find("has come online") or message:find("is now online")) then
                 ns.Core.DebugPrint("Guild member online detected: " .. message)
-                C_Timer.After(1, function() -- Delay to ensure roster is updated
-                    ns.Events.CheckGuildMemberOnline()
-                end)
+                -- Use debounced function to prevent stacking with roster update events
+                DebouncedCheckGuildMemberOnline()
             elseif message and (message:find("has gone offline") or message:find("is now offline")) then
                 -- Extract player name from offline message and reset cache
                 local playerName = message:match("([^%s]+) has gone offline") or message:match("([^%s]+) is now offline")
                 if playerName then
                     ns.Core.DebugPrint("Player went offline: " .. playerName)
-                    -- Initialize cache if needed
-                    if not ToxicifyDB.OnlineNotificationCache then
-                        InitializeOnlineNotificationCache()
-                    end
-                    -- Reset cache for this player so they can be detected again when they come back online
-                    ToxicifyDB.OnlineNotificationCache.toxic[playerName] = nil
-                    ToxicifyDB.OnlineNotificationCache.pumper[playerName] = nil
+                    ns.Events.ResetPlayerCache(playerName)
                 end
             end
         end
@@ -1671,7 +1830,7 @@ function ns.Events.Initialize()
     -- Periodic check for Battle.net friends (since we can't rely on events)
     C_Timer.NewTicker(30, function()
         if ToxicifyDB.GuildToastEnabled then
-            ns.Events.CheckFriendListOnline()
+            DebouncedCheckFriendListOnline()
         end
     end)
     

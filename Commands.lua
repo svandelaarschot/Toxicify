@@ -334,6 +334,10 @@ function ns.Commands.Initialize()
             -- Clear phase change flag
             ToxicifyDB.InPhaseChange = false
             ns.Core.DebugPrint("Phase change flag cleared", true)
+        elseif cmd == "resetplayer" and arg1 then
+            -- Reset cache for a specific player
+            ns.Events.ResetPlayerCache(arg1)
+            ns.Core.DebugPrint("Cache reset for player: " .. arg1, true)
         elseif cmd == "showonlinecache" or cmd == "cache" then
             -- Show current online notification cache
             if ToxicifyDB.OnlineNotificationCache then
@@ -378,6 +382,7 @@ function ns.Commands.Initialize()
             ns.Core.DebugPrint("/toxic populatecache           - Populate cache with currently online players", true)
             ns.Core.DebugPrint("/toxic testcache               - Test cache functionality and show debug info", true)
             ns.Core.DebugPrint("/toxic clearphase              - Clear phase change flag", true)
+            ns.Core.DebugPrint("/toxic resetplayer <name>      - Reset cache for specific player", true)
             ns.Core.DebugPrint("/toxic cache                   - Show current online notification cache", true)
             ns.Core.DebugPrint("/toxic testguildtoast          - Test guild member notification toasts", true)
             ns.Core.DebugPrint("/toxic testfriendtoast         - Test friend notification toasts", true)
