@@ -6,10 +6,6 @@ local function InitializeEditBox(editBox, value, debugName)
     if not editBox then return end
     
     local currentValue = value or ""
-    if debugName and ToxicifyDB and ToxicifyDB.DebugEnabled == true then
-        print("|cff39FF14[Toxicify DEBUG]|r " .. debugName .. " value: " .. tostring(currentValue))
-    end
-    
     -- Set the text and properties
     editBox:SetText(tostring(currentValue))
     editBox:SetTextColor(1, 1, 1)

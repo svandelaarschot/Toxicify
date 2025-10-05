@@ -51,15 +51,12 @@ local function CreateGroupFinderButton()
     if pgfDetected and anchorFrame then
         -- Position next to PGF elements
         toggleBtn:SetPoint("LEFT", anchorFrame, "RIGHT", xOffset, 0)
-        ns.Core.DebugPrint("Toxicify button positioned next to PGF addon")
     elseif _G.LFGListFrameSearchPanelFilterButton then
         -- Standard Blizzard filter button
         toggleBtn:SetPoint("LEFT", _G.LFGListFrameSearchPanelFilterButton, "RIGHT", xOffset, 0)
-        ns.Core.DebugPrint("Toxicify button positioned next to Blizzard filter button")
     else
         -- Fallback position
         toggleBtn:SetPoint("LEFT", LFGListFrame.SearchPanel.RefreshButton, "RIGHT", -110, 0)
-        ns.Core.DebugPrint("Toxicify button positioned at fallback location")
     end
 
     toggleBtn:SetScript("OnClick", function()
