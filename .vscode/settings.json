@@ -5,7 +5,7 @@
         "commands": [
             {
                 "match": ".*\\.(lua|toc)$",
-                "cmd": "xcopy \"${file}\" \"D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\${workspaceFolderBasename}\\\" /Y /Q"
+                "cmd": "xcopy \"${file}\" \"D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\\" /Y /Q"
             }
         ]
     },
@@ -17,7 +17,7 @@
             "command": "xcopy",
             "args": [
                 "${workspaceFolder}\\*.lua",
-                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\${workspaceFolderBasename}\\",
+                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
                 "/Y"
             ],
             "group": "build",
@@ -35,7 +35,7 @@
             "command": "xcopy",
             "args": [
                 "${workspaceFolder}\\*.toc",
-                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\${workspaceFolderBasename}\\",
+                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
                 "/Y"
             ],
             "group": "build",
