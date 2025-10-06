@@ -1,69 +1,101 @@
 {
-    "files.autoSave": "afterDelay",
-    "files.autoSaveDelay": 500,
-    "emeraldwalk.runonsave": {
-        "commands": [
-            {
-                "match": ".*\\.(lua|toc)$",
-                "cmd": "xcopy \"${file}\" \"D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\\" /Y /Q"
-            }
-        ]
-    },
-    "tasks.version": "2.0.0",
-    "tasks.tasks": [
-        {
-            "label": "Sync to WoW",
-            "type": "shell",
-            "command": "xcopy",
-            "args": [
-                "${workspaceFolder}\\*.lua",
-                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
-                "/Y"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Sync TOC to WoW",
-            "type": "shell",
-            "command": "xcopy",
-            "args": [
-                "${workspaceFolder}\\*.toc",
-                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
-                "/Y"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "Sync All Addon Files",
-            "type": "shell",
-            "command": "xcopy",
-            "args": [
-                "${workspaceFolder}\\*.{lua,toc}",
-                "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\${workspaceFolderBasename}\\",
-                "/Y"
-            ],
-            "group": "build",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": []
-        }
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 500,
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": ".*\\.(lua|toc)$",
+        "cmd": "xcopy \"${file}\" \"D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\\" /Y /Q"
+      }
     ]
+  },
+  "tasks.version": "2.0.0",
+  "tasks.tasks": [
+    {
+      "label": "Sync to WoW",
+      "type": "shell",
+      "command": "xcopy",
+      "args": [
+        "${workspaceFolder}\\*.lua",
+        "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
+        "/Y"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Sync TOC to WoW",
+      "type": "shell",
+      "command": "xcopy",
+      "args": [
+        "${workspaceFolder}\\*.toc",
+        "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\Toxicify\\",
+        "/Y"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Sync All Addon Files",
+      "type": "shell",
+      "command": "xcopy",
+      "args": [
+        "${workspaceFolder}\\*.{lua,toc}",
+        "D:\\World of Warcraft\\_retail_\\Interface\\AddOns\\${workspaceFolderBasename}\\",
+        "/Y"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "Lua.runtime.version": "Lua 5.1",
+  "Lua.runtime.builtin": {
+    "basic": "disable",
+    "debug": "disable",
+    "io": "disable",
+    "math": "disable",
+    "os": "disable",
+    "package": "disable",
+    "string": "disable",
+    "table": "disable",
+    "utf8": "disable"
+  },
+  "Lua.workspace.library": [
+    "~\\.vscode\\extensions\\ketho.wow-api-0.21.0\\Annotations\\Core"
+  ],
+  "Lua.diagnostics.globals": [
+    "Settings",
+    "GetUnitName",
+    "SlashCmdList",
+    "ChatFrame_AddMessageEventFilter",
+    "TooltipDataProcessor",
+    "ChatFrame_OpenChat",
+    "ChatFrame1",
+    "LFGListFrame",
+    "ReloadUI",
+    "UIDropDownMenu_SetWidth",
+    "UIDropDownMenu_Initialize",
+    "UIDropDownMenu_SetText",
+    "LFGListSearchPanel_UpdateResultList",
+    "UIDropDownMenu_AddButton",
+    "UIDropDownMenu_CreateInfo"
+  ]
 }

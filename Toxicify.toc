@@ -2,11 +2,11 @@
 ## Title: |cff39FF14Toxicify|r
 ## Notes: Mark players as toxic and be able to see this in Premade Group Finder and Party.
 ## Author: Alvarín-Silvermoon
-## Version: 2.1
+## Version: 2.2
 ## SavedVariables: ToxicifyDB
 ## IconTexture: Interface\Icons\ability_creature_poison_05
-# ## IconTexture: Interface\Icons\inv_potion_118
-# ## IconAtlas: poi-soulspiritghost
+## IconTexture: Interface\Icons\inv_potion_118
+## IconAtlas: poi-soulspiritghost
 
 Core.lua
 Player.lua
@@ -16,5 +16,11 @@ UI.lua
 GroupFinder.lua
 Commands.lua
 Minimap.lua
+OptionsCore.lua
+OptionsRoot.lua
+OptionsGeneral.lua
+OptionsList.lua
+OptionsIO.lua
+OptionsWhisper.lua
 Options.lua
 Toxicify.lua

@@ -1,24 +1,28 @@
 -- Core.lua - Toxicify Core functionality and database management
 local addonName, ns = ...
 
--- Initialize namespace if not exists
-if not ns then
-    ns = {}
-end
+-- Gebruik de gedeelde namespace-tabel die WoW doorgeeft
+-- Maak géén nieuwe lokale ns aan (anders zien andere files 'm niet).
+ns.Core = ns.Core or {}
 
--- Core namespace
-ns.Core = {}
+-- SavedVariables root
+ToxicifyDB = ToxicifyDB or {}
 
--- Debug helper function
+-- Eénmalige init guard om dubbele initialisatie te voorkomen
+ns.Core._initialized = ns.Core._initialized or false
+
+-- =========================================
+-- Debug helper
+-- =========================================
 function ns.Core.DebugPrint(message, forcePrint)
-    -- Only print if debug is explicitly enabled OR if forcePrint is true
     if (ToxicifyDB and ToxicifyDB.DebugEnabled == true) or forcePrint then
-        print("|cff39FF14[Toxicify DEBUG]|r " .. message)
+        print("|cff39FF14[Toxicify DEBUG]|r " .. tostring(message))
     end
 end
 
-
+-- =========================================
 -- Test warning popup
+-- =========================================
 function ns.Core.TestWarningPopup()
     local testPlayers = {"TestPlayer1", "TestPlayer2"}
     if ns.Events and ns.Events.ShowToxicWarningPopup then
@@ -28,14 +32,17 @@ function ns.Core.TestWarningPopup()
     end
 end
 
--- General footer function
+-- =========================================
+-- Footer
+-- =========================================
 function ns.Core.GetFooterText()
     return "|cffaaaaaaCreated by Alvarín-Silvermoon - v2025|r"
 end
 
--- Shared auto-completion functionality
+-- =========================================
+-- Shared auto-completion (UI helper)
+-- =========================================
 function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
-    -- Suggestion box for auto-completion
     local suggestionBox = CreateFrame("Frame", nil, parentFrame, BackdropTemplateMixin and "BackdropTemplate")
     suggestionBox:SetSize(200, 110) -- max 5 * 20px + marge
     suggestionBox:SetPoint("TOPLEFT", inputBox, "BOTTOMLEFT", 0, -2)
@@ -102,7 +109,7 @@ function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
                 inputBox:SetText(name)
                 suggestionBox:Hide()
             end)
-            table.insert(suggestionBox.children, btn)
+            suggestionBox.children[#suggestionBox.children+1] = btn
             y = y - 20
         end
 
@@ -115,90 +122,102 @@ function ns.Core.CreateAutoCompletion(inputBox, parentFrame)
     end
 
     inputBox:SetScript("OnTextChanged", UpdateSuggestions)
-    inputBox:SetScript("OnEditFocusLost", function() C_Timer.After(ns.Constants.SUGGESTION_BOX_HIDE_DELAY, function() suggestionBox:Hide() end) end)
-    
+    inputBox:SetScript("OnEditFocusLost", function()
+        local delay = (ns.Constants and ns.Constants.SUGGESTION_BOX_HIDE_DELAY) or 0.05
+        C_Timer.After(delay, function() suggestionBox:Hide() end)
+    end)
+
     return suggestionBox
 end
 
--- Database initialization
-ToxicifyDB = ToxicifyDB or {}
-
--- Default settings
+-- =========================================
+-- Defaults
+-- =========================================
 local function InitializeDefaults()
-    if not ToxicifyDB.WhisperMessage then
+    -- Maak root als die niet bestaat (defensive)
+    ToxicifyDB = ToxicifyDB or {}
+
+    if ToxicifyDB.WhisperMessage == nil then
         ToxicifyDB.WhisperMessage = "U have been marked as Toxic player by - Toxicify Addon"
     end
-    
+
     if ToxicifyDB.WhisperOnMark == nil then
         ToxicifyDB.WhisperOnMark = false
     end
-    
+
     if ToxicifyDB.IgnoreOnMark == nil then
         ToxicifyDB.IgnoreOnMark = false
     end
-    
+
     if ToxicifyDB.HideInFinder == nil then
         ToxicifyDB.HideInFinder = false
     end
-    
+
     if ToxicifyDB.DebugEnabled == nil then
         ToxicifyDB.DebugEnabled = false
     end
-    -- Set default party warning setting
+
     if ToxicifyDB.PartyWarningEnabled == nil then
         ToxicifyDB.PartyWarningEnabled = true
     end
-    
+
     if ToxicifyDB.LuaErrorsEnabled == nil then
-        ToxicifyDB.LuaErrorsEnabled = false
+        -- Alleen defaulten op basis van huidige CVar als er nog geen user setting is
+        ToxicifyDB.LuaErrorsEnabled = (GetCVar("scriptErrors") == "1")
     end
-    
-    -- Target frame indicator setting
+
     if ToxicifyDB.TargetFrameIndicatorEnabled == nil then
         ToxicifyDB.TargetFrameIndicatorEnabled = true
     end
-    
-    -- Popup timer setting
+
     if ToxicifyDB.PopupTimerSeconds == nil then
         ToxicifyDB.PopupTimerSeconds = 25
     end
-    
-    -- Check if scriptErrors is enabled in console
-    if GetCVar("scriptErrors") == "1" then
-        ToxicifyDB.LuaErrorsEnabled = true
-    else
-        ToxicifyDB.LuaErrorsEnabled = false
-    end
-    
+
     if not ToxicifyDB.minimap then
         ToxicifyDB.minimap = { hide = false }
     end
 end
 
--- Core initialization
+-- =========================================
+-- Core Initialize (aanroepen NA ADDON_LOADED)
+-- =========================================
 function ns.Core.Initialize()
+    if ns.Core._initialized then
+        return
+    end
+    ns.Core._initialized = true
+
     InitializeDefaults()
-    
-    -- Sync Lua errors setting with scriptErrors
+
+    -- CVar sync: volg de opgeslagen user setting
     if ToxicifyDB.LuaErrorsEnabled then
         SetCVar("scriptErrors", "1")
     else
         SetCVar("scriptErrors", "0")
     end
-    
-    if ToxicifyDB.DebugEnabled then
-        ns.Core.DebugPrint("Debug mode is enabled.")
-    end
-    
-    -- Add context menu marking functionality
+
     if ns.UI and ns.UI.AddContextMenuMarking then
         ns.UI.AddContextMenuMarking()
     end
-    
+
+    -- Debug dump nu SavedVariables zeker geladen zijn
+    print("|cff39FF14Toxicify:|r CORE.LUA LOADED!")
+    print("|cff39FF14Toxicify:|r Database contents:")
+    if ToxicifyDB and next(ToxicifyDB) then
+        for k, v in pairs(ToxicifyDB) do
+            print("  " .. tostring(k) .. " = " .. tostring(v))
+        end
+    else
+        print("  Database is empty or nil!")
+    end
+
     print("|cff39FF14Toxicify:|r Addon Loaded.")
 end
 
--- Database access functions
+-- =========================================
+-- DB accessors
+-- =========================================
 function ns.Core.GetDatabase()
     return ToxicifyDB
 end
@@ -208,91 +227,88 @@ function ns.Core.SetDatabaseValue(key, value)
 end
 
 function ns.Core.GetDatabaseValue(key, defaultValue)
-    return ToxicifyDB[key] or defaultValue
+    local v = ToxicifyDB[key]
+    if v == nil then return defaultValue end
+    return v
 end
 
--- Base64 encoding table
+-- =========================================
+-- Base64 helpers
+-- =========================================
 local base64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
--- Base64 encode function
 local function base64encode(data)
-    return ((data:gsub('.', function(x) 
-        local r,b='',x:byte()
-        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
-        return r;
-    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+    return ((data:gsub('.', function(x)
+        local r, b = '', x:byte()
+        for i = 8, 1, -1 do r = r .. (b % 2^i - b % 2^(i-1) > 0 and '1' or '0') end
+        return r
+    end) .. '0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
         if (#x < 6) then return '' end
-        local c=0
-        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
-        return base64chars:sub(c+1,c+1)
-    end)..({ '', '==', '=' })[#data%3+1])
+        local c = 0
+        for i = 1, 6 do c = c + (x:sub(i,i) == '1' and 2^(6-i) or 0) end
+        return base64chars:sub(c+1, c+1)
+    end) .. ({ '', '==', '=' })[#data % 3 + 1])
 end
 
--- Base64 decode function
 local function base64decode(data)
     data = string.gsub(data, '[^'..base64chars..'=]', '')
     return (data:gsub('.', function(x)
         if (x == '=') then return '' end
-        local r,f='',(base64chars:find(x)-1)
-        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
-        return r;
+        local r, f = '', (base64chars:find(x) - 1)
+        for i = 6, 1, -1 do r = r .. (f % 2^i - f % 2^(i-1) > 0 and '1' or '0') end
+        return r
     end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
         if (#x ~= 8) then return '' end
-        local c=0
-        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        local c = 0
+        for i = 1, 8 do c = c + (x:sub(i,i) == '1' and 2^(8-i) or 0) end
         return string.char(c)
     end))
 end
 
--- Export functionality with Base64 encoding
+-- =========================================
+-- Export / Import
+-- =========================================
 function ns.Core.ExportList()
     local data = {}
     for name, status in pairs(ToxicifyDB) do
         if status == "toxic" or status == "pumper" then
-            table.insert(data, name .. ":" .. status)
+            data[#data+1] = name .. ":" .. status
         end
     end
     local payload = table.concat(data, ";")
 
-    -- Calculate checksum
     local checksum = 0
     for i = 1, #payload do
         checksum = checksum + string.byte(payload, i)
     end
 
-    -- Create the data string and encode it
     local dataString = "TOXICIFYv2|" .. payload .. "|" .. checksum
     local encoded = base64encode(dataString)
-    
+
     return "TX:" .. encoded
 end
 
--- Import functionality with Base64 decoding
 function ns.Core.ImportList(str)
-    if not str or str == "" then 
-        return false, "No data provided" 
+    if not str or str == "" then
+        return false, "No data provided"
     end
 
-    -- Clean up the input string
-    str = str:gsub("^%s+", ""):gsub("%s+$", "") -- trim whitespace
+    str = str:gsub("^%s+", ""):gsub("%s+$", "")
     ns.Core.DebugPrint("Importing data: " .. str:sub(1, 30) .. "...")
 
-    -- Handle both old and new formats
     local encoded = str:match("^TX:(.+)$")
     if encoded then
         ns.Core.DebugPrint("Using new secure format")
-        -- New Base64 format
-        local success, decoded = pcall(base64decode, encoded)
-        if not success or not decoded or decoded == "" then 
-            return false, "Invalid encoding - data may be corrupted" 
-        end
-        
-        local version, payload, checksum = decoded:match("^(TOXICIFYv2)|(.+)|(%d+)$")
-        if not version then 
-            return false, "Invalid data format" 
+        local ok, decoded = pcall(base64decode, encoded)
+        if not ok or not decoded or decoded == "" then
+            return false, "Invalid encoding - data may be corrupted"
         end
 
-        -- Verify data integrity
+        local version, payload, checksum = decoded:match("^(TOXICIFYv2)|(.+)|(%d+)$")
+        if not version then
+            return false, "Invalid data format"
+        end
+
         local calc = 0
         for i = 1, #payload do
             calc = calc + string.byte(payload, i)
@@ -301,7 +317,6 @@ function ns.Core.ImportList(str)
             return false, "Data corruption detected"
         end
 
-        -- Import players
         local count = 0
         for entry in string.gmatch(payload, "([^;]+)") do
             local name, status = entry:match("([^:]+):([^:]+)")
@@ -315,10 +330,9 @@ function ns.Core.ImportList(str)
         return true, count .. " players imported successfully"
     else
         ns.Core.DebugPrint("Using legacy format")
-        -- Legacy format support
         local version, payload, checksum = str:match("^(TOXICIFYv1)|(.+)|(%d+)$")
-        if not version then 
-            return false, "Invalid format - not a Toxicify export string" 
+        if not version then
+            return false, "Invalid format - not a Toxicify export string"
         end
 
         local calc = 0
@@ -343,9 +357,10 @@ function ns.Core.ImportList(str)
     end
 end
 
--- Clipboard functionality
+-- =========================================
+-- Clipboard helpers
+-- =========================================
 function ns.Core.CopyToClipboard(text)
-    -- Try to copy to clipboard if available
     if C_System and C_System.SetClipboard then
         C_System.SetClipboard(text)
         ns.Core.DebugPrint("Copied to clipboard: " .. text:sub(1, 30) .. "...")
@@ -356,7 +371,6 @@ function ns.Core.CopyToClipboard(text)
 end
 
 function ns.Core.GetFromClipboard()
-    -- Try to get from clipboard if available
     if C_System and C_System.GetClipboard then
         local clipboardData = C_System.GetClipboard()
         ns.Core.DebugPrint("Retrieved from clipboard: " .. (clipboardData and clipboardData:sub(1, 30) or "nil") .. "...")
@@ -365,5 +379,24 @@ function ns.Core.GetFromClipboard()
     ns.Core.DebugPrint("Clipboard read failed - C_System.GetClipboard not available")
     return ""
 end
--- Initialize on load
-ns.Core.Initialize()
+
+-- =========================================
+-- Event driver: init op juiste moment
+-- =========================================
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("ADDON_LOADED")
+frame:RegisterEvent("PLAYER_LOGOUT")
+
+frame:SetScript("OnEvent", function(_, event, name)
+    if event == "ADDON_LOADED" and name == addonName then
+        -- SavedVariables zijn nu beschikbaar
+        ToxicifyDB = ToxicifyDB or {}
+        ns.Core.Initialize()
+    elseif event == "PLAYER_LOGOUT" then
+        -- WoW schrijft SavedVariables automatisch weg.
+        -- Zorg dat ToxicifyDB geen frames/userdata bevat.
+    end
+end)
+
+-- Let op: GEEN directe ns.Core.Initialize() call hier!
+-- We initialiseren uitsluitend via ADDON_LOADED.

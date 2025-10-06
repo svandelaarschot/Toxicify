@@ -1,5 +1,13 @@
 local addonName, ns = ...
 
+-- Commands namespace
+ns.Commands = {}
+
+-- Initialize Commands module
+function ns.Commands.Initialize()
+    -- Commands are already registered via SlashCmdList
+end
+
 -- Slash command registration
 if not SLASH_TOXICIFY1 then
     SLASH_TOXICIFY1 = "/toxic"

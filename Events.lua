@@ -61,15 +61,6 @@ local function CanNotifyPlayer(playerName, playerType)
     end
 end
 
--- Record that we notified about this player
-local function RecordNotification(playerName, playerType)
-    InitializeOnlineNotificationCache()
-    
-    local cacheKey = playerName
-    ToxicifyDB.OnlineNotificationCache.lastNotificationTime[cacheKey] = time()
-    ns.Core.DebugPrint("Recorded notification for " .. playerName .. " at " .. date("%H:%M:%S"))
-end
-
 -- Key/Run detection and warning suppression
 local function InitializeRunTracking()
     if not ToxicifyDB.RunTracking then
@@ -413,11 +404,6 @@ function ns.Events.PopulateCacheWithCurrentOnlinePlayers()
             end
         end
     end
-    
-    if populatedCount > 0 then
-    else
-    end
-    
     -- Mark cache as populated
     ToxicifyDB.CachePopulated = true
 end
@@ -526,6 +512,7 @@ function ns.Events.UpdateGroupMembers(event)
                     end
                 end
             end
+          end
         end
         ns.Core.DebugPrint("Total toxic players found: " .. #toxicPlayers)
     end
@@ -1009,9 +996,6 @@ function ns.Events.CheckFriendListOnline()
             end
         end
     end
-    
-    -- Note: Battle.net friend checking removed due to API compatibility issues
-    -- Regular WoW friends checking above works perfectly
     
     -- Only show summary if we found marked players
     if foundCount > 0 then
@@ -1966,17 +1950,76 @@ end
 
 -- Add Toxicify context menu options
 function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
-    if not contextData or not contextData.name then
+    if not contextData then 
+        return 
+    end
+
+    local playerName = nil
+    
+    -- Handle Battle.net friends (no unit, but have accountInfo)
+    if contextData.accountInfo and contextData.accountInfo.battleTag then
+        -- Try to get character name and realm from ALL possible fields
+        local charName = contextData.name or contextData.characterName or contextData.accountInfo.characterName
+        local realm = contextData.realm or contextData.characterRealm or contextData.accountInfo.characterRealm
+        
+        if charName and realm then
+            playerName = charName .. "-" .. realm
+        elseif charName then
+            playerName = charName
+        else
+            -- Extract character name from Battle.net tag (remove #numbers)
+            local battleTag = contextData.accountInfo.battleTag
+            local charNameFromTag = battleTag:match("^([^#]+)")
+            if charNameFromTag then
+                playerName = charNameFromTag
+            else
+                -- Fallback to full Battle.net tag
+                playerName = battleTag
+            end
+        end
+    -- Handle guild members (have name and server)
+    elseif contextData.name and contextData.server then
+        playerName = contextData.name .. "-" .. contextData.server
+    -- Handle guild members with different field names
+    elseif contextData.name and (contextData.realm or contextData.server) then
+        local realm = contextData.realm or contextData.server or GetRealmName()
+        playerName = contextData.name .. "-" .. realm
+    -- Handle regular players (have unit)
+    elseif contextData.unit then
+        -- Only show for real players, not NPCs
+        if not UnitIsPlayer(contextData.unit) then 
+            return 
+        end
+        
+        playerName = GetUnitName(contextData.unit, true)
+        if not playerName then 
+            return 
+        end
+    -- Handle players by name only (fallback)
+    elseif contextData.name then
+        playerName = contextData.name
+        -- Add realm if not present
+        if not playerName:find("-") then
+            local realm = GetRealmName()
+            playerName = playerName .. "-" .. realm
+        end
+    else
+        return 
+    end
+    
+    if not playerName then
         return
     end
     
-    local playerName = contextData.name
-    local currentPlayerName = GetUnitName("player", false)
-    local currentPlayerFullName = GetUnitName("player", true)
+    -- Check if trying to mark yourself - hide menu completely
+    local myName = GetUnitName("player", true)
+    local myNameShort = GetUnitName("player", false)
+    if playerName == myName or playerName == myNameShort or 
+       playerName:find("^" .. myNameShort .. "-") or playerName:find("^" .. myName .. "-") then
+        return
+    end
     
-    -- Skip if this is the current player (don't allow self-marking)
-    if playerName == currentPlayerName or playerName == currentPlayerFullName then
-        ns.Core.DebugPrint("Skipping context menu for self: " .. playerName)
+    if not rootDescription then
         return
     end
     
@@ -2017,6 +2060,13 @@ function ns.Events.AddToxicifyContextMenu(_, rootDescription, contextData)
         }
         Menu.AddOption(rootDescription, pumperOption)
     end
+end
+
+-- Alternative context menu using UnitPopupMenu (for older WoW versions)
+function ns.Events.RegisterAlternativeContextMenus()
+    print("|cff39FF14Toxicify:|r Using alternative context menu approach")
+    -- This is a placeholder - we'll implement this if needed
+    print("|cff39FF14Toxicify:|r Alternative context menus not yet implemented")
 end
 
 -- Register context menu for various unit types
@@ -2432,5 +2482,4 @@ else
             ns.Events.RegisterContextMenus()
         end
     end)
-end
 end
